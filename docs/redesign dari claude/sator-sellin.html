@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Sell In · Sator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --red:#c05a4a;--red-dim:rgba(192,90,74,0.1);
+  --amber:#d4853a;--amber-dim:rgba(212,133,58,0.1);
+  --blue:#5b8dd9;--blue-dim:rgba(91,141,217,0.1);
+  --purple:#8b6fd4;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 20px 60px;}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;margin-bottom:14px;}
+.phone{width:370px;height:800px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+.scroll{height:calc(800px - 50px);overflow-y:auto;padding-bottom:88px;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* HEADER */
+.header{padding:12px 20px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--s2);}
+.back-btn{width:32px;height:32px;border-radius:10px;background:var(--s1);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.back-btn svg{width:14px;height:14px;stroke:var(--muted);stroke-width:2.5;fill:none;}
+.header-info{flex:1;}
+.header-eyebrow{font-size:8px;font-weight:700;color:var(--gold);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:2px;}
+.header-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--cream);line-height:1;}
+.header-period{font-size:9px;color:var(--muted);margin-top:2px;}
+
+/* ── A. ACHIEVEMENT CARD ── */
+.achievement-card{
+  margin:14px 16px 0;
+  background:linear-gradient(145deg,#261f13,#1c1610);
+  border:1px solid rgba(201,146,58,0.22);
+  border-radius:18px;
+  padding:16px;
+  position:relative;overflow:hidden;
+}
+.achievement-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,146,58,0.6),transparent);}
+.ac-glow{position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(201,146,58,0.07),transparent 70%);pointer-events:none;}
+
+.ac-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.ac-left{}
+.ac-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;}
+.ac-nominal{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;color:var(--cream);line-height:1;}
+.ac-nominal small{font-size:11px;color:var(--muted);font-family:'Outfit',sans-serif;font-weight:400;}
+.ac-target{font-size:9px;color:var(--muted);margin-top:4px;}
+.ac-target strong{color:var(--cream2);}
+.ac-ring{flex-shrink:0;position:relative;width:68px;height:68px;}
+.ac-ring svg{width:68px;height:68px;transform:rotate(-90deg);}
+.ac-ring-bg{fill:none;stroke:var(--s3);stroke-width:5;}
+.ac-ring-fill{fill:none;stroke:var(--amber);stroke-width:5;stroke-linecap:round;stroke-dasharray:173;stroke-dashoffset:124;}
+/* 28% = 173*(1-0.28) = 124 */
+.ac-ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ac-pct{font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:var(--amber);line-height:1;}
+.ac-pct-lbl{font-size:7px;color:var(--muted);}
+
+.ac-prog-meta{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:6px;}
+.ac-prog-meta strong{color:var(--gold-lt);}
+.ac-track{height:6px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.ac-fill{height:100%;width:28%;border-radius:100px;background:linear-gradient(90deg,var(--amber),var(--gold-lt));box-shadow:0 0 10px rgba(212,133,58,0.4);}
+
+/* ── B. QUICK ACTIONS ── */
+.qa-wrap{margin:14px 16px 0;}
+.qa-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;}
+.qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.qa-item{background:var(--s1);border:1px solid var(--s3);border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:border-color .15s;}
+.qa-item:active{border-color:rgba(201,146,58,0.4);}
+.qa-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.qa-icon svg{width:14px;height:14px;stroke-width:2;fill:none;}
+.qa-name{font-size:8px;font-weight:700;color:var(--cream2);text-align:center;line-height:1.2;}
+.qa-badge{font-size:7px;font-weight:700;border-radius:100px;padding:1px 5px;margin-top:1px;}
+
+/* ── C. STOK GUDANG SUMMARY ── */
+.section-gap{height:14px;}
+.card{margin:0 16px;background:var(--s1);border:1px solid var(--s3);border-radius:16px;overflow:hidden;}
+.card-head{padding:11px 14px;border-bottom:1px solid var(--s3);display:flex;justify-content:space-between;align-items:center;}
+.card-title{font-size:12px;font-weight:700;color:var(--cream2);}
+.card-link{font-size:9px;font-weight:700;color:var(--gold);}
+
+.stok-chips{display:flex;gap:6px;padding:12px 14px;}
+.sc{flex:1;border-radius:12px;padding:8px 6px;text-align:center;border:1px solid;}
+.sc-count{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;line-height:1;margin-bottom:2px;}
+.sc-lbl{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
+.sc.banyak{background:var(--green-dim);border-color:rgba(106,171,122,0.2);}
+.sc.banyak .sc-count{color:var(--green);}
+.sc.banyak .sc-lbl{color:var(--green);}
+.sc.cukup{background:var(--amber-dim);border-color:rgba(212,133,58,0.2);}
+.sc.cukup .sc-count{color:var(--amber);}
+.sc.cukup .sc-lbl{color:var(--amber);}
+.sc.kritis{background:var(--red-dim);border-color:rgba(192,90,74,0.2);}
+.sc.kritis .sc-count{color:var(--red);}
+.sc.kritis .sc-lbl{color:var(--red);}
+.sc.kosong{background:var(--s2);border-color:var(--s3);}
+.sc.kosong .sc-count{color:var(--muted);}
+.sc.kosong .sc-lbl{color:var(--muted2);}
+
+/* stok detail rows */
+.stok-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--s3);}
+.stok-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.stok-name{flex:1;font-size:11px;font-weight:700;color:var(--cream2);}
+.stok-sub{font-size:8px;color:var(--muted);margin-top:1px;}
+.stok-qty{font-family:'Playfair Display',serif;font-size:16px;font-weight:900;text-align:right;}
+.stok-unit{font-size:7px;color:var(--muted);text-align:right;margin-top:1px;}
+
+/* ── D. STATUS TOKO ── */
+.toko-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.toko-row:last-child{border-bottom:none;}
+.toko-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.toko-icon svg{width:13px;height:13px;stroke-width:2;fill:none;}
+.toko-info{flex:1;}
+.toko-name{font-size:11px;font-weight:700;color:var(--cream2);margin-bottom:2px;}
+.toko-meta{font-size:8px;color:var(--muted);}
+.toko-order-btn{font-size:9px;font-weight:700;color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,146,58,0.25);border-radius:100px;padding:4px 10px;cursor:pointer;white-space:nowrap;}
+
+/* ── E. ORDER PENDING ── */
+.order-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.order-row:last-child{border-bottom:none;}
+.order-icon{width:32px;height:32px;border-radius:10px;background:var(--amber-dim);border:1px solid rgba(212,133,58,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.order-icon svg{width:13px;height:13px;stroke:var(--amber);stroke-width:2;fill:none;}
+.order-info{flex:1;}
+.order-name{font-size:11px;font-weight:700;color:var(--cream2);margin-bottom:2px;}
+.order-meta{font-size:8px;color:var(--muted);}
+.order-status{font-size:8px;font-weight:700;border-radius:100px;padding:2px 7px;white-space:nowrap;}
+.order-chevron{width:16px;height:16px;flex-shrink:0;}
+.order-chevron svg{width:14px;height:14px;stroke:var(--muted2);stroke-width:2;fill:none;}
+
+/* badge generic */
+.badge{font-size:7px;font-weight:700;border-radius:100px;padding:2px 8px;}
+.bd-red{color:var(--red);background:var(--red-dim);border:1px solid rgba(192,90,74,0.2);}
+.bd-amb{color:var(--amber);background:var(--amber-dim);border:1px solid rgba(212,133,58,0.2);}
+.bd-grn{color:var(--green);background:var(--green-dim);border:1px solid rgba(106,171,122,0.2);}
+.bd-gld{color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);}
+.bd-dim{color:var(--muted);background:var(--s2);border:1px solid var(--s3);}
+
+/* NAV */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(20,16,10,0.97);backdrop-filter:blur(24px);border-top:1px solid var(--s3);padding:10px 8px 22px;display:flex;justify-content:space-around;z-index:100;}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 12px;border-radius:10px;cursor:pointer;}
+.ni.on{background:var(--gold-dim);}
+.ni svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:var(--muted2);}
+.ni.on svg{stroke:var(--gold);}
+.ni span{font-size:8px;font-weight:700;color:var(--muted2);letter-spacing:0.04em;text-transform:uppercase;}
+.ni.on span{color:var(--gold);}
+
+@keyframes fill{from{width:0}to{width:var(--w,0%)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="page-title">Sell In · Sator</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">09:53</span><span class="sbar-r">4G 58%</span></div>
+  <div class="scroll">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="back-btn">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </div>
+      <div class="header-info">
+        <div class="header-eyebrow">Sator · King Cell Kupang</div>
+        <div class="header-title">Sell In</div>
+        <div class="header-period">Maret 2026</div>
+      </div>
+    </div>
+
+    <!-- A. ACHIEVEMENT CARD -->
+    <div class="achievement-card">
+      <div class="ac-glow"></div>
+      <div class="ac-top">
+        <div>
+          <div class="ac-lbl">Achievement Bulan Ini</div>
+          <div class="ac-nominal"><small>Rp </small>214.000.000</div>
+          <div class="ac-target">Target: <strong>Rp 750.000.000</strong></div>
+        </div>
+        <div class="ac-ring">
+          <svg viewBox="0 0 68 68">
+            <circle class="ac-ring-bg" cx="34" cy="34" r="28"/>
+            <circle class="ac-ring-fill" cx="34" cy="34" r="28"/>
+          </svg>
+          <div class="ac-ring-txt">
+            <div class="ac-pct">28%</div>
+            <div class="ac-pct-lbl">Achieve</div>
+          </div>
+        </div>
+      </div>
+      <div class="ac-prog-meta">
+        <span>Progress Maret 2026</span>
+        <strong>Sisa Rp 536.000.000</strong>
+      </div>
+      <div class="ac-track"><div class="ac-fill"></div></div>
+    </div>
+
+    <!-- B. QUICK ACTIONS -->
+    <div class="qa-wrap">
+      <div class="qa-lbl">Menu Sell In</div>
+      <div class="qa-grid">
+
+        <!-- Stok Gudang -->
+        <div class="qa-item">
+          <div class="qa-icon" style="background:var(--blue-dim)">
+            <svg viewBox="0 0 24 24" stroke="var(--blue)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div class="qa-name">Stok Gudang</div>
+        </div>
+
+        <!-- Stok Toko -->
+        <div class="qa-item">
+          <div class="qa-icon" style="background:var(--green-dim)">
+            <svg viewBox="0 0 24 24" stroke="var(--green)"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          </div>
+          <div class="qa-name">Stok Toko</div>
+        </div>
+
+        <!-- Rekomendasi -->
+        <div class="qa-item" style="position:relative;">
+          <div class="qa-icon" style="background:var(--gold-dim)">
+            <svg viewBox="0 0 24 24" stroke="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <div class="qa-name">Rekomendasi</div>
+          <div class="qa-badge" style="color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);">3 baru</div>
+        </div>
+
+        <!-- Order Manual -->
+        <div class="qa-item">
+          <div class="qa-icon" style="background:rgba(139,111,212,0.1)">
+            <svg viewBox="0 0 24 24" stroke="var(--purple)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          </div>
+          <div class="qa-name">Order Manual</div>
+        </div>
+
+        <!-- Finalisasi -->
+        <div class="qa-item" style="position:relative;">
+          <div class="qa-icon" style="background:var(--amber-dim)">
+            <svg viewBox="0 0 24 24" stroke="var(--amber)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="qa-name">Finalisasi</div>
+          <div class="qa-badge" style="color:var(--red);background:var(--red-dim);border:1px solid rgba(192,90,74,0.2);">5 pending</div>
+        </div>
+
+        <!-- Achievement -->
+        <div class="qa-item">
+          <div class="qa-icon" style="background:rgba(91,141,217,0.1)">
+            <svg viewBox="0 0 24 24" stroke="var(--blue)"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <div class="qa-name">Achievement</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- C. STOK GUDANG SUMMARY -->
+    <div class="section-gap"></div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Stok Gudang</div>
+        <div class="card-link">Lihat Semua →</div>
+      </div>
+      <!-- 4 chips -->
+      <div class="stok-chips">
+        <div class="sc banyak">
+          <div class="sc-count">18</div>
+          <div class="sc-lbl">Banyak</div>
+        </div>
+        <div class="sc cukup">
+          <div class="sc-count">7</div>
+          <div class="sc-lbl">Cukup</div>
+        </div>
+        <div class="sc kritis">
+          <div class="sc-count">4</div>
+          <div class="sc-lbl">Kritis</div>
+        </div>
+        <div class="sc kosong">
+          <div class="sc-count">2</div>
+          <div class="sc-lbl">Kosong</div>
+        </div>
+      </div>
+      <!-- produk kritis preview -->
+      <div class="stok-row">
+        <div class="stok-dot" style="background:var(--red)"></div>
+        <div>
+          <div class="stok-name">X300 Pro · 16/512</div>
+          <div class="stok-sub">Kritis — perlu order segera</div>
+        </div>
+        <div>
+          <div class="stok-qty" style="color:var(--red)">3</div>
+          <div class="stok-unit">unit</div>
+        </div>
+      </div>
+      <div class="stok-row">
+        <div class="stok-dot" style="background:var(--red)"></div>
+        <div>
+          <div class="stok-name">iQOO 15 · 8/256</div>
+          <div class="stok-sub">Kritis — perlu order segera</div>
+        </div>
+        <div>
+          <div class="stok-qty" style="color:var(--red)">2</div>
+          <div class="stok-unit">unit</div>
+        </div>
+      </div>
+      <div class="stok-row">
+        <div class="stok-dot" style="background:var(--muted2)"></div>
+        <div>
+          <div class="stok-name">V60 Lite · 8/128</div>
+          <div class="stok-sub">Kosong</div>
+        </div>
+        <div>
+          <div class="stok-qty" style="color:var(--muted)">0</div>
+          <div class="stok-unit">unit</div>
+        </div>
+      </div>
+      <div style="padding:9px 14px;border-top:1px solid var(--s3);text-align:center;">
+        <div style="font-size:9px;font-weight:700;color:var(--gold)">Lihat 31 varian lainnya →</div>
+      </div>
+    </div>
+
+    <!-- D. STATUS TOKO -->
+    <div class="section-gap"></div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Status Toko</div>
+        <div class="badge bd-red">3 Urgent</div>
+      </div>
+
+      <div class="toko-row">
+        <div class="toko-icon" style="background:var(--red-dim);border:1px solid rgba(192,90,74,0.2)">
+          <svg viewBox="0 0 24 24" stroke="var(--red)"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <div class="toko-info">
+          <div class="toko-name">King Cell Sudirman</div>
+          <div class="toko-meta">4 produk kosong · Stok menipis</div>
+        </div>
+        <div class="toko-order-btn">Order</div>
+      </div>
+
+      <div class="toko-row">
+        <div class="toko-icon" style="background:var(--red-dim);border:1px solid rgba(192,90,74,0.2)">
+          <svg viewBox="0 0 24 24" stroke="var(--red)"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <div class="toko-info">
+          <div class="toko-name">King Cell Gatot Subroto</div>
+          <div class="toko-meta">2 produk kosong · Perlu restock</div>
+        </div>
+        <div class="toko-order-btn">Order</div>
+      </div>
+
+      <div class="toko-row">
+        <div class="toko-icon" style="background:var(--amber-dim);border:1px solid rgba(212,133,58,0.2)">
+          <svg viewBox="0 0 24 24" stroke="var(--amber)"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <div class="toko-info">
+          <div class="toko-name">King Cell Kuningan</div>
+          <div class="toko-meta">Stok kritis — 3 varian &lt; 3 unit</div>
+        </div>
+        <div class="toko-order-btn">Order</div>
+      </div>
+    </div>
+
+    <!-- E. ORDER PENDING -->
+    <div class="section-gap"></div>
+    <div class="card" style="margin-bottom:0;">
+      <div class="card-head">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="card-title">Order Pending</div>
+          <div class="badge bd-amb">5 order</div>
+        </div>
+        <div class="card-link">Buka →</div>
+      </div>
+
+      <div class="order-row">
+        <div class="order-icon">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+        <div class="order-info">
+          <div class="order-name">King Cell Sudirman</div>
+          <div class="order-meta">8 produk · Rp 24.800.000</div>
+        </div>
+        <div class="order-status" style="color:var(--red);background:var(--red-dim);border:1px solid rgba(192,90,74,0.2)">Urgent</div>
+        <div class="order-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="order-row">
+        <div class="order-icon">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+        <div class="order-info">
+          <div class="order-name">King Cell Gatot Subroto</div>
+          <div class="order-meta">5 produk · Rp 11.200.000</div>
+        </div>
+        <div class="order-status" style="color:var(--amber);background:var(--amber-dim);border:1px solid rgba(212,133,58,0.2)">Proses</div>
+        <div class="order-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="order-row">
+        <div class="order-icon">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+        <div class="order-info">
+          <div class="order-name">King Cell Thamrin</div>
+          <div class="order-meta">3 produk · Rp 6.100.000</div>
+        </div>
+        <div class="order-status" style="color:var(--muted);background:var(--s2);border:1px solid var(--s3)">Pending</div>
+        <div class="order-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div style="padding:9px 14px;border-top:1px solid var(--s3);text-align:center;">
+        <div style="font-size:9px;font-weight:700;color:var(--gold)">Lihat 2 order lainnya →</div>
+      </div>
+    </div>
+
+    <div style="height:14px;"></div>
+  </div>
+
+  <nav class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Laporan</span></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Stok</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
+  </nav>
+</div>
+</body>
+</html>

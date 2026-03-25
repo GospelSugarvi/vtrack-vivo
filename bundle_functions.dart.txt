@@ -1,0 +1,117 @@
+// BUNDLE MANAGEMENT FUNCTIONS - Add before helper section (before line 880)
+
+  // ---- Bundle Management----
+  void _showBundleDialog(String role, [Map<String, dynamic>? existingBundle]) {
+    final isEdit = existingBundle != null;
+    final nameC = TextEditingController(text: existingBundle?['bundle_name']);
+    List<String> selectedProductIds = [];
+    
+    // Pre-load existing bundle products if editing
+    if (isEdit && existingBundle!['reward_bundle_products'] != null) {
+      final bundleProducts = List<Map<String, dynamic>>.from(existingBundle['reward_bundle_products']);
+      selectedProductIds = bundleProducts.map((bp) => bp['product_id'] as String).toList();
+    }
+    
+    showDialog(
+      context: context,
+      builder: (c) => StatefulBuilder(builder: (c, setState) => AlertDialog(
+        title: Text(isEdit ? 'Edit Bundle' : 'Tambah Bundle'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Nama Bundle *', hintText: 'Contoh: V60 Lite Series')),
+            const SizedBox(height: 16),
+            const Text('Pilih Produk (minimal 2):', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _products.length,
+                itemBuilder: (c, i) {
+                  final p = _products[i];
+                  final pId = p['id'] as String;
+                  final isSelected = selectedProductIds.contains(pId);
+                  return CheckboxListTile(
+                    dense: true,
+                    title: Text('${p['model_name']} (${p['network_type'] ?? '4G'})'),
+                    value: isSelected,
+                    onChanged: (checked) {
+                      setState(() {
+                        if (checked == true) {
+                          selectedProductIds.add(pId);
+                        } else {
+                          selectedProductIds.remove(pId);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: nameC.text.trim().isEmpty || selectedProductIds.length < 2 ? null : () async {
+              try {
+                if (isEdit) {
+                  // Update bundle
+                  await supabase.from('reward_bundles').update({'bundle_name': nameC.text.trim()}).eq('id', existingBundle['id']);
+                  // Delete old products
+                  await supabase.from('reward_bundle_products').delete().eq('bundle_id', existingBundle['id']);
+                } else {
+                  // Create bundle
+                  final res = await supabase.from('reward_bundles').insert({
+                    'role': role,
+                    'bundle_name': nameC.text.trim(),
+                  }).select().single();
+                  existingBundle = res;
+                }
+                
+                // Insert selected products
+                for (var pId in selectedProductIds) {
+                  await supabase.from('reward_bundle_products').insert({
+                    'bundle_id': existing Bundle!['id'],
+                    'product_id': pId,
+                  });
+                }
+                
+                if (mounted) { Navigator.pop(c); _loadData(); }
+              } catch (e) {
+                debugPrint('Error: $e');
+                Navigator.pop(c);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, duration: const Duration(seconds: 10)));
+                }
+              }
+            },
+            child: Text(isEdit ? 'Update' : 'Simpan'),
+          ),
+        ],
+      )),
+    );
+  }
+
+  void _deleteBundle(Map<String, dynamic> bundle) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Hapus Bundle?'),
+        content: Text('Bundle "${bundle['bundle_name']}" akan dihapus.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      await supabase.from('reward_bundles').delete().eq('id', bundle['id']);
+      _loadData();
+    }
+  }

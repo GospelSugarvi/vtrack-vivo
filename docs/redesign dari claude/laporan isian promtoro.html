@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Kumpulan Form Kapsul</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --amber:#d4853a;--red:#c05a4a;--blue:#5b8dd9;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 20px 60px;gap:14px;}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;}
+.phone{width:370px;height:800px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;position:relative;z-index:10;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+
+.scroll{height:calc(800px - 50px);overflow-y:auto;padding-bottom:30px;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* SCREEN SWITCHER (Hanya untuk preview) */
+.screen-tabs{display:flex;gap:6px;padding:0 20px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none;}
+.screen-tabs::-webkit-scrollbar{display:none;}
+.s-tab{padding:8px 16px;border-radius:100px;background:var(--s1);border:1px solid var(--s3);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;}
+.s-tab.on{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+
+/* HEADER */
+.header{padding:10px 20px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--s2);position:sticky;top:0;background:rgba(26,21,16,0.95);backdrop-filter:blur(10px);z-index:50;}
+.back-btn{width:32px;height:32px;border-radius:10px;background:var(--s1);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.back-btn svg{width:16px;height:16px;stroke:var(--cream2);stroke-width:2;fill:none;}
+.h-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:800;color:var(--cream);}
+.h-subtitle{font-size:10px;color:var(--muted);margin-top:2px;font-family:'Outfit',sans-serif;font-weight:400;}
+
+/* BASE FORM STYLES (KAPSUL) */
+.form-container{padding:20px; display:none;}
+.form-container.on{display:block;}
+.fg{margin-bottom:20px;}
+.fg-label{display:block;font-size:11px;font-weight:700;color:var(--cream2);margin-bottom:8px;padding-left:14px;letter-spacing:0.02em;}
+.fg-label span{font-weight:400;font-size:9px;color:var(--muted);}
+.fg-label .req{color:var(--gold);}
+
+/* Input Kapsul */
+.input-box{display:flex;align-items:center;position:relative;transition:all 0.2s;background:var(--s1);border:1px solid transparent;border-radius:100px;height:52px;padding:0 20px;}
+.input-box:focus-within{background:rgba(201,146,58,0.06);border-color:var(--gold);}
+.input-box:focus-within .input-icon{stroke:var(--gold);}
+.input-icon{width:16px;height:16px;stroke:var(--muted);stroke-width:2;fill:none;flex-shrink:0;margin-right:12px;transition:stroke 0.2s;}
+.input-box input, .input-box select{width:100%;height:100%;background:transparent;border:none;color:var(--cream);font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;outline:none;}
+.input-box input::placeholder{color:var(--muted2);}
+.input-box select{appearance:none;cursor:pointer;}
+.chevron{position:absolute;right:20px;pointer-events:none;width:14px;height:14px;stroke:var(--muted);stroke-width:2;fill:none;}
+
+/* Input Kapsul with Right Element */
+.input-right-btn{position:absolute;right:6px;width:40px;height:40px;border-radius:100px;background:var(--gold);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 10px var(--gold-glow);}
+.input-right-btn svg{width:18px;height:18px;stroke:#1a0e00;stroke-width:2.5;fill:none;}
+
+/* Textarea Kapsul */
+.textarea-box{background:var(--s1);border:1px solid transparent;border-radius:24px;padding:16px 20px;transition:all 0.2s;}
+.textarea-box:focus-within{background:rgba(201,146,58,0.06);border-color:var(--gold);}
+.textarea-box textarea{width:100%;background:transparent;border:none;color:var(--cream);font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;outline:none;min-height:80px;resize:none;line-height:1.5;}
+.textarea-box textarea::placeholder{color:var(--muted2);}
+.char-count{text-align:right;font-size:9px;color:var(--muted);margin-top:6px;padding-right:14px;}
+
+/* Submit Button */
+.submit-btn{width:100%;height:56px;background:linear-gradient(135deg,var(--gold),var(--amber));border:none;border-radius:100px;color:#1a0e00;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;cursor:pointer;box-shadow:0 8px 20px var(--gold-glow);transition:all 0.2s;}
+.submit-btn:active{transform:scale(0.97);box-shadow:0 4px 10px var(--gold-glow);}
+
+/* SPECIAL ELEMENTS FOR SPECIFIC FORMS */
+
+/* 1. Absen Masuk: Big Upload Box */
+.absen-upload{height:180px;border-radius:32px;background:var(--s1);border:1px dashed var(--s3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:all 0.2s;}
+.absen-upload:active{background:var(--gold-dim);border-color:var(--gold);}
+.absen-upload svg{width:32px;height:32px;stroke:var(--muted);stroke-width:1.5;fill:none;}
+.absen-upload .utxt{font-size:12px;font-weight:700;color:var(--muted);}
+
+/* 1. Absen Masuk: Location Spinner Box */
+.loc-box{height:80px;border-radius:24px;background:var(--s1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px solid var(--s3);}
+.spinner{width:20px;height:20px;border:2.5px solid var(--s3);border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite;}
+.loc-txt{font-size:10px;color:var(--muted);font-weight:600;}
+
+/* 2. Input Penjualan: Split Buttons */
+.split-btns{display:flex;gap:10px;margin-top:20px;}
+.btn-primary{flex:2;height:56px;background:linear-gradient(135deg,var(--gold),var(--amber));border:none;border-radius:100px;color:#1a0e00;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 20px var(--gold-glow);}
+.btn-secondary{flex:1;height:56px;background:var(--s1);border:1px solid var(--gold);border-radius:100px;color:var(--gold);font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-secondary svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;}
+
+/* 3. Input Stok: Group Tabs */
+.group-tabs{display:flex;background:var(--s1);border-radius:100px;padding:4px;border:1px solid var(--s3);margin-bottom:20px;}
+.g-tab{flex:1;text-align:center;padding:10px 0;font-size:11px;font-weight:700;color:var(--muted);border-radius:100px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.g-tab.on{background:var(--green-dim);color:var(--green);border:1px solid rgba(106,171,122,0.3);}
+.g-tab svg{width:12px;height:12px;stroke:currentColor;stroke-width:2.5;fill:none;}
+
+/* 3. Input Stok: Empty State */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px 20px;text-align:center;}
+.empty-state svg{width:40px;height:40px;stroke:var(--s4);stroke-width:1.5;fill:none;}
+.empty-state p{font-size:11px;color:var(--muted);font-weight:500;}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes fadeUp { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+.form-container.on > * { animation: fadeUp 0.3s ease both; }
+.form-container.on > *:nth-child(1) { animation-delay: 0.05s; }
+.form-container.on > *:nth-child(2) { animation-delay: 0.1s; }
+.form-container.on > *:nth-child(3) { animation-delay: 0.15s; }
+.form-container.on > *:nth-child(4) { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+<div class="page-title">Variasi Form Kapsul</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">08:00</span><span class="sbar-r">4G 98%</span></div>
+  
+  <!-- Switcher Tabs (Untuk mempermudah preview) -->
+  <div class="screen-tabs">
+    <div class="s-tab on" onclick="switchScreen('absen', this)">Absen Masuk</div>
+    <div class="s-tab" onclick="switchScreen('penjualan', this)">Input Penjualan</div>
+    <div class="s-tab" onclick="switchScreen('stok', this)">Input Stok</div>
+  </div>
+
+  <div class="scroll">
+    <!-- Header Dinamis -->
+    <div class="header">
+      <div class="back-btn"><svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></div>
+      <div>
+        <div class="h-title" id="mainTitle">Absen Masuk</div>
+        <div class="h-subtitle" id="subTitle">Kamis, 12 Maret 2026</div>
+      </div>
+    </div>
+
+    <!-- ==============================================
+         1. FORM ABSEN MASUK
+         ============================================== -->
+    <div id="screen-absen" class="form-container on">
+      
+      <div class="fg">
+        <label class="fg-label">Foto Masuk Kerja <span class="req">*</span></label>
+        <div class="absen-upload">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <div class="utxt">Tap untuk ambil foto selfie</div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="fg-label">Lokasi Anda <span class="req">*</span></label>
+        <div class="loc-box">
+          <div class="spinner"></div>
+          <div class="loc-txt">Mengambil lokasi akurat...</div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="fg-label">Catatan <span>(Opsional)</span></label>
+        <div class="textarea-box">
+          <textarea placeholder="Tambahkan catatan jika perlu..."></textarea>
+        </div>
+      </div>
+
+      <button class="submit-btn" style="background:linear-gradient(135deg,var(--green),#4d8a5b); color:#fff; box-shadow:0 8px 20px rgba(106,171,122,0.3);">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        CLOCK IN SEKARANG
+      </button>
+
+    </div>
+
+    <!-- ==============================================
+         2. FORM INPUT PENJUALAN
+         ============================================== -->
+    <div id="screen-penjualan" class="form-container">
+      
+      <div class="fg" style="margin-bottom:8px;">
+        <label class="fg-label" style="text-align:center; color:var(--muted); margin-bottom:16px;">Masukkan atau scan IMEI unit yang terjual</label>
+        <label class="fg-label">Nomor IMEI <span class="req">*</span></label>
+        <div class="input-box">
+          <svg class="input-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          <input type="number" placeholder="Ketik IMEI di sini">
+          <div class="char-count" style="margin:0; padding:0;">0/15</div>
+        </div>
+      </div>
+
+      <div class="split-btns">
+        <button class="btn-primary">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Cek IMEI
+        </button>
+        <button class="btn-secondary">
+          <svg viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+          Scan
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ==============================================
+         3. FORM INPUT STOK
+         ============================================== -->
+    <div id="screen-stok" class="form-container">
+      
+      <div class="fg">
+        <label class="fg-label">Pilih Produk & Varian</label>
+        <div class="input-box">
+          <svg class="input-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/></svg>
+          <select>
+            <option value="" disabled selected>Tap untuk pilih varian</option>
+            <option value="x300">X300 Pro · 16/512</option>
+            <option value="v60">V60 Lite · 12/512</option>
+          </select>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="fg-label">Dikelompokkan per model agar lebih cepat</label>
+        <div class="group-tabs">
+          <div class="g-tab on"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Fresh</div>
+          <div class="g-tab"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg> Chip</div>
+          <div class="g-tab"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><line x1="4" y1="10" x2="20" y2="10"/></svg> Display</div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <div class="input-box" style="padding-right:50px;">
+          <svg class="input-icon" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+          <input type="number" placeholder="Scan/Input IMEI (15 digit)">
+          <button class="input-right-btn"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </div>
+      </div>
+
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <p>Belum ada IMEI ditambahkan</p>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchScreen(screenId, tabElement) {
+  // Update Tab Styling
+  document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('on'));
+  tabElement.classList.add('on');
+  
+  // Hide all screens, show selected
+  document.querySelectorAll('.form-container').forEach(c => c.classList.remove('on'));
+  document.getElementById('screen-' + screenId).classList.add('on');
+
+  // Update Header Title dynamically
+  const titles = {
+    'absen': 'Absen Masuk',
+    'penjualan': 'Input Penjualan',
+    'stok': 'Input Stok'
+  };
+  const subtitles = {
+    'absen': 'Kamis, 12 Maret 2026',
+    'penjualan': 'Scan unit keluar',
+    'stok': 'Update stok masuk toko'
+  };
+  document.getElementById('mainTitle').innerText = titles[screenId];
+  document.getElementById('subTitle').innerText = subtitles[screenId];
+}
+</script>
+</body>
+</html>

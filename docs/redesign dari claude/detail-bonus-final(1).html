@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Detail Bonus</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --amber:#d4853a;--red:#c05a4a;--blue:#5b8dd9;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 20px 60px;gap:14px;}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;}
+.phone{width:370px;height:800px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+
+/* sticky top area */
+.sticky-top{position:sticky;top:0;z-index:50;background:var(--bg);}
+
+.scroll{height:calc(800px - 50px);overflow-y:auto;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* HEADER */
+.header{padding:12px 20px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--s2);}
+.h-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--cream);}
+.h-sub{font-size:9px;color:var(--muted);margin-top:2px;}
+.h-btn{width:32px;height:32px;border-radius:9px;background:var(--s1);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;}
+.h-btn svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2;fill:none;}
+
+/* MONTH ROW */
+.month-row{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-bottom:1px solid var(--s2);}
+.m-arrow{width:24px;height:24px;border-radius:7px;background:var(--s2);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.m-arrow svg{width:10px;height:10px;stroke:var(--muted);stroke-width:2.5;fill:none;}
+.m-label{font-size:13px;font-weight:700;color:var(--cream2);display:flex;align-items:center;gap:6px;}
+.m-badge{font-size:8px;font-weight:700;color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);border-radius:100px;padding:1px 7px;}
+
+/* TAB BAR */
+.tabs{display:flex;margin:10px 16px;background:var(--s1);border:1px solid var(--s3);border-radius:12px;padding:3px;gap:3px;}
+.tab{flex:1;text-align:center;padding:7px 0;border-radius:9px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.tab.on{background:var(--gold);color:#1a0e00;box-shadow:0 2px 8px rgba(201,146,58,0.3);}
+
+/* TAB CONTENT */
+.tab-panel{display:none;}
+.tab-panel.on{display:block;}
+
+/* ── TAB 1: RINGKASAN ── */
+
+/* HERO */
+.hero{margin:0 16px 12px;background:linear-gradient(145deg,#261f13,#1c1610);border:1px solid rgba(201,146,58,0.2);border-radius:18px;padding:16px 16px 0;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,146,58,0.6),transparent);}
+.hero-glow{position:absolute;top:-20px;right:-20px;width:140px;height:140px;background:radial-gradient(circle,rgba(201,146,58,0.09),transparent 70%);pointer-events:none;}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.hero-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;}
+.hero-amount{font-family:'Playfair Display',serif;font-size:34px;font-weight:900;color:var(--cream);line-height:1;}
+.hero-amount small{font-size:13px;color:var(--muted);font-family:'Outfit',sans-serif;font-weight:400;}
+.hero-vs{margin-top:5px;display:flex;align-items:center;gap:5px;}
+.hero-vs-lbl{font-size:9px;color:var(--muted);}
+.hero-vs-val{font-size:10px;font-weight:700;color:var(--green);}
+.hero-ring{flex-shrink:0;position:relative;width:64px;height:64px;}
+.hero-ring svg{width:64px;height:64px;transform:rotate(-90deg);}
+.hero-ring-bg{fill:none;stroke:var(--s3);stroke-width:5;}
+.hero-ring-fill{fill:none;stroke:url(#goldGrad);stroke-width:5;stroke-linecap:round;stroke-dasharray:163;stroke-dashoffset:108;}
+.hero-ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.hero-ring-pct{font-family:'Playfair Display',serif;font-size:14px;font-weight:900;color:var(--gold);line-height:1;}
+.hero-ring-sub{font-size:7px;color:var(--muted);font-weight:600;}
+.hero-prog-meta{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:5px;}
+.hero-prog-meta strong{color:var(--gold-lt);}
+.hero-track{height:5px;background:var(--s3);border-radius:100px;overflow:hidden;margin-bottom:12px;}
+.hero-fill{height:100%;width:34%;border-radius:100px;background:linear-gradient(90deg,var(--gold),var(--gold-lt));box-shadow:0 0 8px var(--gold-glow);}
+.hero-stats{display:flex;border-top:1px solid var(--s3);margin:0 -16px;}
+.hs{flex:1;padding:10px 0;text-align:center;border-right:1px solid var(--s3);}
+.hs:last-child{border-right:none;}
+.hs-lbl{font-size:7px;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px;}
+.hs-val{font-family:'Playfair Display',serif;font-size:18px;color:var(--cream);line-height:1;}
+.hs-val.gld{color:var(--gold);font-size:14px;}
+.hs-val.grn{color:var(--green);}
+
+/* SECTION */
+.section{padding:0 16px 12px;}
+.sec-lbl{font-size:9px;font-weight:800;color:var(--muted2);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--s3);}
+.sec-sub{font-size:9px;color:var(--muted);margin-bottom:8px;}
+
+/* PRODUK RANKING */
+.prod-card{background:var(--s1);border:1px solid var(--s3);border-radius:14px;overflow:hidden;}
+.prod-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;}
+.prod-row:last-child{border-bottom:none;}
+.prod-rank{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;color:var(--muted2);width:16px;flex-shrink:0;text-align:center;}
+.prod-rank.top{color:var(--gold);}
+.prod-info{flex:1;min-width:0;}
+.prod-name{font-size:11px;font-weight:700;color:var(--cream2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.prod-meta{font-size:8px;color:var(--muted);}
+.prod-bar{height:2px;background:var(--s3);border-radius:100px;overflow:hidden;margin-top:4px;width:70px;}
+.prod-bar-fill{height:100%;border-radius:100px;background:var(--gold);}
+.prod-right{text-align:right;flex-shrink:0;}
+.prod-bonus{font-size:12px;font-weight:800;color:var(--gold);}
+.prod-unit{font-size:8px;color:var(--muted);margin-top:1px;}
+
+/* ── TAB 2: TRANSAKSI ── */
+.trx-toolbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 8px;}
+.trx-info{font-size:11px;font-weight:700;color:var(--cream2);}
+.trx-info span{color:var(--muted);font-weight:400;font-size:10px;}
+.export-btn{display:flex;align-items:center;gap:5px;background:var(--gold-dim);border:1px solid rgba(201,146,58,0.25);border-radius:100px;padding:6px 12px;cursor:pointer;}
+.export-btn svg{width:11px;height:11px;stroke:var(--gold);stroke-width:2.5;fill:none;}
+.export-btn span{font-size:9px;font-weight:800;color:var(--gold);letter-spacing:0.06em;}
+
+.trx-list{padding:0 16px 0 18px;}
+.trx-date-lbl{font-size:8px;font-weight:800;color:var(--muted2);letter-spacing:0.12em;text-transform:uppercase;padding-left:24px;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.trx-date-lbl::after{content:'';flex:1;height:1px;background:var(--s2);}
+.trx-item{display:flex;position:relative;}
+.trx-left{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0;padding-top:4px;}
+.trx-dot{width:18px;height:18px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--s4);background:var(--s2);z-index:1;}
+.trx-dot svg{width:8px;height:8px;stroke-width:2;fill:none;stroke:var(--muted);}
+.trx-dot.pos{background:var(--green-dim);border-color:rgba(106,171,122,0.3);}
+.trx-dot.pos svg{stroke:var(--green);}
+.trx-line{width:1px;flex:1;min-height:10px;background:var(--s3);margin:2px 0;opacity:0.4;}
+.trx-content{flex:1;padding:0 0 10px 10px;}
+.trx-item:last-child .trx-content{padding-bottom:2px;}
+.trx-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;}
+.trx-name{font-size:11px;font-weight:700;color:var(--cream2);flex:1;padding-right:8px;line-height:1.3;}
+.trx-bonus-val{font-size:12px;font-weight:800;color:var(--gold);flex-shrink:0;}
+.trx-bonus-val.zero{color:var(--muted2);}
+.trx-imei{font-size:8px;color:var(--muted);margin-bottom:4px;letter-spacing:0.03em;}
+.trx-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.trx-tag{font-size:7px;font-weight:700;border-radius:100px;padding:2px 6px;}
+.tag-cash{color:var(--green);background:var(--green-dim);border:1px solid rgba(106,171,122,0.2);}
+.tag-kredit{color:var(--blue);background:rgba(91,141,217,0.1);border:1px solid rgba(91,141,217,0.2);}
+.tag-lender{color:var(--amber);background:rgba(212,133,58,0.1);border:1px solid rgba(212,133,58,0.2);}
+.trx-spacer{height:10px;}
+
+/* NAV */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(20,16,10,0.97);backdrop-filter:blur(24px);border-top:1px solid var(--s3);padding:10px 8px 22px;display:flex;justify-content:space-around;z-index:100;}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 12px;border-radius:10px;cursor:pointer;}
+.ni.on{background:var(--gold-dim);}
+.ni svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:var(--muted2);}
+.ni.on svg{stroke:var(--gold);}
+.ni span{font-size:8px;font-weight:700;color:var(--muted2);letter-spacing:0.04em;text-transform:uppercase;}
+.ni.on span{color:var(--gold);}
+</style>
+</head>
+<body>
+<div class="page-title">Detail Bonus · Promotor</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">19:58</span><span class="sbar-r">4G 78%</span></div>
+  <div class="scroll">
+
+    <div class="sticky-top">
+      <!-- HEADER -->
+      <div class="header">
+        <div>
+          <div class="h-title">Detail Bonus</div>
+          <div class="h-sub">Promotor · King Cell</div>
+        </div>
+        <div class="h-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+      </div>
+
+      <!-- MONTH ROW -->
+      <div class="month-row">
+        <div class="m-arrow"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <div class="m-label">Maret 2026 <div class="m-badge">Bulan ini</div></div>
+        <div class="m-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <div class="tab on" onclick="switchTab('ringkasan')">Ringkasan</div>
+        <div class="tab" onclick="switchTab('transaksi')">Transaksi</div>
+      </div>
+    </div>
+
+    <!-- ══ TAB 1: RINGKASAN ══ -->
+    <div class="tab-panel on" id="panel-ringkasan">
+
+      <!-- HERO CARD -->
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <svg width="0" height="0"><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#c9923a"/><stop offset="100%" style="stop-color:#e8b06a"/></linearGradient></defs></svg>
+        <div class="hero-top">
+          <div>
+            <div class="hero-lbl">Total Bonus Bulan Ini</div>
+            <div class="hero-amount"><small>Rp </small>1.000.000</div>
+            <div class="hero-vs">
+              <div class="hero-vs-lbl">vs Feb:</div>
+              <div class="hero-vs-val">↑ Rp 320.000</div>
+              <div class="hero-vs-lbl" style="color:var(--muted);font-size:8px">(Feb: Rp 680rb)</div>
+            </div>
+          </div>
+          <div class="hero-ring">
+            <svg viewBox="0 0 64 64">
+              <circle class="hero-ring-bg" cx="32" cy="32" r="26"/>
+              <circle class="hero-ring-fill" cx="32" cy="32" r="26"/>
+            </svg>
+            <div class="hero-ring-text">
+              <div class="hero-ring-pct">34%</div>
+              <div class="hero-ring-sub">Target</div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-prog-meta">
+          <span>Target <strong>Rp 3.000.000</strong></span>
+          <strong>Sisa Rp 2.000.000</strong>
+        </div>
+        <div class="hero-track"><div class="hero-fill"></div></div>
+        <div class="hero-stats">
+          <div class="hs"><div class="hs-lbl">Unit Terjual</div><div class="hs-val grn">19</div></div>
+          <div class="hs"><div class="hs-lbl">Nilai Jual</div><div class="hs-val gld">110,5Jt</div></div>
+          <div class="hs"><div class="hs-lbl">Hari Tersisa</div><div class="hs-val">19</div></div>
+        </div>
+      </div>
+
+      <!-- PRODUK BONUS TERBESAR -->
+      <div class="section">
+        <div class="sec-lbl">Produk Bonus Terbesar</div>
+        <div class="sec-sub">Fokus di sini untuk capai target lebih cepat</div>
+        <div class="prod-card">
+
+          <div class="prod-row">
+            <div class="prod-rank top">1</div>
+            <div class="prod-info">
+              <div class="prod-name">X300 Pro · 16/512</div>
+              <div class="prod-meta">terjual 1 unit bulan ini</div>
+              <div class="prod-bar"><div class="prod-bar-fill" style="width:100%"></div></div>
+            </div>
+            <div class="prod-right"><div class="prod-bonus">Rp 110rb</div><div class="prod-unit">/ unit</div></div>
+          </div>
+
+          <div class="prod-row">
+            <div class="prod-rank top">2</div>
+            <div class="prod-info">
+              <div class="prod-name">V60 Lite · 12/512</div>
+              <div class="prod-meta">terjual 4 unit bulan ini</div>
+              <div class="prod-bar"><div class="prod-bar-fill" style="width:100%"></div></div>
+            </div>
+            <div class="prod-right"><div class="prod-bonus">Rp 110rb</div><div class="prod-unit">/ unit</div></div>
+          </div>
+
+          <div class="prod-row">
+            <div class="prod-rank top">3</div>
+            <div class="prod-info">
+              <div class="prod-name">iQOO 15 · 16/512</div>
+              <div class="prod-meta">terjual 1 unit bulan ini</div>
+              <div class="prod-bar"><div class="prod-bar-fill" style="width:100%"></div></div>
+            </div>
+            <div class="prod-right"><div class="prod-bonus">Rp 110rb</div><div class="prod-unit">/ unit</div></div>
+          </div>
+
+          <div class="prod-row">
+            <div class="prod-rank">4</div>
+            <div class="prod-info">
+              <div class="prod-name">Y21D · 4/128</div>
+              <div class="prod-meta">terjual 3 unit bulan ini</div>
+              <div class="prod-bar"><div class="prod-bar-fill" style="width:18%;background:var(--amber)"></div></div>
+            </div>
+            <div class="prod-right"><div class="prod-bonus" style="color:var(--amber)">Rp 20rb</div><div class="prod-unit">/ unit</div></div>
+          </div>
+
+          <div class="prod-row">
+            <div class="prod-rank">5</div>
+            <div class="prod-info">
+              <div class="prod-name">Y04S · 4/128</div>
+              <div class="prod-meta">terjual 4 unit bulan ini</div>
+              <div class="prod-bar"><div class="prod-bar-fill" style="width:9%;background:var(--muted2)"></div></div>
+            </div>
+            <div class="prod-right"><div class="prod-bonus" style="color:var(--muted)">Rp 10rb</div><div class="prod-unit">/ unit</div></div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- end panel ringkasan -->
+
+    <!-- ══ TAB 2: TRANSAKSI ══ -->
+    <div class="tab-panel" id="panel-transaksi">
+
+      <div class="trx-toolbar">
+        <div class="trx-info">Riwayat Transaksi <span>· 17 transaksi</span></div>
+        <div class="export-btn">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Export PDF</span>
+        </div>
+      </div>
+
+      <div class="trx-list">
+
+        <div class="trx-date-lbl">10 Maret 2026</div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="trx-line"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">V60 Lite · 12/512 · Black × 1</div><div class="trx-bonus-val zero">Rp 0</div></div>
+            <div class="trx-imei">IMEI: 6454548484545·22</div>
+            <div class="trx-tags"><div class="trx-tag tag-cash">cash</div></div>
+          </div>
+        </div>
+
+        <div class="trx-spacer"></div>
+        <div class="trx-date-lbl">09 Maret 2026</div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="trx-line"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">Y400 · 8/256 · Green × 1</div><div class="trx-bonus-val zero">Rp 0</div></div>
+            <div class="trx-imei">IMEI: 3571400694283·15</div>
+            <div class="trx-tags"><div class="trx-tag tag-cash">cash</div></div>
+          </div>
+        </div>
+
+        <div class="trx-spacer"></div>
+        <div class="trx-date-lbl">06 Maret 2026</div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot pos"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="trx-line"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">Y21D · 4/128 · Black × 1</div><div class="trx-bonus-val">Rp 20.000</div></div>
+            <div class="trx-imei">IMEI: 1111111111111·01</div>
+            <div class="trx-tags"><div class="trx-tag tag-kredit">kredit</div><div class="trx-tag tag-lender">Kredit Plus</div></div>
+          </div>
+        </div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot pos"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="trx-line"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">Y21D · 6/128 · Black × 1</div><div class="trx-bonus-val">Rp 20.000</div></div>
+            <div class="trx-imei">IMEI: 3569980745612·38</div>
+            <div class="trx-tags"><div class="trx-tag tag-cash">cash</div></div>
+          </div>
+        </div>
+
+        <div class="trx-spacer"></div>
+        <div class="trx-date-lbl">05 Maret 2026</div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot pos"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="trx-line"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">X300 Pro · 16/512 · Black × 1</div><div class="trx-bonus-val">Rp 110.000</div></div>
+            <div class="trx-imei">IMEI: 9464643439949·49</div>
+            <div class="trx-tags"><div class="trx-tag tag-cash">cash</div></div>
+          </div>
+        </div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot pos"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="trx-line"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">V60 · 12/512 · Blue × 1</div><div class="trx-bonus-val">Rp 110.000</div></div>
+            <div class="trx-imei">IMEI: 3549180527348·62</div>
+            <div class="trx-tags"><div class="trx-tag tag-kredit">kredit</div><div class="trx-tag tag-lender">Indodana</div></div>
+          </div>
+        </div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot pos"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="trx-line"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">V60 Lite · 8/256 · Black × 1</div><div class="trx-bonus-val">Rp 110.000</div></div>
+            <div class="trx-imei">IMEI: 3549180527349·11</div>
+            <div class="trx-tags"><div class="trx-tag tag-cash">cash</div></div>
+          </div>
+        </div>
+        <div class="trx-item">
+          <div class="trx-left"><div class="trx-dot pos"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="trx-line" style="opacity:0"></div></div>
+          <div class="trx-content">
+            <div class="trx-top"><div class="trx-name">iQOO 15 · 16/512 · White × 1</div><div class="trx-bonus-val">Rp 110.000</div></div>
+            <div class="trx-imei">IMEI: 8604310528971·64</div>
+            <div class="trx-tags"><div class="trx-tag tag-cash">cash</div></div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end panel transaksi -->
+
+  </div><!-- end scroll -->
+
+  <nav class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Aktivitas</span></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Laporan</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
+  </nav>
+</div>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const panels = ['ringkasan','transaksi'];
+    t.classList.toggle('on', panels[i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('on', p.id === 'panel-' + tab);
+  });
+}
+</script>
+</body>
+</html>

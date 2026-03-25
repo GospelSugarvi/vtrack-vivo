@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Sator Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --red:#c05a4a;--red-dim:rgba(192,90,74,0.1);
+  --amber:#d4853a;--blue:#5b8dd9;--purple:#8b6fd4;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 20px 60px;}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;margin-bottom:14px;}
+.phone{width:370px;height:800px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+.scroll{height:calc(800px - 50px);overflow-y:auto;padding-bottom:88px;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* HEADER */
+.header{padding:14px 20px 12px;border-bottom:1px solid var(--s2);}
+.h-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.h-eyebrow{font-size:9px;font-weight:700;color:var(--gold);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:3px;display:flex;align-items:center;gap:5px;}
+.h-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gold);animation:blink 2.5s ease infinite;}
+.h-name{font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--cream);line-height:1;}
+.h-area{font-size:10px;color:var(--muted);margin-top:3px;}
+.h-btn{width:34px;height:34px;border-radius:10px;background:var(--s1);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;position:relative;margin-top:4px;}
+.h-btn svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2;fill:none;}
+.h-notif{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg);}
+.h-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.h-date{font-size:9px;color:var(--muted);}
+
+/* 3-TAB BAR */
+.tab-bar{display:flex;background:var(--s2);border-radius:100px;padding:3px;border:1px solid var(--s3);gap:1px;}
+.tab-btn{font-size:8px;font-weight:700;border-radius:100px;padding:4px 11px;cursor:pointer;color:var(--muted);white-space:nowrap;}
+.tab-btn.on{background:var(--gold);color:#1a0e00;}
+
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn .22s ease;}
+
+/* ── SHARED ATOMS ── */
+.gap{height:10px;}
+.sec-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;}
+.sec-title{font-size:13px;font-weight:700;color:var(--cream2);}
+.sec-note{font-size:9px;color:var(--muted);}
+.sec-val{font-family:'Playfair Display',serif;font-size:19px;font-weight:900;}
+
+.badge{font-size:7px;font-weight:700;border-radius:100px;padding:2px 7px;white-space:nowrap;}
+.bd-red{color:var(--red);background:var(--red-dim);border:1px solid rgba(192,90,74,0.2);}
+.bd-grn{color:var(--green);background:var(--green-dim);border:1px solid rgba(106,171,122,0.2);}
+.bd-gld{color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);}
+.bd-amb{color:var(--amber);background:rgba(212,133,58,0.1);border:1px solid rgba(212,133,58,0.2);}
+.bd-dim{color:var(--muted);background:var(--s2);border:1px solid var(--s3);}
+
+/* hero card */
+.hero{margin:12px 16px 0;background:linear-gradient(145deg,#261f13,#1c1610);border:1px solid rgba(201,146,58,0.22);border-radius:18px;padding:16px 16px 0;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,146,58,0.6),transparent);}
+.hero-glow{position:absolute;top:-30px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(201,146,58,0.08),transparent 70%);pointer-events:none;}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.hero-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;}
+.hero-nominal{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;color:var(--cream);line-height:1;}
+.hero-nominal small{font-size:12px;color:var(--muted);font-family:'Outfit',sans-serif;}
+.hero-sub{font-size:9px;color:var(--muted);margin-top:4px;}
+.hero-sub strong{color:var(--cream2);}
+.ring{flex-shrink:0;position:relative;width:62px;height:62px;}
+.ring svg{width:62px;height:62px;transform:rotate(-90deg);}
+.ring-bg{fill:none;stroke:var(--s3);stroke-width:5;}
+.ring-fill{fill:none;stroke-width:5;stroke-linecap:round;stroke-dasharray:157;}
+.ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring-pct{font-family:'Playfair Display',serif;font-size:13px;font-weight:900;line-height:1;}
+.ring-lbl{font-size:7px;color:var(--muted);}
+.prog-meta{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:5px;}
+.prog-meta strong{color:var(--gold-lt);}
+.prog-track{height:5px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--gold),var(--gold-lt));box-shadow:0 0 8px var(--gold-glow);}
+.hero-strip{display:flex;border-top:1px solid var(--s3);margin:12px -16px 0;}
+.hs{flex:1;padding:9px 0;text-align:center;border-right:1px solid var(--s3);}
+.hs:last-child{border-right:none;}
+.hs-lbl{font-size:7px;font-weight:700;color:var(--muted);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:3px;}
+.hs-val{font-family:'Playfair Display',serif;font-size:13px;color:var(--cream);line-height:1;}
+.hs-sub{font-size:8px;color:var(--muted);margin-top:1px;}
+.hs-sub strong{color:var(--gold);}
+
+/* stat 3 col */
+.stat3{display:flex;gap:8px;margin:10px 16px 0;}
+.s3{flex:1;background:var(--s1);border:1px solid var(--s3);border-radius:14px;padding:10px 11px;}
+.s3-icon{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
+.s3-icon svg{width:10px;height:10px;stroke-width:2;fill:none;}
+.s3-val{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;line-height:1;margin-bottom:2px;}
+.s3-lbl{font-size:7px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
+.s3-note{font-size:8px;font-weight:700;margin-top:3px;}
+
+/* generic card */
+.card{margin:0 16px;background:var(--s1);border:1px solid var(--s3);border-radius:16px;overflow:hidden;}
+.card-head{padding:10px 14px;border-bottom:1px solid var(--s3);display:flex;justify-content:space-between;align-items:center;}
+.card-title{font-size:11px;font-weight:700;color:var(--cream2);}
+.card-sub{font-size:8px;color:var(--muted);}
+
+/* bar row */
+.br{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.br:last-child{border-bottom:none;}
+.br-label{font-size:10px;font-weight:700;color:var(--cream2);}
+.br-sub{font-size:8px;color:var(--muted);margin-top:1px;}
+.br-track{flex:1;height:4px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.br-fill{height:100%;border-radius:100px;width:0;animation:fill 1.2s ease forwards;}
+.br-pct{font-size:11px;font-weight:800;width:30px;text-align:right;flex-shrink:0;}
+.br-val{font-size:8px;color:var(--muted);width:52px;text-align:right;flex-shrink:0;}
+
+/* promotor row */
+.pm-row{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.pm-row:last-child{border-bottom:none;}
+.pm-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.pm-av{width:27px;height:27px;border-radius:50%;background:var(--s2);border:1.5px solid var(--s3);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:9px;font-weight:900;color:var(--cream2);flex-shrink:0;}
+.pm-info{flex:1;min-width:0;}
+.pm-name{font-size:11px;font-weight:700;color:var(--cream2);}
+.pm-meta{font-size:8px;color:var(--muted);margin-top:1px;}
+.pm-bar-wrap{flex:1;padding:0 4px;}
+.pm-bar-lbl{font-size:7px;color:var(--muted);margin-bottom:3px;}
+.pm-track{height:3px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.pm-fill{height:100%;border-radius:100px;width:0;animation:fill 1.2s ease forwards;}
+.pm-right{text-align:right;flex-shrink:0;}
+.pm-val{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;line-height:1;}
+.pm-val-lbl{font-size:7px;color:var(--muted);margin-top:1px;}
+
+/* agenda */
+.ag-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.ag-item:last-child{border-bottom:none;}
+.ag-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.ag-info{flex:1;}
+.ag-name{font-size:11px;font-weight:600;color:var(--cream2);margin-bottom:1px;}
+.ag-sub{font-size:8px;color:var(--muted);}
+
+/* weekly — 4-week progress dots */
+.week-dots{display:flex;gap:6px;align-items:center;margin-top:6px;}
+.wd{flex:1;height:4px;border-radius:100px;position:relative;}
+.wd-lbl{font-size:7px;color:var(--muted);text-align:center;margin-top:3px;}
+.week-wrap{padding:0 16px 14px;}
+.week-row{display:flex;gap:6px;margin-bottom:4px;}
+.wk{flex:1;text-align:center;}
+.wk-bar{height:4px;border-radius:100px;overflow:hidden;background:var(--s3);margin-bottom:3px;}
+.wk-fill{height:100%;border-radius:100px;width:0;animation:fill 1.2s ease forwards;}
+.wk-lbl{font-size:7px;color:var(--muted);}
+.wk-lbl.on{color:var(--gold);font-weight:700;}
+
+/* 3 metric cards */
+.metric3{display:flex;gap:8px;margin:10px 16px 0;}
+.mc{flex:1;background:var(--s1);border:1px solid var(--s3);border-radius:14px;padding:11px 10px;text-align:center;}
+.mc-lbl{font-size:7px;font-weight:700;color:var(--muted);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:6px;}
+.mc-ring{position:relative;width:48px;height:48px;margin:0 auto 6px;}
+.mc-ring svg{width:48px;height:48px;transform:rotate(-90deg);}
+.mc-ring-bg{fill:none;stroke:var(--s3);stroke-width:4;}
+.mc-ring-fill{fill:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:120;}
+.mc-ring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.mc-pct{font-family:'Playfair Display',serif;font-size:11px;font-weight:900;line-height:1;}
+.mc-sub{font-size:8px;color:var(--muted);}
+
+/* tap to detail button */
+.detail-btn{margin:10px 16px 0;background:var(--s1);border:1px solid rgba(201,146,58,0.25);border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.db-left{}
+.db-title{font-size:12px;font-weight:700;color:var(--cream2);margin-bottom:2px;}
+.db-sub{font-size:9px;color:var(--muted);}
+.db-arrow{width:28px;height:28px;border-radius:50%;background:var(--gold-dim);border:1px solid rgba(201,146,58,0.3);display:flex;align-items:center;justify-content:center;}
+.db-arrow svg{width:11px;height:11px;stroke:var(--gold);stroke-width:2.5;fill:none;}
+
+/* rank */
+.rank-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.rank-row:last-child{border-bottom:none;}
+.rank-num{font-family:'Playfair Display',serif;font-size:14px;font-weight:900;width:16px;text-align:center;flex-shrink:0;}
+.rank-av{width:27px;height:27px;border-radius:50%;background:var(--s2);border:1.5px solid var(--s3);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:9px;font-weight:900;color:var(--cream2);flex-shrink:0;}
+.rank-info{flex:1;}
+.rank-name{font-size:11px;font-weight:700;color:var(--cream2);margin-bottom:1px;}
+.rank-sub{font-size:8px;color:var(--muted);}
+.rank-right{text-align:right;}
+.rank-val{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;line-height:1;}
+.rank-lbl{font-size:7px;color:var(--muted);margin-top:1px;}
+
+/* fokus produk */
+.fokus-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.fokus-row:last-child{border-bottom:none;}
+.fokus-rank{font-family:'Playfair Display',serif;font-size:13px;font-weight:900;color:var(--muted2);width:16px;flex-shrink:0;}
+.fokus-rank.hi{color:var(--gold);}
+.fokus-info{flex:1;min-width:0;}
+.fokus-name{font-size:11px;font-weight:700;color:var(--cream2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;}
+.fokus-meta{font-size:8px;color:var(--muted);}
+.fokus-bar{height:3px;background:var(--s3);border-radius:100px;overflow:hidden;margin-top:4px;width:72px;}
+.fokus-fill{height:100%;background:var(--gold);border-radius:100px;width:0;animation:fill 1.2s ease forwards;}
+.fokus-right{text-align:right;flex-shrink:0;}
+.fokus-unit{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;color:var(--cream);line-height:1;}
+.fokus-lbl{font-size:7px;color:var(--muted);margin-top:1px;}
+
+/* kpi bars */
+.kbi{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.kbi:last-child{border-bottom:none;}
+.kbi-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.kbi-name{font-size:10px;color:var(--cream2);font-weight:600;}
+.kbi-right{display:flex;align-items:center;gap:5px;}
+.kbi-weight{font-size:7px;color:var(--muted2);background:var(--s2);border:1px solid var(--s3);border-radius:100px;padding:1px 6px;}
+.kbi-pct{font-size:12px;font-weight:800;}
+.kbi-track{height:4px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.kbi-fill{height:100%;border-radius:100px;width:0;animation:fill 1.2s ease forwards;}
+
+/* NAV */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(20,16,10,0.97);backdrop-filter:blur(24px);border-top:1px solid var(--s3);padding:10px 8px 22px;display:flex;justify-content:space-around;z-index:100;}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 12px;border-radius:10px;cursor:pointer;}
+.ni.on{background:var(--gold-dim);}
+.ni svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:var(--muted2);}
+.ni.on svg{stroke:var(--gold);}
+.ni span{font-size:8px;font-weight:700;color:var(--muted2);letter-spacing:0.04em;text-transform:uppercase;}
+.ni.on span{color:var(--gold);}
+
+@keyframes fill{from{width:0}to{width:var(--w,0%)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="page-title">Home · Sator</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">09:53</span><span class="sbar-r">4G 58%</span></div>
+  <div class="scroll" id="mainScroll">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="h-top">
+        <div>
+          <div class="h-eyebrow">Sator</div>
+          <div class="h-name">Pak Rudi</div>
+          <div class="h-area">King Cell · Area Kupang</div>
+        </div>
+        <div class="h-btn">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <div class="h-notif"></div>
+        </div>
+      </div>
+      <div class="h-bottom">
+        <div class="h-date">Kamis, 12 Mar 2026</div>
+        <div class="tab-bar">
+          <div class="tab-btn on" onclick="switchTab('harian')">Harian</div>
+          <div class="tab-btn" onclick="switchTab('mingguan')">Mingguan</div>
+          <div class="tab-btn" onclick="switchTab('bulanan')">Bulanan</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ TAB HARIAN ══════════ -->
+    <div class="tab-panel active" id="tab-harian">
+
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-top">
+          <div>
+            <div class="hero-lbl">Target Harian Tim</div>
+            <div class="hero-nominal"><small>Rp </small>3.800.400</div>
+            <div class="hero-sub">Realisasi: <strong>Rp 2.100.000</strong></div>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 62 62"><circle class="ring-bg" cx="31" cy="31" r="25"/><circle class="ring-fill" cx="31" cy="31" r="25" style="stroke:var(--gold);stroke-dashoffset:71"/></svg>
+            <div class="ring-txt"><div class="ring-pct" style="color:var(--gold)">55%</div><div class="ring-lbl">Hari ini</div></div>
+          </div>
+        </div>
+        <div class="prog-meta"><span>Progress hari ini</span><strong>Sisa Rp 1.700.400</strong></div>
+        <div class="prog-track"><div class="prog-fill" style="width:55%"></div></div>
+        <div class="hero-strip" style="padding-bottom:0;">
+          <div class="hs"><div class="hs-lbl">Hadir</div><div class="hs-val" style="color:var(--green)">6/8</div><div class="hs-sub" style="color:var(--red)">2 belum</div></div>
+          <div class="hs"><div class="hs-lbl">Unit</div><div class="hs-val" style="color:var(--gold)">34</div><div class="hs-sub">terjual</div></div>
+          <div class="hs"><div class="hs-lbl">Laporan</div><div class="hs-val" style="color:var(--purple)">5/8</div><div class="hs-sub" style="color:var(--amber)">3 pending</div></div>
+        </div>
+      </div>
+
+      <!-- Target harian per promotor -->
+      <div class="sec-head"><div class="sec-title">Target Harian Promotor</div><div class="sec-note" style="font-size:9px;font-weight:700;color:var(--gold);cursor:pointer">Set target →</div></div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Hari ini · 12 Mar</div><div class="card-sub">Target otomatis sistem</div></div>
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--green)"></div>
+          <div class="pm-av" style="border-color:rgba(106,171,122,0.4);color:var(--green)">RS</div>
+          <div class="pm-info"><div class="pm-name">Rina S.</div><div class="pm-meta">Thamrin · 8 unit target</div></div>
+          <div class="pm-bar-wrap"><div class="pm-bar-lbl">75%</div><div class="pm-track"><div class="pm-fill" style="--w:75%;background:var(--green)"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--green)">6</div><div class="pm-val-lbl">unit</div></div>
+        </div>
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--amber)"></div>
+          <div class="pm-av">BW</div>
+          <div class="pm-info"><div class="pm-name">Budi W.</div><div class="pm-meta">Gatot Subroto · 7 unit</div></div>
+          <div class="pm-bar-wrap"><div class="pm-bar-lbl">57%</div><div class="pm-track"><div class="pm-fill" style="--w:57%;background:var(--amber)"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--amber)">4</div><div class="pm-val-lbl">unit</div></div>
+        </div>
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--amber)"></div>
+          <div class="pm-av">AP</div>
+          <div class="pm-info"><div class="pm-name">Andi P.</div><div class="pm-meta">Sudirman · 6 unit</div></div>
+          <div class="pm-bar-wrap"><div class="pm-bar-lbl">33%</div><div class="pm-track"><div class="pm-fill" style="--w:33%;background:var(--amber)"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--amber)">2</div><div class="pm-val-lbl">unit</div></div>
+        </div>
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--red)"></div>
+          <div class="pm-av" style="color:var(--red)">DK</div>
+          <div class="pm-info"><div class="pm-name">Dian K.</div><div class="pm-meta">Sudirman · Belum clock in</div></div>
+          <div class="pm-bar-wrap"><div class="pm-bar-lbl">0%</div><div class="pm-track"><div class="pm-fill" style="--w:0%"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--red)">0</div><div class="pm-val-lbl">unit</div></div>
+        </div>
+        <div style="padding:8px 14px;border-top:1px solid var(--s3);display:flex;justify-content:space-between;">
+          <div style="font-size:9px;color:var(--muted)">+4 promotor lainnya</div>
+          <div style="font-size:9px;font-weight:700;color:var(--gold)">Lihat semua →</div>
+        </div>
+      </div>
+
+      <!-- Agenda -->
+      <div class="sec-head"><div class="sec-title">Agenda Hari Ini</div><div class="badge bd-gld">4 item</div></div>
+      <div class="card" style="margin-bottom:0;">
+        <div class="ag-item"><div class="ag-dot" style="background:var(--red)"></div><div class="ag-info"><div class="ag-name">Approve Jadwal — 3 pending</div><div class="ag-sub">Dian K. · Andi P. · Budi W.</div></div><div class="badge bd-red">Pending</div></div>
+        <div class="ag-item"><div class="ag-dot" style="background:var(--green)"></div><div class="ag-info"><div class="ag-name">Visiting — King Cell Sudirman</div><div class="ag-sub">10:00 · Selesai</div></div><div class="badge bd-grn">✓ Done</div></div>
+        <div class="ag-item"><div class="ag-dot" style="background:var(--amber)"></div><div class="ag-info"><div class="ag-name">Finalisasi Sell In — 5 order</div><div class="ag-sub">Rp 42Jt nilai pending</div></div><div class="badge bd-amb">Proses</div></div>
+        <div class="ag-item"><div class="ag-dot" style="background:var(--blue)"></div><div class="ag-info"><div class="ag-name">Penormalan IMEI — 23 unit</div><div class="ag-sub">Dari 8 promotor</div></div><div class="badge bd-dim">Review</div></div>
+      </div>
+      <div class="gap"></div>
+    </div>
+
+    <!-- ══════════ TAB MINGGUAN ══════════ -->
+    <div class="tab-panel" id="tab-mingguan">
+
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-top">
+          <div>
+            <div class="hero-lbl">Target Mingguan Tim</div>
+            <div class="hero-nominal"><small>Rp </small>26.600.000</div>
+            <div class="hero-sub">Realisasi: <strong>Rp 9.400.000</strong></div>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 62 62"><circle class="ring-bg" cx="31" cy="31" r="25"/><circle class="ring-fill" cx="31" cy="31" r="25" style="stroke:var(--amber);stroke-dashoffset:113"/></svg>
+            <div class="ring-txt"><div class="ring-pct" style="color:var(--amber)">28%</div><div class="ring-lbl">Minggu ini</div></div>
+          </div>
+        </div>
+        <div class="prog-meta"><span>Minggu ke-2 · Hari ke-4 dari 6</span><strong>Sisa Rp 17.200.000</strong></div>
+        <div class="prog-track"><div class="prog-fill" style="width:28%"></div></div>
+
+        <!-- 4-week progress bar -->
+        <div class="week-wrap" style="padding-top:12px;">
+          <div style="font-size:8px;color:var(--muted);margin-bottom:6px;font-weight:600;">Progress 4 Minggu — Maret 2026</div>
+          <div class="week-row">
+            <div class="wk">
+              <div class="wk-bar"><div class="wk-fill" style="--w:100%;background:var(--green)"></div></div>
+              <div class="wk-lbl">Mg 1 ✓</div>
+            </div>
+            <div class="wk">
+              <div class="wk-bar"><div class="wk-fill" style="--w:28%;background:var(--amber)"></div></div>
+              <div class="wk-lbl on">Mg 2 ←</div>
+            </div>
+            <div class="wk">
+              <div class="wk-bar" style="opacity:0.4"></div>
+              <div class="wk-lbl">Mg 3</div>
+            </div>
+            <div class="wk">
+              <div class="wk-bar" style="opacity:0.4"></div>
+              <div class="wk-lbl">Mg 4</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:8px;margin-top:5px;">
+            <span style="color:var(--green)">Mg 1: 100% ✓</span>
+            <span style="color:var(--amber)">Mg 2: 28%</span>
+            <span style="color:var(--muted)">Mg 3: —</span>
+            <span style="color:var(--muted)">Mg 4: —</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 metrik kunci -->
+      <div class="sec-head"><div class="sec-title">Pencapaian Minggu Ini</div><div class="sec-note">Mg ke-2</div></div>
+      <div class="metric3">
+        <div class="mc">
+          <div class="mc-lbl">All Type</div>
+          <div class="mc-ring">
+            <svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--red);stroke-dashoffset:104"/></svg>
+            <div class="mc-ring-txt"><div class="mc-pct" style="color:var(--red)">13%</div></div>
+          </div>
+          <div class="mc-sub" style="color:var(--red)">Rp 3,1Jt</div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Fokus</div>
+          <div class="mc-ring">
+            <svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--amber);stroke-dashoffset:90"/></svg>
+            <div class="mc-ring-txt"><div class="mc-pct" style="color:var(--amber)">25%</div></div>
+          </div>
+          <div class="mc-sub" style="color:var(--amber)">11 unit</div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Aktivitas</div>
+          <div class="mc-ring">
+            <svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--green);stroke-dashoffset:60"/></svg>
+            <div class="mc-ring-txt"><div class="mc-pct" style="color:var(--green)">50%</div></div>
+          </div>
+          <div class="mc-sub" style="color:var(--green)">6/8 lapor</div>
+        </div>
+      </div>
+
+      <!-- Per-promotor compact -->
+      <div class="sec-head"><div class="sec-title">Promotor Minggu Ini</div><div class="sec-note">Target 25%/minggu</div></div>
+      <div class="card">
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--green)"></div>
+          <div class="pm-av" style="color:var(--green)">RS</div>
+          <div class="pm-info"><div class="pm-name">Rina S.</div><div class="pm-meta">47 unit minggu ini</div></div>
+          <div class="pm-bar-wrap"><div class="pm-track"><div class="pm-fill" style="--w:82%;background:var(--green)"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--green)">82%</div><div class="pm-val-lbl">dari target</div></div>
+        </div>
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--amber)"></div>
+          <div class="pm-av">BW</div>
+          <div class="pm-info"><div class="pm-name">Budi W.</div><div class="pm-meta">31 unit minggu ini</div></div>
+          <div class="pm-bar-wrap"><div class="pm-track"><div class="pm-fill" style="--w:34%;background:var(--amber)"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--amber)">34%</div><div class="pm-val-lbl">dari target</div></div>
+        </div>
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--amber)"></div>
+          <div class="pm-av">AP</div>
+          <div class="pm-info"><div class="pm-name">Andi P.</div><div class="pm-meta">18 unit minggu ini</div></div>
+          <div class="pm-bar-wrap"><div class="pm-track"><div class="pm-fill" style="--w:26%;background:var(--amber)"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--amber)">26%</div><div class="pm-val-lbl">dari target</div></div>
+        </div>
+        <div class="pm-row">
+          <div class="pm-dot" style="background:var(--red)"></div>
+          <div class="pm-av" style="color:var(--red)">DK</div>
+          <div class="pm-info"><div class="pm-name">Dian K.</div><div class="pm-meta">3 unit minggu ini</div></div>
+          <div class="pm-bar-wrap"><div class="pm-track"><div class="pm-fill" style="--w:5%;background:var(--red)"></div></div></div>
+          <div class="pm-right"><div class="pm-val" style="color:var(--red)">5%</div><div class="pm-val-lbl">dari target</div></div>
+        </div>
+        <div style="padding:8px 14px;border-top:1px solid var(--s3);display:flex;justify-content:space-between;">
+          <div style="font-size:9px;color:var(--muted)">+4 promotor lainnya</div>
+          <div style="font-size:9px;font-weight:700;color:var(--gold)">Lihat semua →</div>
+        </div>
+      </div>
+
+      <!-- Tap to detail -->
+      <div class="detail-btn">
+        <div class="db-left">
+          <div class="db-title">Laporan Mingguan Lengkap</div>
+          <div class="db-sub">AllType · Fokus · Aktivitas · Vast Finance</div>
+        </div>
+        <div class="db-arrow"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+      <div class="gap"></div>
+    </div>
+
+    <!-- ══════════ TAB BULANAN ══════════ -->
+    <div class="tab-panel" id="tab-bulanan">
+
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-top">
+          <div>
+            <div class="hero-lbl">Target Bulanan Tim</div>
+            <div class="hero-nominal"><small>Rp </small>114.012.000</div>
+            <div class="hero-sub">Realisasi: <strong>Rp 19.382.000</strong></div>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 62 62"><circle class="ring-bg" cx="31" cy="31" r="25"/><circle class="ring-fill" cx="31" cy="31" r="25" style="stroke:var(--gold);stroke-dashoffset:130"/></svg>
+            <div class="ring-txt"><div class="ring-pct" style="color:var(--gold)">17%</div><div class="ring-lbl">Bulanan</div></div>
+          </div>
+        </div>
+        <div class="prog-meta"><span>Progress Maret 2026</span><strong>Sisa Rp 94.630.000</strong></div>
+        <div class="prog-track"><div class="prog-fill" style="width:17%"></div></div>
+        <div class="hero-strip">
+          <div class="hs"><div class="hs-lbl">Hari Kerja</div><div class="hs-val">12/26</div><div class="hs-sub">Sisa <strong>14 hari</strong></div></div>
+          <div class="hs"><div class="hs-lbl">Target/Hari</div><div class="hs-val">Rp 4,4Jt</div><div class="hs-sub">sisa hari kerja</div></div>
+          <div class="hs"><div class="hs-lbl">vs Feb</div><div class="hs-val" style="color:var(--green)">↑ +3%</div><div class="hs-sub">lebih baik</div></div>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div class="sec-head"><div class="sec-title">KPI Bulanan Tim</div><div class="sec-val" style="color:var(--red)">9%</div></div>
+      <div class="card">
+        <div class="kbi"><div class="kbi-top"><div class="kbi-name">Sell Out All Type</div><div class="kbi-right"><div class="kbi-weight">bobot 40%</div><div class="kbi-pct" style="color:var(--red)">7%</div></div></div><div class="kbi-track"><div class="kbi-fill" style="--w:7%;background:var(--red)"></div></div></div>
+        <div class="kbi"><div class="kbi-top"><div class="kbi-name">Sell Out Fokus</div><div class="kbi-right"><div class="kbi-weight">bobot 30%</div><div class="kbi-pct" style="color:var(--amber)">10%</div></div></div><div class="kbi-track"><div class="kbi-fill" style="--w:10%;background:var(--amber)"></div></div></div>
+        <div class="kbi"><div class="kbi-top"><div class="kbi-name">Sell In All Type</div><div class="kbi-right"><div class="kbi-weight">bobot 30%</div><div class="kbi-pct" style="color:var(--amber)">11%</div></div></div><div class="kbi-track"><div class="kbi-fill" style="--w:11%;background:var(--amber)"></div></div></div>
+      </div>
+
+      <!-- Ranking -->
+      <div class="sec-head"><div class="sec-title">Ranking Promotor</div><div class="sec-note">Maret 2026</div></div>
+      <div class="card">
+        <div class="rank-row"><div class="rank-num" style="color:var(--gold)">1</div><div class="rank-av" style="color:var(--green)">RS</div><div class="rank-info"><div class="rank-name">Rina S.</div><div class="rank-sub">Thamrin · 47 unit</div></div><div class="rank-right"><div class="rank-val" style="color:var(--green)">34%</div><div class="rank-lbl">KPI</div></div></div>
+        <div class="rank-row"><div class="rank-num" style="color:var(--cream2)">2</div><div class="rank-av">BW</div><div class="rank-info"><div class="rank-name">Budi W.</div><div class="rank-sub">Gatot Subroto · 31 unit</div></div><div class="rank-right"><div class="rank-val" style="color:var(--amber)">12%</div><div class="rank-lbl">KPI</div></div></div>
+        <div class="rank-row"><div class="rank-num" style="color:var(--muted)">3</div><div class="rank-av">AP</div><div class="rank-info"><div class="rank-name">Andi P.</div><div class="rank-sub">Sudirman · 18 unit</div></div><div class="rank-right"><div class="rank-val" style="color:var(--amber)">9%</div><div class="rank-lbl">KPI</div></div></div>
+        <div class="rank-row"><div class="rank-num" style="color:var(--muted)">4</div><div class="rank-av" style="color:var(--red)">DK</div><div class="rank-info"><div class="rank-name">Dian K.</div><div class="rank-sub">Sudirman · 12 unit</div></div><div class="rank-right"><div class="rank-val" style="color:var(--red)">7%</div><div class="rank-lbl">KPI</div></div></div>
+        <div style="padding:8px 14px;border-top:1px solid var(--s3);text-align:center;"><div style="font-size:9px;font-weight:700;color:var(--gold)">Lihat semua 8 promotor →</div></div>
+      </div>
+
+      <!-- Fokus Produk -->
+      <div class="sec-head"><div class="sec-title">Target Fokus Produk</div><div class="sec-note">Maret 2026</div></div>
+      <div class="card" style="margin-bottom:0;">
+        <div class="fokus-row"><div class="fokus-rank hi">1</div><div class="fokus-info"><div class="fokus-name">X300 Pro · 16/512</div><div class="fokus-meta">Target 20 unit · Realisasi 4</div><div class="fokus-bar"><div class="fokus-fill" style="--w:20%"></div></div></div><div class="fokus-right"><div class="fokus-unit" style="color:var(--red)">4</div><div class="fokus-lbl">dari 20 unit</div></div></div>
+        <div class="fokus-row"><div class="fokus-rank hi">2</div><div class="fokus-info"><div class="fokus-name">V60 Lite · 12/512</div><div class="fokus-meta">Target 30 unit · Realisasi 11</div><div class="fokus-bar"><div class="fokus-fill" style="--w:37%"></div></div></div><div class="fokus-right"><div class="fokus-unit" style="color:var(--amber)">11</div><div class="fokus-lbl">dari 30 unit</div></div></div>
+        <div class="fokus-row"><div class="fokus-rank">3</div><div class="fokus-info"><div class="fokus-name">iQOO 15 · 16/512</div><div class="fokus-meta">Target 15 unit · Realisasi 2</div><div class="fokus-bar"><div class="fokus-fill" style="--w:13%;background:var(--amber)"></div></div></div><div class="fokus-right"><div class="fokus-unit" style="color:var(--amber)">2</div><div class="fokus-lbl">dari 15 unit</div></div></div>
+      </div>
+      <div class="gap"></div>
+    </div>
+
+  </div>
+  <nav class="nav">
+    <div class="ni on"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Laporan</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Stok</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
+  </nav>
+</div>
+<script>
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('on',['harian','mingguan','bulanan'][i]===tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('mainScroll').scrollTop=0;
+}
+</script>
+</body>
+</html>

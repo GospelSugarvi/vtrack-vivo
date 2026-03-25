@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --red:#c05a4a;--blue:#5b8dd9;--amber:#d4853a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 20px 60px;gap:14px;}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;}
+.phone{width:370px;height:800px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+.scroll{height:calc(800px - 50px);overflow-y:auto;padding-bottom:85px;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+.sticky-top{position:sticky;top:0;z-index:50;background:var(--bg);}
+
+.header{padding:12px 20px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--s2);}
+.h-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--cream);}
+.h-sub{font-size:9px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:5px;}
+.h-live{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.5s ease infinite;}
+
+.date-row{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-bottom:1px solid var(--s2);}
+.d-arrow{width:24px;height:24px;border-radius:7px;background:var(--s2);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.d-arrow svg{width:10px;height:10px;stroke:var(--muted);stroke-width:2.5;fill:none;}
+.d-label{font-size:13px;font-weight:700;color:var(--cream2);display:flex;align-items:center;gap:6px;}
+.d-badge{font-size:8px;font-weight:700;color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);border-radius:100px;padding:1px 7px;}
+
+.tabs{display:flex;margin:10px 16px;background:var(--s1);border:1px solid var(--s3);border-radius:12px;padding:3px;gap:3px;}
+.tab{flex:1;text-align:center;padding:7px 0;border-radius:9px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.tab.on{background:var(--gold);color:#1a0e00;box-shadow:0 2px 8px rgba(201,146,58,0.3);}
+.tab-panel{display:none;}
+.tab-panel.on{display:block;}
+
+/* PODIUM */
+.podium-wrap{padding:8px 16px 4px;}
+.podium-lbl{font-size:8px;font-weight:800;color:var(--muted2);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.podium-lbl::after{content:'';flex:1;height:1px;background:var(--s3);}
+.podium-lbl em{color:var(--gold);font-style:normal;}
+.podium{display:flex;align-items:flex-end;gap:6px;height:116px;}
+.pod{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
+.pod-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;position:relative;margin-bottom:5px;}
+.pod-medal{position:absolute;bottom:-3px;right:-3px;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;border:1.5px solid var(--bg);}
+.pod-name{font-size:8px;font-weight:700;color:var(--cream2);text-align:center;margin-bottom:1px;max-width:78px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pod-bonus{font-family:'Playfair Display',serif;font-size:11px;font-weight:900;color:var(--gold);text-align:center;}
+.pod-store{font-size:7px;color:var(--muted);text-align:center;margin-bottom:3px;}
+.pod-block{width:100%;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;}
+.pod-n{font-family:'Playfair Display',serif;font-size:16px;font-weight:900;opacity:0.2;}
+.pod-crown{font-size:13px;margin-bottom:2px;text-align:center;}
+
+.pod.p1 .pod-avatar{width:48px;height:48px;font-size:17px;background:var(--gold-dim);border:2px solid var(--gold);color:var(--gold);box-shadow:0 0 14px rgba(201,146,58,0.25);}
+.pod.p1 .pod-medal{background:var(--gold);color:#1a0e00;}
+.pod.p1 .pod-block{height:58px;background:linear-gradient(180deg,rgba(201,146,58,0.2),rgba(201,146,58,0.04));border:1px solid rgba(201,146,58,0.18);border-bottom:none;}
+.pod.p1 .pod-n{color:var(--gold);}
+.pod.p2 .pod-avatar{width:40px;height:40px;font-size:14px;background:rgba(200,191,173,0.08);border:2px solid var(--cream2);color:var(--cream2);}
+.pod.p2 .pod-medal{background:var(--cream2);color:#1a0e00;}
+.pod.p2 .pod-block{height:44px;background:linear-gradient(180deg,rgba(200,191,173,0.1),rgba(200,191,173,0.02));border:1px solid rgba(200,191,173,0.1);border-bottom:none;}
+.pod.p2 .pod-n{color:var(--cream2);}
+.pod.p3 .pod-avatar{width:36px;height:36px;font-size:12px;background:rgba(212,133,58,0.1);border:2px solid var(--amber);color:var(--amber);}
+.pod.p3 .pod-medal{background:var(--amber);color:#fff;}
+.pod.p3 .pod-block{height:34px;background:linear-gradient(180deg,rgba(212,133,58,0.1),rgba(212,133,58,0.02));border:1px solid rgba(212,133,58,0.1);border-bottom:none;}
+.pod.p3 .pod-n{color:var(--amber);}
+
+/* RANK LIST */
+.rank-section{padding:10px 16px 0;}
+.rank-sec-lbl{font-size:8px;font-weight:800;color:var(--muted2);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.rank-sec-lbl::after{content:'';flex:1;height:1px;background:var(--s2);}
+
+.promo-card{background:var(--s1);border:1px solid var(--s3);border-radius:14px;margin-bottom:8px;overflow:hidden;animation:fadeUp 0.3s ease both;}
+.promo-card:nth-child(1){animation-delay:.04s}.promo-card:nth-child(2){animation-delay:.08s}.promo-card:nth-child(3){animation-delay:.12s}.promo-card:nth-child(4){animation-delay:.16s}
+.promo-card.me{border-color:rgba(201,146,58,0.3);background:linear-gradient(135deg,#231c12,#1d1710);}
+
+.pc-head{display:flex;align-items:center;gap:9px;padding:10px 12px 8px;}
+.pc-rank{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:var(--muted2);width:20px;text-align:center;flex-shrink:0;}
+.pc-rank.hi{color:var(--gold);}
+.pc-av{width:34px;height:34px;border-radius:50%;background:var(--s2);border:1.5px solid var(--s3);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:12px;font-weight:900;color:var(--cream2);flex-shrink:0;}
+.pc-av.me-av{border-color:var(--gold);color:var(--gold);}
+.pc-info{flex:1;min-width:0;}
+.pc-name{font-size:12px;font-weight:700;color:var(--cream2);margin-bottom:1px;}
+.pc-name.me-name{color:var(--gold);}
+.pc-store{font-size:8px;color:var(--muted);}
+.pc-right{text-align:right;flex-shrink:0;}
+.pc-bonus{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;color:var(--gold);}
+.pc-bonus-lbl{font-size:7px;color:var(--muted);margin-top:1px;}
+.pc-delta{font-size:8px;font-weight:700;color:var(--green);margin-top:2px;}
+
+.pc-trx{border-top:1px solid var(--s3);padding:7px 12px 9px;}
+.pc-trx-lbl{font-size:7px;font-weight:700;color:var(--muted2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:5px;}
+.pc-trx-item{display:flex;align-items:center;justify-content:space-between;padding:3px 0;gap:6px;}
+.pc-trx-left{display:flex;align-items:center;gap:5px;flex:1;min-width:0;}
+.focus-tag{font-size:7px;font-weight:800;color:#1a0e00;background:var(--gold);border-radius:4px;padding:1px 5px;flex-shrink:0;letter-spacing:0.04em;}
+.pc-trx-name{font-size:10px;color:var(--cream2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pc-trx-price{font-size:9px;color:var(--muted);flex-shrink:0;}
+.pc-trx-bonus{font-size:10px;font-weight:700;color:var(--gold);flex-shrink:0;}
+
+/* LIVE FEED */
+.feed-list{padding:8px 16px 0;}
+.feed-card{background:var(--s1);border:1px solid var(--s3);border-radius:16px;margin-bottom:10px;overflow:hidden;animation:fadeUp 0.3s ease both;}
+.feed-card:nth-child(1){animation-delay:.04s}.feed-card:nth-child(2){animation-delay:.1s}
+
+.fc-head{display:flex;align-items:center;gap:9px;padding:10px 12px 8px;}
+.fc-av{width:34px;height:34px;border-radius:50%;background:var(--s2);border:1.5px solid var(--s3);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:12px;font-weight:900;color:var(--cream2);flex-shrink:0;}
+.fc-info{flex:1;}
+.fc-name{font-size:12px;font-weight:700;color:var(--cream2);}
+.fc-meta{font-size:9px;color:var(--muted);margin-top:1px;}
+.fc-time{font-size:8px;color:var(--muted2);flex-shrink:0;}
+
+.fc-focus-row{padding:0 12px 6px;}
+.fc-focus-chip{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:800;color:#1a0e00;background:var(--gold);border-radius:5px;padding:2px 7px;}
+
+.fc-product{margin:0 12px 8px;background:var(--s2);border:1px solid var(--s3);border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:10px;}
+.fc-product-icon{width:30px;height:30px;border-radius:8px;background:var(--s3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fc-product-icon svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2;fill:none;}
+.fc-product-info{flex:1;min-width:0;}
+.fc-product-name{font-size:11px;font-weight:700;color:var(--cream2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fc-product-detail{font-size:8px;color:var(--muted);margin-top:2px;}
+.fc-product-right{text-align:right;flex-shrink:0;}
+.fc-product-price{font-size:12px;font-weight:800;color:var(--cream2);}
+.fc-product-bonus{font-size:9px;font-weight:700;color:var(--gold);margin-top:2px;}
+
+.fc-photo{margin:0 12px 8px;border-radius:10px;background:var(--s2);height:152px;display:flex;align-items:center;justify-content:center;border:1px solid var(--s3);flex-direction:column;gap:6px;}
+.fc-photo svg{width:22px;height:22px;stroke:var(--muted2);stroke-width:1.5;fill:none;}
+.fc-photo-lbl{font-size:9px;color:var(--muted2);}
+
+.fc-reactions{display:flex;align-items:center;gap:5px;padding:0 12px 8px;flex-wrap:wrap;}
+.fc-emoji{display:flex;align-items:center;gap:3px;background:var(--s2);border:1px solid var(--s3);border-radius:100px;padding:4px 9px;cursor:pointer;font-size:12px;}
+.fc-emoji span{font-size:9px;font-weight:700;color:var(--muted);}
+.fc-emoji.active{background:var(--gold-dim);border-color:rgba(201,146,58,0.25);}
+.fc-emoji.active span{color:var(--gold);}
+.fc-sep{width:1px;height:16px;background:var(--s3);}
+.fc-cmt-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;}
+.fc-cmt-btn svg{width:12px;height:12px;stroke:var(--muted);stroke-width:2;fill:none;}
+.fc-cmt-btn span{font-size:9px;color:var(--muted);}
+
+.fc-comments{border-top:1px solid var(--s3);padding:8px 12px;}
+.fc-cmnt{display:flex;gap:7px;margin-bottom:7px;}
+.fc-cmnt:last-child{margin-bottom:0;}
+.fc-cmnt-av{width:22px;height:22px;border-radius:50%;background:var(--s2);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:var(--muted);flex-shrink:0;font-family:'Playfair Display',serif;}
+.fc-cmnt-body{flex:1;background:var(--s2);border-radius:0 8px 8px 8px;padding:5px 9px;}
+.fc-cmnt-who{font-size:8px;font-weight:800;color:var(--gold);margin-bottom:2px;}
+.fc-cmnt-text{font-size:10px;color:var(--cream2);line-height:1.4;}
+.fc-cmnt-time{font-size:7px;color:var(--muted);margin-top:3px;}
+
+.fc-input-row{display:flex;gap:7px;align-items:center;padding:8px 12px;border-top:1px solid var(--s3);}
+.fc-input-av{width:24px;height:24px;border-radius:50%;background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:var(--gold);flex-shrink:0;font-family:'Playfair Display',serif;}
+.fc-input-box{flex:1;background:var(--s2);border:1px solid var(--s3);border-radius:100px;padding:6px 12px;font-size:10px;color:var(--muted);font-family:'Outfit',sans-serif;}
+
+/* NAV */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(20,16,10,0.97);backdrop-filter:blur(24px);border-top:1px solid var(--s3);padding:10px 8px 22px;display:flex;justify-content:space-around;z-index:100;}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 12px;border-radius:10px;cursor:pointer;}
+.ni.on{background:var(--gold-dim);}
+.ni svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:var(--muted2);}
+.ni.on svg{stroke:var(--gold);}
+.ni span{font-size:8px;font-weight:700;color:var(--muted2);letter-spacing:0.04em;text-transform:uppercase;}
+.ni.on span{color:var(--gold);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+</style>
+</head>
+<body>
+<div class="page-title">Leaderboard · Area Kupang · Harian</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">19:58</span><span class="sbar-r">4G 78%</span></div>
+  <div class="scroll">
+
+    <div class="sticky-top">
+      <div class="header">
+        <div>
+          <div class="h-title">Leaderboard</div>
+          <div class="h-sub"><div class="h-live"></div>Live · Area Kupang</div>
+        </div>
+      </div>
+      <div class="date-row">
+        <div class="d-arrow"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <div class="d-label">Kamis, 12 Maret 2026 <div class="d-badge">Hari ini</div></div>
+        <div class="d-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="tabs">
+        <div class="tab on" onclick="switchTab('lb')">Leaderboard</div>
+        <div class="tab" onclick="switchTab('feed')">Live Feed</div>
+      </div>
+    </div>
+
+    <!-- ══ TAB 1 ══ -->
+    <div class="tab-panel on" id="panel-lb">
+
+      <div class="podium-wrap">
+        <div class="podium-lbl">Top 3 Bonus Hari Ini — <em>Area Kupang</em></div>
+        <div class="podium">
+          <div class="pod p2">
+            <div class="pod-avatar">RS<div class="pod-medal">2</div></div>
+            <div class="pod-name">Rina Sari</div>
+            <div class="pod-bonus">Rp 340rb</div>
+            <div class="pod-store">Sudirman</div>
+            <div class="pod-block"><div class="pod-n">2</div></div>
+          </div>
+          <div class="pod p1">
+            <div class="pod-crown">👑</div>
+            <div class="pod-avatar">BW<div class="pod-medal">1</div></div>
+            <div class="pod-name">Budi Wahyu</div>
+            <div class="pod-bonus">Rp 550rb</div>
+            <div class="pod-store">Gatot Subroto</div>
+            <div class="pod-block"><div class="pod-n">1</div></div>
+          </div>
+          <div class="pod p3">
+            <div class="pod-avatar">DK<div class="pod-medal">3</div></div>
+            <div class="pod-name">Dian Kusuma</div>
+            <div class="pod-bonus">Rp 220rb</div>
+            <div class="pod-store">Thamrin</div>
+            <div class="pod-block"><div class="pod-n">3</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rank-section">
+        <div class="rank-sec-lbl">Semua Promotor</div>
+
+        <div class="promo-card">
+          <div class="pc-head">
+            <div class="pc-rank hi">1</div>
+            <div class="pc-av">BW</div>
+            <div class="pc-info"><div class="pc-name">Budi Wahyu</div><div class="pc-store">King Cell · Gatot Subroto</div></div>
+            <div class="pc-right"><div class="pc-bonus">Rp 550rb</div><div class="pc-bonus-lbl">bonus hari ini</div></div>
+          </div>
+          <div class="pc-trx">
+            <div class="pc-trx-lbl">Transaksi hari ini</div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="focus-tag">FOKUS</div><div class="pc-trx-name">X300 Pro 16/512</div></div>
+              <div class="pc-trx-price">Rp 8,5Jt</div>
+              <div class="pc-trx-bonus">+Rp 110rb</div>
+            </div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="focus-tag">FOKUS</div><div class="pc-trx-name">V60 Lite 12/512</div></div>
+              <div class="pc-trx-price">Rp 6,2Jt</div>
+              <div class="pc-trx-bonus">+Rp 110rb</div>
+            </div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="pc-trx-name">Y21D 4/128</div></div>
+              <div class="pc-trx-price">Rp 1,8Jt</div>
+              <div class="pc-trx-bonus" style="color:var(--amber)">+Rp 20rb</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="promo-card">
+          <div class="pc-head">
+            <div class="pc-rank">2</div>
+            <div class="pc-av">RS</div>
+            <div class="pc-info"><div class="pc-name">Rina Sari</div><div class="pc-store">King Cell · Sudirman</div></div>
+            <div class="pc-right"><div class="pc-bonus">Rp 340rb</div><div class="pc-bonus-lbl">bonus hari ini</div></div>
+          </div>
+          <div class="pc-trx">
+            <div class="pc-trx-lbl">Transaksi hari ini</div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="focus-tag">FOKUS</div><div class="pc-trx-name">iQOO 15 16/512</div></div>
+              <div class="pc-trx-price">Rp 9,9Jt</div>
+              <div class="pc-trx-bonus">+Rp 110rb</div>
+            </div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="pc-trx-name">Y400 8/256</div></div>
+              <div class="pc-trx-price">Rp 2,4Jt</div>
+              <div class="pc-trx-bonus" style="color:var(--amber)">+Rp 55rb</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="promo-card">
+          <div class="pc-head">
+            <div class="pc-rank">3</div>
+            <div class="pc-av">DK</div>
+            <div class="pc-info"><div class="pc-name">Dian Kusuma</div><div class="pc-store">King Cell · Thamrin</div></div>
+            <div class="pc-right"><div class="pc-bonus">Rp 220rb</div><div class="pc-bonus-lbl">bonus hari ini</div></div>
+          </div>
+          <div class="pc-trx">
+            <div class="pc-trx-lbl">Transaksi hari ini</div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="focus-tag">FOKUS</div><div class="pc-trx-name">V60 Lite 8/256</div></div>
+              <div class="pc-trx-price">Rp 5,9Jt</div>
+              <div class="pc-trx-bonus">+Rp 110rb</div>
+            </div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="pc-trx-name">Y04S 4/128</div></div>
+              <div class="pc-trx-price">Rp 1,2Jt</div>
+              <div class="pc-trx-bonus" style="color:var(--muted)">+Rp 10rb</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="promo-card me">
+          <div class="pc-head">
+            <div class="pc-rank hi">7</div>
+            <div class="pc-av me-av">AP</div>
+            <div class="pc-info"><div class="pc-name me-name">Andi P. · Kamu</div><div class="pc-store">King Cell · Sudirman</div></div>
+            <div class="pc-right"><div class="pc-bonus">Rp 110rb</div><div class="pc-bonus-lbl">bonus hari ini</div><div class="pc-delta">↑ naik 2</div></div>
+          </div>
+          <div class="pc-trx">
+            <div class="pc-trx-lbl">Transaksi hari ini</div>
+            <div class="pc-trx-item">
+              <div class="pc-trx-left"><div class="focus-tag">FOKUS</div><div class="pc-trx-name">X300 Pro 16/512</div></div>
+              <div class="pc-trx-price">Rp 8,5Jt</div>
+              <div class="pc-trx-bonus">+Rp 110rb</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ TAB 2: LIVE FEED ══ -->
+    <div class="tab-panel" id="panel-feed">
+      <div class="feed-list">
+
+        <!-- Post 1 — fokus product -->
+        <div class="feed-card">
+          <div class="fc-head">
+            <div class="fc-av">BW</div>
+            <div class="fc-info"><div class="fc-name">Budi Wahyu</div><div class="fc-meta">King Cell · Gatot Subroto</div></div>
+            <div class="fc-time">2 mnt lalu</div>
+          </div>
+          <div class="fc-focus-row"><div class="fc-focus-chip">⭐ Produk Fokus</div></div>
+          <div class="fc-product">
+            <div class="fc-product-icon"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+            <div class="fc-product-info">
+              <div class="fc-product-name">X300 Pro · 16/512 · Phantom Black</div>
+              <div class="fc-product-detail">cash · IMEI: 9464643439949·49</div>
+            </div>
+            <div class="fc-product-right">
+              <div class="fc-product-price">Rp 8,5Jt</div>
+              <div class="fc-product-bonus">+Rp 110rb</div>
+            </div>
+          </div>
+          <div class="fc-photo">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div class="fc-photo-lbl">Foto bukti penjualan</div>
+          </div>
+          <div class="fc-reactions">
+            <div class="fc-emoji active">🔥 <span>12</span></div>
+            <div class="fc-emoji">👏 <span>8</span></div>
+            <div class="fc-emoji">💰 <span>5</span></div>
+            <div class="fc-emoji">😍 <span>3</span></div>
+            <div class="fc-sep"></div>
+            <div class="fc-cmt-btn"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>3 komen</span></div>
+          </div>
+          <div class="fc-comments">
+            <div class="fc-cmnt">
+              <div class="fc-cmnt-av">SP</div>
+              <div class="fc-cmnt-body"><div class="fc-cmnt-who">Sator Pak Rudi</div><div class="fc-cmnt-text">Mantap Budi! Terus pertahankan 💪</div><div class="fc-cmnt-time">1 mnt lalu</div></div>
+            </div>
+            <div class="fc-cmnt">
+              <div class="fc-cmnt-av">RS</div>
+              <div class="fc-cmnt-body"><div class="fc-cmnt-who">Rina Sari</div><div class="fc-cmnt-text">Wah saingan nih 😄🔥</div><div class="fc-cmnt-time">baru saja</div></div>
+            </div>
+          </div>
+          <div class="fc-input-row">
+            <div class="fc-input-av">AP</div>
+            <div class="fc-input-box">Tulis komentar...</div>
+          </div>
+        </div>
+
+        <!-- Post 2 — regular -->
+        <div class="feed-card">
+          <div class="fc-head">
+            <div class="fc-av">RS</div>
+            <div class="fc-info"><div class="fc-name">Rina Sari</div><div class="fc-meta">King Cell · Sudirman</div></div>
+            <div class="fc-time">15 mnt lalu</div>
+          </div>
+          <div class="fc-product">
+            <div class="fc-product-icon"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+            <div class="fc-product-info">
+              <div class="fc-product-name">Y400 · 8/256 · Ocean Green</div>
+              <div class="fc-product-detail">kredit · Indodana · IMEI: 3571400694283·15</div>
+            </div>
+            <div class="fc-product-right">
+              <div class="fc-product-price">Rp 2,4Jt</div>
+              <div class="fc-product-bonus" style="color:var(--amber)">+Rp 55rb</div>
+            </div>
+          </div>
+          <div class="fc-photo">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div class="fc-photo-lbl">Foto bukti penjualan</div>
+          </div>
+          <div class="fc-reactions">
+            <div class="fc-emoji">🔥 <span>4</span></div>
+            <div class="fc-emoji">👏 <span>6</span></div>
+            <div class="fc-emoji">💰 <span>2</span></div>
+            <div class="fc-sep"></div>
+            <div class="fc-cmt-btn"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>1 komen</span></div>
+          </div>
+          <div class="fc-input-row">
+            <div class="fc-input-av">AP</div>
+            <div class="fc-input-box">Tulis komentar...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Aktivitas</span></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Laporan</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
+  </nav>
+</div>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('on', ['lb','feed'][i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('on', p.id === 'panel-' + tab);
+  });
+}
+</script>
+</body>
+</html>

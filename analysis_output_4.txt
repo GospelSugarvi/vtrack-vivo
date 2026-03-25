@@ -1,0 +1,1072 @@
+Analyzing project vivo apk...                                   
+
+warning • Unused import: '../../ui/promotor/promotor_theme.dart' • lib/core/utils/success_dialog.dart:2:8 • unused_import
+  error • Missing concrete implementation of 'State.build' • lib/features/admin/presentation/pages/admin_bonus_page.dart:68:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_flatRules' isn't used • lib/features/admin/presentation/pages/admin_bonus_page.dart:74:30 • unused_field
+warning • The value of the field '_ratioProducts' isn't used • lib/features/admin/presentation/pages/admin_bonus_page.dart:75:30 • unused_field
+warning • The value of the field '_satorRewards' isn't used • lib/features/admin/presentation/pages/admin_bonus_page.dart:82:30 • unused_field
+warning • The value of the field '_spvRewards' isn't used • lib/features/admin/presentation/pages/admin_bonus_page.dart:83:30 • unused_field
+  error • The name '_PointRangeEdit' isn't a type, so it can't be used as a type argument • lib/features/admin/presentation/pages/admin_bonus_page.dart:92:33 • non_type_as_type_argument
+warning • The value of the field '_isEditingPointRanges' isn't used • lib/features/admin/presentation/pages/admin_bonus_page.dart:96:27 • unused_field
+  error • The method '_PointRangeEdit' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:225:37 • undefined_method
+  error • The method '_formatPrice' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:227:43 • undefined_method
+  error • The method '_formatPrice' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:228:43 • undefined_method
+  error • The method '_formatPrice' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:235:46 • undefined_method
+  error • The method '_formatPrice' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:237:13 • undefined_method
+  error • The method '_formatPrice' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:240:13 • undefined_method
+  error • The method '_showFormDialog' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:242:5 • undefined_method
+  error • Undefined name 'maxC' • lib/features/admin/presentation/pages/admin_bonus_page.dart:253:23 • undefined_identifier
+  error • Undefined name 'maxC' • lib/features/admin/presentation/pages/admin_bonus_page.dart:278:40 • undefined_identifier
+warning • The declaration '_showAddFlatDialog' isn't referenced • lib/features/admin/presentation/pages/admin_bonus_page.dart:288:8 • unused_element
+  error • The method '_formatPrice' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:377:72 • undefined_method
+  error • The named parameter 'child' is required, but there's no corresponding argument • lib/features/admin/presentation/pages/admin_bonus_page.dart:415:13 • missing_required_argument
+  error • Undefined name 'k' • lib/features/admin/presentation/pages/admin_bonus_page.dart:436:47 • undefined_identifier
+  error • The method '_showFormDialog' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:437:5 • undefined_method
+  error • Undefined name 'selectedName' • lib/features/admin/presentation/pages/admin_bonus_page.dart:441:25 • undefined_identifier
+  error • Undefined name 'options' • lib/features/admin/presentation/pages/admin_bonus_page.dart:443:18 • undefined_identifier
+  error • Undefined name 'selectedName' • lib/features/admin/presentation/pages/admin_bonus_page.dart:448:13 • undefined_identifier
+  error • Undefined name 'weightC' • lib/features/admin/presentation/pages/admin_bonus_page.dart:453:23 • undefined_identifier
+  error • Undefined name 'selectedName' • lib/features/admin/presentation/pages/admin_bonus_page.dart:464:27 • undefined_identifier
+  error • Undefined name 'weightC' • lib/features/admin/presentation/pages/admin_bonus_page.dart:465:38 • undefined_identifier
+  error • Undefined name 'k' • lib/features/admin/presentation/pages/admin_bonus_page.dart:468:23 • undefined_identifier
+   info • The local variable '_kpiOptions' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:473:16 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_kpiOptions' isn't referenced • lib/features/admin/presentation/pages/admin_bonus_page.dart:473:16 • unused_element
+   info • The local variable '_showAddPointRangeDialog' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:483:8 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_showAddPointRangeDialog' isn't referenced • lib/features/admin/presentation/pages/admin_bonus_page.dart:483:8 • unused_element
+   info • The local variable '_showAddRewardDialog' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:566:8 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_showAddRewardDialog' isn't referenced • lib/features/admin/presentation/pages/admin_bonus_page.dart:566:8 • unused_element
+  error • The named parameter 'child' is required, but there's no corresponding argument • lib/features/admin/presentation/pages/admin_bonus_page.dart:660:13 • missing_required_argument
+  error • Undefined name 'r' • lib/features/admin/presentation/pages/admin_bonus_page.dart:686:46 • undefined_identifier
+  error • Local variable '_formatPrice' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_bonus_page.dart:688:13 • referenced_before_declaration
+  error • Undefined name 'r' • lib/features/admin/presentation/pages/admin_bonus_page.dart:688:26 • undefined_identifier
+  error • Undefined name 'r' • lib/features/admin/presentation/pages/admin_bonus_page.dart:691:13 • undefined_identifier
+  error • Local variable '_formatPrice' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_bonus_page.dart:694:13 • referenced_before_declaration
+  error • Undefined name 'r' • lib/features/admin/presentation/pages/admin_bonus_page.dart:694:26 • undefined_identifier
+  error • Local variable '_showFormDialog' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_bonus_page.dart:696:5 • referenced_before_declaration
+  error • Undefined name 'displayName' • lib/features/admin/presentation/pages/admin_bonus_page.dart:700:21 • undefined_identifier
+  error • Undefined name 'r' • lib/features/admin/presentation/pages/admin_bonus_page.dart:753:23 • undefined_identifier
+   info • The local variable '_showFormDialog' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:759:8 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_formatPrice' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:790:10 • no_leading_underscores_for_local_identifiers
+warning • The declaration 'build' isn't referenced • lib/features/admin/presentation/pages/admin_bonus_page.dart:799:10 • unused_element
+  error • Local variable '_buildPromotorTab' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_bonus_page.dart:817:17 • referenced_before_declaration
+  error • Local variable '_buildSatorTab' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_bonus_page.dart:818:17 • referenced_before_declaration
+  error • Local variable '_buildSpvTab' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_bonus_page.dart:819:17 • referenced_before_declaration
+   info • The local variable '_buildPromotorTab' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:825:10 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_buildSatorTab' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:839:10 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_buildSpvTab' starts with an underscore • lib/features/admin/presentation/pages/admin_bonus_page.dart:852:10 • no_leading_underscores_for_local_identifiers
+  error • 'class' can't be used as an identifier because it's a keyword • lib/features/admin/presentation/pages/admin_bonus_page.dart:866:1 • expected_identifier_but_got_keyword
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_bonus_page.dart:866:1 • expected_token
+  error • Too many positional arguments: 0 expected, but 3 found • lib/features/admin/presentation/pages/admin_bonus_page.dart:866:1 • extra_positional_arguments_could_be_named
+  error • Undefined name 'class' • lib/features/admin/presentation/pages/admin_bonus_page.dart:866:1 • undefined_identifier
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_bonus_page.dart:866:7 • expected_token
+  error • Undefined name '_PointRangeEdit' • lib/features/admin/presentation/pages/admin_bonus_page.dart:866:7 • undefined_identifier
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_bonus_page.dart:866:23 • expected_token
+  error • The method '_PointRangeEdit' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:867:3 • undefined_method
+   info • 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required • lib/features/admin/presentation/pages/admin_bonus_page.dart:868:5 • deprecated_member_use
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_bonus_page.dart:868:14 • expected_token
+  error • The getter 'dataSource' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:868:19 • undefined_getter
+   info • 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required • lib/features/admin/presentation/pages/admin_bonus_page.dart:869:5 • deprecated_member_use
+warning • Two elements in a set literal shouldn't be equal • lib/features/admin/presentation/pages/admin_bonus_page.dart:869:5 • equal_elements_in_set
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_bonus_page.dart:869:14 • expected_token
+  error • The getter 'minC' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:869:19 • undefined_getter
+   info • 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required • lib/features/admin/presentation/pages/admin_bonus_page.dart:870:5 • deprecated_member_use
+warning • Two elements in a set literal shouldn't be equal • lib/features/admin/presentation/pages/admin_bonus_page.dart:870:5 • equal_elements_in_set
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_bonus_page.dart:870:14 • expected_token
+  error • The getter 'maxC' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:870:19 • undefined_getter
+   info • 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required • lib/features/admin/presentation/pages/admin_bonus_page.dart:871:5 • deprecated_member_use
+warning • Two elements in a set literal shouldn't be equal • lib/features/admin/presentation/pages/admin_bonus_page.dart:871:5 • equal_elements_in_set
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_bonus_page.dart:871:14 • expected_token
+  error • The getter 'pointsC' isn't defined for the type '_AdminBonusPageState' • lib/features/admin/presentation/pages/admin_bonus_page.dart:871:19 • undefined_getter
+  error • Expected to find '}' • lib/features/admin/presentation/pages/admin_bonus_page.dart:872:5 • expected_token
+  error • Expected to find ';' • lib/features/admin/presentation/pages/admin_bonus_page.dart:884:1 • expected_token
+  error • Expected to find ')' • lib/features/admin/presentation/pages/admin_bonus_page.dart:885:1 • expected_token
+  error • Expected to find ']' • lib/features/admin/presentation/pages/admin_bonus_page.dart:885:1 • expected_token
+  error • Expected to find '}' • lib/features/admin/presentation/pages/admin_bonus_page.dart:885:1 • expected_token
+   info • The private field _isUploading could be 'final' • lib/features/admin/presentation/pages/admin_chat_management_page.dart:27:8 • prefer_final_fields
+warning • The value of the field '_cloudinaryCloudName' isn't used • lib/features/admin/presentation/pages/admin_chat_management_page.dart:35:23 • unused_field
+warning • The value of the field '_cloudinaryUploadPreset' isn't used • lib/features/admin/presentation/pages/admin_chat_management_page.dart:36:23 • unused_field
+  error • Undefined name 'Supabase' • lib/features/admin/presentation/pages/admin_chat_management_page.dart:130:23 • undefined_identifier
+  error • Undefined name 'Supabase' • lib/features/admin/presentation/pages/admin_chat_management_page.dart:151:15 • undefined_identifier
+  error • Undefined class 'File' • lib/features/admin/presentation/pages/admin_chat_management_page.dart:169:53 • undefined_class
+warning • The value of the field '_periodIds' isn't used • lib/features/admin/presentation/pages/admin_fokus_page.dart:27:26 • unused_field
+   info • The private field _products could be 'final' • lib/features/admin/presentation/pages/admin_fokus_page.dart:28:30 • prefer_final_fields
+  error • The method '_loadProducts' isn't defined for the type '_AdminFokusPageState' • lib/features/admin/presentation/pages/admin_fokus_page.dart:41:13 • undefined_method
+  error • The method '_loadPeriods' isn't defined for the type '_AdminFokusPageState' • lib/features/admin/presentation/pages/admin_fokus_page.dart:42:13 • undefined_method
+  error • The method '_ensureSelectedPeriod' isn't defined for the type '_AdminFokusPageState' • lib/features/admin/presentation/pages/admin_fokus_page.dart:43:13 • undefined_method
+  error • The method '_loadFokusProducts' isn't defined for the type '_AdminFokusPageState' • lib/features/admin/presentation/pages/admin_fokus_page.dart:44:13 • undefined_method
+  error • The method '_ensureSelectedPeriod' isn't defined for the type '_AdminFokusPageState' • lib/features/admin/presentation/pages/admin_fokus_page.dart:316:41 • undefined_method
+  error • The method '_loadFokusProducts' isn't defined for the type '_AdminFokusPageState' • lib/features/admin/presentation/pages/admin_fokus_page.dart:317:41 • undefined_method
+  error • Undefined name '_showAddOverrideDialog' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:167:72 • undefined_identifier
+  error • The method '_showEditDefaultDialog' isn't defined for the type '_AdminMinStockPageState' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:239:95 • undefined_method
+  error • The named parameter 'child' is required, but there's no corresponding argument • lib/features/admin/presentation/pages/admin_min_stock_page.dart:445:13 • missing_required_argument
+  error • Expected to find '}' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:461:14 • expected_token
+  error • Expected to find ')' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:461:15 • expected_token
+  error • Expected to find ']' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:461:15 • expected_token
+  error • Expected a class member • lib/features/admin/presentation/pages/admin_min_stock_page.dart:464:11 • expected_class_member
+   info • Missing type annotation • lib/features/admin/presentation/pages/admin_min_stock_page.dart:464:18 • strict_top_level_inference
+   info • The variable name 'AlertDialog' isn't a lowerCamelCase identifier • lib/features/admin/presentation/pages/admin_min_stock_page.dart:464:18 • non_constant_identifier_names
+  error • 'AlertDialog' must have a method body because '_AdminMinStockPageState' isn't abstract • lib/features/admin/presentation/pages/admin_min_stock_page.dart:464:18 • concrete_class_with_abstract_member
+   info • Missing type annotation • lib/features/admin/presentation/pages/admin_min_stock_page.dart:465:13 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/admin/presentation/pages/admin_min_stock_page.dart:465:18 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/admin/presentation/pages/admin_min_stock_page.dart:465:18 • obsolete_colon_for_default_value
+   info • Missing type annotation • lib/features/admin/presentation/pages/admin_min_stock_page.dart:466:13 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/admin/presentation/pages/admin_min_stock_page.dart:466:20 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/admin/presentation/pages/admin_min_stock_page.dart:466:20 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/features/admin/presentation/pages/admin_min_stock_page.dart:466:22 • non_constant_default_value
+  error • Undefined name 'selectedProductId' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:471:35 • undefined_identifier
+  error • Undefined name 'products' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:473:28 • undefined_identifier
+  error • The method 'setDialogState' isn't defined for the type '_AdminMinStockPageState' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:478:23 • undefined_method
+  error • Undefined name 'selectedProductId' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:478:44 • undefined_identifier
+  error • The method 'setDialogState' isn't defined for the type '_AdminMinStockPageState' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:481:25 • undefined_method
+  error • Undefined name 'variants' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:481:46 • undefined_identifier
+  error • Undefined name 'selectedVariantId' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:487:35 • undefined_identifier
+  error • Undefined name 'variants' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:491:26 • undefined_identifier
+  error • The method 'setDialogState' isn't defined for the type '_AdminMinStockPageState' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:496:39 • undefined_method
+  error • Undefined name 'selectedVariantId' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:496:60 • undefined_identifier
+  error • Undefined name 'minQtyC' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:499:41 • undefined_identifier
+   info • Missing type annotation • lib/features/admin/presentation/pages/admin_min_stock_page.dart:503:13 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/admin/presentation/pages/admin_min_stock_page.dart:503:20 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/admin/presentation/pages/admin_min_stock_page.dart:503:20 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/features/admin/presentation/pages/admin_min_stock_page.dart:503:22 • non_constant_default_value
+  error • Undefined name 'ctx' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:504:57 • undefined_identifier
+  error • Undefined name 'selectedProductId' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:507:23 • undefined_identifier
+  error • Undefined name 'selectedProductId' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:511:37 • undefined_identifier
+  error • Undefined name 'selectedVariantId' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:512:37 • undefined_identifier
+  error • Undefined name 'minQtyC' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:513:47 • undefined_identifier
+  error • Undefined name 'ctx' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:515:26 • undefined_identifier
+  error • Undefined name 'ctx' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:516:35 • undefined_identifier
+  error • Undefined name 'ctx' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:519:26 • undefined_identifier
+  error • Undefined name 'ctx' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:520:42 • undefined_identifier
+  error • Expected a method, getter, setter or operator declaration • lib/features/admin/presentation/pages/admin_min_stock_page.dart:529:10 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/admin/presentation/pages/admin_min_stock_page.dart:530:7 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/admin/presentation/pages/admin_min_stock_page.dart:530:8 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/admin/presentation/pages/admin_min_stock_page.dart:531:5 • expected_executable
+  error • Unexpected text ';' • lib/features/admin/presentation/pages/admin_min_stock_page.dart:531:6 • unexpected_token
+  error • Expected a method, getter, setter or operator declaration • lib/features/admin/presentation/pages/admin_min_stock_page.dart:532:3 • expected_executable
+  error • The function '_loadData' isn't defined • lib/features/admin/presentation/pages/admin_min_stock_page.dart:536:5 • undefined_function
+  error • The function '_loadOverrides' isn't defined • lib/features/admin/presentation/pages/admin_min_stock_page.dart:541:5 • undefined_function
+  error • Expected a method, getter, setter or operator declaration • lib/features/admin/presentation/pages/admin_min_stock_page.dart:543:1 • expected_executable
+warning • The value of the field '_products' isn't used • lib/features/admin/presentation/pages/admin_products_page.dart:75:30 • unused_field
+warning • The value of the field '_searchQuery' isn't used • lib/features/admin/presentation/pages/admin_products_page.dart:79:10 • unused_field
+  error • Undefined name '_filteredProducts' • lib/features/admin/presentation/pages/admin_products_page.dart:204:19 • undefined_identifier
+  error • Undefined name '_filteredProducts' • lib/features/admin/presentation/pages/admin_products_page.dart:216:18 • undefined_identifier
+  error • Undefined name '_filteredProducts' • lib/features/admin/presentation/pages/admin_products_page.dart:218:25 • undefined_identifier
+  error • Missing concrete implementation of 'State.build' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:14:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_groups' isn't used • lib/features/admin/presentation/pages/admin_store_groups_page.dart:16:30 • unused_field
+warning • The value of the field '_isLoading' isn't used • lib/features/admin/presentation/pages/admin_store_groups_page.dart:17:8 • unused_field
+  error • The method '_showErrorDialog' isn't defined for the type '_AdminStoreGroupsPageState' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:58:9 • undefined_method
+warning • The declaration '_createGroup' isn't referenced • lib/features/admin/presentation/pages/admin_store_groups_page.dart:63:16 • unused_element
+warning • The declaration '_manageStores' isn't referenced • lib/features/admin/presentation/pages/admin_store_groups_page.dart:141:8 • unused_element
+  error • Undefined name '_searchQuery' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:179:52 • undefined_identifier
+  error • Undefined name 'filteredStores' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:185:28 • undefined_identifier
+  error • Undefined name 'filteredStores' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:187:33 • undefined_identifier
+  error • Undefined name '_selected' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:188:38 • undefined_identifier
+  error • The getter 'initialSelected' isn't defined for the type '_ManageStoresDialog' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:189:78 • undefined_getter
+  error • Undefined name '_selected' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:198:33 • undefined_identifier
+  error • Undefined name '_selected' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:200:33 • undefined_identifier
+  error • Undefined name '_selected' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:219:51 • undefined_identifier
+  error • Undefined name '_selected' • lib/features/admin/presentation/pages/admin_store_groups_page.dart:220:34 • undefined_identifier
+warning • The value of the field '_stores' isn't used • lib/features/admin/presentation/pages/admin_stores_page.dart:16:30 • unused_field
+warning • The value of the field '_searchQuery' isn't used • lib/features/admin/presentation/pages/admin_stores_page.dart:18:10 • unused_field
+  error • Undefined name '_filteredStores' • lib/features/admin/presentation/pages/admin_stores_page.dart:109:19 • undefined_identifier
+  error • Undefined name '_filteredStores' • lib/features/admin/presentation/pages/admin_stores_page.dart:135:17 • undefined_identifier
+  error • Undefined name '_filteredStores' • lib/features/admin/presentation/pages/admin_stores_page.dart:170:18 • undefined_identifier
+  error • Undefined name '_filteredStores' • lib/features/admin/presentation/pages/admin_stores_page.dart:172:23 • undefined_identifier
+warning • The value of the field '_users' isn't used • lib/features/admin/presentation/pages/admin_targets_page.dart:49:30 • unused_field
+   info • The private field _targets could be 'final' • lib/features/admin/presentation/pages/admin_targets_page.dart:50:30 • prefer_final_fields
+warning • The value of the field '_targets' isn't used • lib/features/admin/presentation/pages/admin_targets_page.dart:50:30 • unused_field
+   info • The private field _fokusBundles could be 'final' • lib/features/admin/presentation/pages/admin_targets_page.dart:51:30 • prefer_final_fields
+   info • The private field _fokusTargets could be 'final' • lib/features/admin/presentation/pages/admin_targets_page.dart:52:30 • prefer_final_fields
+warning • The value of the field '_fokusTargets' isn't used • lib/features/admin/presentation/pages/admin_targets_page.dart:52:30 • unused_field
+   info • The private field _roleFilter could be 'final' • lib/features/admin/presentation/pages/admin_targets_page.dart:55:10 • prefer_final_fields
+warning • The value of the field '_roleFilter' isn't used • lib/features/admin/presentation/pages/admin_targets_page.dart:55:10 • unused_field
+  error • The method '_loadTargetsAndFokus' isn't defined for the type '_AdminTargetsPageState' • lib/features/admin/presentation/pages/admin_targets_page.dart:88:15 • undefined_method
+  error • Undefined name '_filteredUsers' • lib/features/admin/presentation/pages/admin_targets_page.dart:144:18 • undefined_identifier
+  error • Undefined name '_filteredUsers' • lib/features/admin/presentation/pages/admin_targets_page.dart:146:22 • undefined_identifier
+  error • The method '_getTargetForUser' isn't defined for the type '_AdminTargetsPageState' • lib/features/admin/presentation/pages/admin_targets_page.dart:147:24 • undefined_method
+  error • The method '_getRoleColor' isn't defined for the type '_AdminTargetsPageState' • lib/features/admin/presentation/pages/admin_targets_page.dart:153:32 • undefined_method
+  error • The method '_getRoleColor' isn't defined for the type '_AdminTargetsPageState' • lib/features/admin/presentation/pages/admin_targets_page.dart:156:41 • undefined_method
+  error • The method '_getRoleColor' isn't defined for the type '_AdminTargetsPageState' • lib/features/admin/presentation/pages/admin_targets_page.dart:165:28 • undefined_method
+  error • The method '_getRoleColor' isn't defined for the type '_AdminTargetsPageState' • lib/features/admin/presentation/pages/admin_targets_page.dart:170:59 • undefined_method
+  error • The method '_getFokusTargetQty' isn't defined for the type '_AdminTargetsPageState' • lib/features/admin/presentation/pages/admin_targets_page.dart:225:28 • undefined_method
+warning • The declaration '_getEndDate' isn't referenced • lib/features/admin/presentation/pages/admin_targets_page.dart:504:10 • unused_element
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:508:7 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:508:7 • extra_positional_arguments
+  error • Local variable 'rows' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:509:13 • referenced_before_declaration
+  error • Expected to find ')' • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:511:12 • expected_token
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:557:7 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:557:7 • extra_positional_arguments
+  error • Local variable 'rows' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:558:13 • referenced_before_declaration
+  error • Expected to find ')' • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:560:12 • expected_token
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:606:7 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:606:7 • extra_positional_arguments
+  error • Local variable 'rows' can't be referenced before it is declared • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:607:13 • referenced_before_declaration
+  error • Expected to find ')' • lib/features/admin/presentation/pages/admin_targets_page_v2.dart:609:12 • expected_token
+warning • The value of the field '_users' isn't used • lib/features/admin/presentation/pages/admin_users_page.dart:16:30 • unused_field
+warning • The value of the field '_searchQuery' isn't used • lib/features/admin/presentation/pages/admin_users_page.dart:18:10 • unused_field
+  error • Undefined name '_filteredUsers' • lib/features/admin/presentation/pages/admin_users_page.dart:107:19 • undefined_identifier
+  error • Undefined name '_filteredUsers' • lib/features/admin/presentation/pages/admin_users_page.dart:133:17 • undefined_identifier
+  error • Undefined name '_filteredUsers' • lib/features/admin/presentation/pages/admin_users_page.dart:163:18 • undefined_identifier
+  error • Undefined name '_filteredUsers' • lib/features/admin/presentation/pages/admin_users_page.dart:165:22 • undefined_identifier
+  error • The named parameter 'child' is required, but there's no corresponding argument • lib/features/admin/presentation/pages/admin_users_page.dart:509:15 • missing_required_argument
+  error • Expected to find '}' • lib/features/admin/presentation/pages/admin_users_page.dart:525:103 • expected_token
+  error • Unterminated string literal • lib/features/admin/presentation/pages/admin_users_page.dart:527:19 • unterminated_string_literal
+  error • Expected to find ',' • lib/features/admin/presentation/pages/admin_users_page.dart:529:19 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/admin/presentation/pages/admin_users_page.dart:529:19 • extra_positional_arguments
+  error • Expected to find ')' • lib/features/admin/presentation/pages/admin_users_page.dart:529:57 • expected_token
+  error • Expected to find ';' • lib/features/admin/presentation/pages/admin_users_page.dart:637:17 • expected_token
+  error • Expected an identifier • lib/features/admin/presentation/pages/admin_users_page.dart:637:18 • missing_identifier
+  error • Unexpected text ';' • lib/features/admin/presentation/pages/admin_users_page.dart:637:18 • unexpected_token
+warning • The label 'child' isn't used • lib/features/admin/presentation/pages/admin_users_page.dart:638:17 • unused_label
+  error • Expected to find ';' • lib/features/admin/presentation/pages/admin_users_page.dart:638:162 • expected_token
+  error • Expected an identifier • lib/features/admin/presentation/pages/admin_users_page.dart:638:163 • missing_identifier
+  error • Unexpected text ';' • lib/features/admin/presentation/pages/admin_users_page.dart:638:163 • unexpected_token
+  error • Expected to find '}' • lib/features/admin/presentation/pages/admin_users_page.dart:639:15 • expected_token
+   info • The private field _weeklyTargets could be 'final' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:16:30 • prefer_final_fields
+   info • The private field _periods could be 'final' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:19:30 • prefer_final_fields
+  error • The method '_loadPeriods' isn't defined for the type '_AdminWeeklyTargetPageState' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:33:13 • undefined_method
+  error • The method '_loadWeeklyTargets' isn't defined for the type '_AdminWeeklyTargetPageState' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:34:13 • undefined_method
+  error • Undefined name '_totalPercentage' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:51:9 • undefined_identifier
+  error • The method '_daysInMonth' isn't defined for the type '_AdminWeeklyTargetPageState' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:95:20 • undefined_method
+  error • Undefined name '_totalPercentage' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:127:21 • undefined_identifier
+  error • Undefined name '_totalPercentage' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:130:27 • undefined_identifier
+  error • The method '_loadWeeklyTargets' isn't defined for the type '_AdminWeeklyTargetPageState' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:167:27 • undefined_method
+  error • Undefined name '_totalPercentage' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:249:42 • undefined_identifier
+  error • Undefined name '_totalPercentage' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:253:42 • undefined_identifier
+  error • Undefined name '_totalPercentage' • lib/features/admin/presentation/pages/admin_weekly_target_page.dart:256:35 • undefined_identifier
+  error • A value of type 'Iterable<Map<String, Object>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/allbrand/presentation/widgets/allbrand_report_detail_panel.dart:190:24 • invalid_assignment
+  error • Expected to find ';' • lib/features/allbrand/presentation/widgets/allbrand_report_detail_panel.dart:199:5 • expected_token
+  error • Expected to find ')' • lib/features/allbrand/presentation/widgets/allbrand_report_detail_panel.dart:200:3 • expected_token
+  error • Expected to find ';' • lib/features/chat/cubit/chat_list_cubit.dart:139:5 • expected_token
+  error • Expected to find ')' • lib/features/chat/cubit/chat_list_cubit.dart:141:7 • expected_token
+  error • The argument type 'Iterable<ChatRoom>' can't be assigned to the parameter type 'List<ChatRoom>'.  • lib/features/chat/cubit/chat_list_cubit.dart:141:46 • argument_type_not_assignable
+  error • The argument type 'Iterable<ChatRoom>' can't be assigned to the parameter type 'List<ChatRoom>?'.  • lib/features/chat/cubit/chat_list_cubit.dart:144:16 • argument_type_not_assignable
+   info • Unnecessary use of multiple underscores • lib/features/chat/presentation/pages/chat_room_page.dart:556:43 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/chat/presentation/pages/chat_room_page.dart:556:47 • unnecessary_underscores
+warning • The value of the field '_cloudinaryCloudName' isn't used • lib/features/chat/presentation/widgets/message_input.dart:32:23 • unused_field
+warning • The value of the field '_cloudinaryUploadPreset' isn't used • lib/features/chat/presentation/widgets/message_input.dart:33:23 • unused_field
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • lib/features/chat/presentation/widgets/message_input.dart:208:5 • missing_catch_or_finally
+  error • Undefined name 'request' • lib/features/chat/presentation/widgets/message_input.dart:222:30 • undefined_identifier
+  error • A value of type 'Map<String, Object?>' can't be returned from the method '_pickImage' because it has a return type of 'Future<void>' • lib/features/chat/presentation/widgets/message_input.dart:228:16 • return_of_invalid_type
+   info • Don't return 'null' from a method with a return type of 'void' • lib/features/chat/presentation/widgets/message_input.dart:235:9 • avoid_returning_null_for_void
+  error • 'catch' can't be used as an identifier because it's a keyword • lib/features/chat/presentation/widgets/message_input.dart:237:7 • expected_identifier_but_got_keyword
+  error • The method 'catch' isn't defined for the type '_MessageInputState' • lib/features/chat/presentation/widgets/message_input.dart:237:7 • undefined_method
+  error • Undefined name 'e' • lib/features/chat/presentation/widgets/message_input.dart:237:14 • undefined_identifier
+  error • Expected to find ';' • lib/features/chat/presentation/widgets/message_input.dart:237:15 • expected_token
+  error • Undefined name 'e' • lib/features/chat/presentation/widgets/message_input.dart:238:51 • undefined_identifier
+   info • Don't return 'null' from a method with a return type of 'void' • lib/features/chat/presentation/widgets/message_input.dart:239:7 • avoid_returning_null_for_void
+  error • Expected to find '}' • lib/features/chat/presentation/widgets/message_input.dart:243:1 • expected_token
+warning • The value of the field '_surface4' isn't used • lib/features/promotor/presentation/pages/bonus_detail_page.dart:24:16 • unused_field
+warning • The value of the field '_blue' isn't used • lib/features/promotor/presentation/pages/bonus_detail_page.dart:34:16 • unused_field
+  error • The method '_toNum' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:181:31 • undefined_method
+  error • The method '_toNum' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:182:32 • undefined_method
+  error • The method '_buildTransactionTimeline' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:260:25 • undefined_method
+  error • The method '_iconBox' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:279:11 • undefined_method
+  error • The method '_iconBox' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:306:11 • undefined_method
+  error • Undefined name '_showBonusRulesDialog' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:306:53 • undefined_identifier
+  error • The method '_monthArrow' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:323:11 • undefined_method
+  error • The method '_monthArrow' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:375:11 • undefined_method
+  error • The method '_toNum' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:443:24 • undefined_method
+  error • The method '_toNum' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:447:26 • undefined_method
+  error • The method '_currencyShort' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:464:16 • undefined_method
+  error • The method '_currencyShort' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:465:16 • undefined_method
+  error • The method '_currencyShort' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:533:31 • undefined_method
+  error • Undefined name '_showSetPersonalTargetDialog' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:598:26 • undefined_identifier
+  error • The method '_heroStat' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:630:15 • undefined_method
+  error • The method '_heroDivider' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:631:15 • undefined_method
+  error • The method '_heroStat' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:632:15 • undefined_method
+  error • The method '_currencyShort' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:634:17 • undefined_method
+  error • The method '_heroDivider' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:638:15 • undefined_method
+  error • The method '_heroStat' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:639:15 • undefined_method
+  error • The method '_buildTopProducts' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:648:22 • undefined_method
+  error • The method '_sectionLabel' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:654:11 • undefined_method
+  error • The method '_toNum' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:682:38 • undefined_method
+  error • The method '_currencyShort' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:766:35 • undefined_method
+  error • The method '_toNum' isn't defined for the type '_BonusDetailPageState' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:767:37 • undefined_method
+  error • Undefined name 'keys' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:820:12 • undefined_identifier
+  error • Undefined name 'grouped' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:824:18 • undefined_identifier
+  error • Expected to find ';' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:830:5 • expected_token
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:831:3 • expected_token
+  error • Expected to find ',' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:833:3 • expected_token
+  error • Function expressions can't be named • lib/features/promotor/presentation/pages/bonus_detail_page.dart:833:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 4 found • lib/features/promotor/presentation/pages/bonus_detail_page.dart:833:23 • extra_positional_arguments_could_be_named
+  error • Expected to find ',' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:851:3 • expected_token
+  error • Function expressions can't be named • lib/features/promotor/presentation/pages/bonus_detail_page.dart:851:10 • named_function_expression
+  error • Expected to find ',' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:866:3 • expected_token
+  error • Function expressions can't be named • lib/features/promotor/presentation/pages/bonus_detail_page.dart:866:10 • named_function_expression
+  error • Local variable '_toNum' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:903:32 • referenced_before_declaration
+  error • Expected to find ',' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:928:3 • expected_token
+  error • Function expressions can't be named • lib/features/promotor/presentation/pages/bonus_detail_page.dart:928:10 • named_function_expression
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:928:77 • expected_token
+  error • Expected to find ']' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:928:77 • expected_token
+warning • Dead code • lib/features/promotor/presentation/pages/bonus_detail_page.dart:930:3 • dead_code
+   info • The local variable '_iconBox' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:930:10 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_iconBox' isn't referenced • lib/features/promotor/presentation/pages/bonus_detail_page.dart:930:10 • unused_element
+   info • The local variable '_monthArrow' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:946:10 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_monthArrow' isn't referenced • lib/features/promotor/presentation/pages/bonus_detail_page.dart:946:10 • unused_element
+   info • The local variable '_currencyShort' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:966:10 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_currencyShort' isn't referenced • lib/features/promotor/presentation/pages/bonus_detail_page.dart:966:10 • unused_element
+   info • The local variable '_showSetPersonalTargetDialog' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:970:8 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_showSetPersonalTargetDialog' isn't referenced • lib/features/promotor/presentation/pages/bonus_detail_page.dart:970:8 • unused_element
+  error • Local variable '_buildQuickAmountChip' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1049:17 • referenced_before_declaration
+  error • Local variable '_buildQuickAmountChip' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1050:17 • referenced_before_declaration
+  error • Local variable '_buildQuickAmountChip' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1051:17 • referenced_before_declaration
+  error • Local variable '_buildQuickAmountChip' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1052:17 • referenced_before_declaration
+  error • Local variable '_savePersonalBonusTarget' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1070:21 • referenced_before_declaration
+   info • The local variable '_buildQuickAmountChip' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1090:10 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_savePersonalBonusTarget' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1102:16 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_toNum' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1132:7 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_showBonusRulesDialog' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1138:8 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_showBonusRulesDialog' isn't referenced • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1138:8 • unused_element
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1164:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1165:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1166:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1167:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1168:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1169:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1180:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1181:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1182:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1183:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1184:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1185:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1196:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1197:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1198:15 • referenced_before_declaration
+  error • Local variable '_buildRuleItem' can't be referenced before it is declared • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1199:15 • referenced_before_declaration
+   info • The local variable '_buildRuleItem' starts with an underscore • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1216:10 • no_leading_underscores_for_local_identifiers
+  error • Expected to find '}' • lib/features/promotor/presentation/pages/bonus_detail_page.dart:1236:1 • expected_token
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • lib/features/promotor/presentation/pages/imei_normalization_page.dart:164:5 • missing_catch_or_finally
+  error • Undefined name 'selectedItems' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:206:58 • undefined_identifier
+  error • Undefined name 'parsed' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:207:9 • undefined_identifier
+  error • A value of type 'String' can't be returned from the method '_submitSelectedImeis' because it has a return type of 'Future<void>' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:207:32 • return_of_invalid_type
+  error • Undefined name 'value' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:207:32 • undefined_identifier
+  error • Undefined name 'parsed' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:208:19 • undefined_identifier
+  error • A value of type 'String' can't be returned from the method '_submitSelectedImeis' because it has a return type of 'Future<void>' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:209:12 • return_of_invalid_type
+  error • Undefined name 'withTime' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:210:7 • undefined_identifier
+  error • Expected to find '}' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:212:3 • expected_token
+  error • The method '_formatDate' isn't defined for the type '_ImeiNormalizationPageState' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:483:63 • undefined_method
+  error • Undefined name '_copySelectedReadyImeis' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:506:25 • undefined_identifier
+  error • Undefined name '_markSelectedAsScanned' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:513:25 • undefined_identifier
+  error • The method '_productName' isn't defined for the type '_ImeiNormalizationPageState' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:542:21 • undefined_method
+  error • The method '_openComments' isn't defined for the type '_ImeiNormalizationPageState' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:550:38 • undefined_method
+  error • The method '_openComments' isn't defined for the type '_ImeiNormalizationPageState' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:576:32 • undefined_method
+  error • The method '_productName' isn't defined for the type '_ImeiNormalizationPageState' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:578:21 • undefined_method
+  error • The method '_formatDate' isn't defined for the type '_ImeiNormalizationPageState' • lib/features/promotor/presentation/pages/imei_normalization_page.dart:582:56 • undefined_method
+   info • The private field _isSaving could be 'final' • lib/features/promotor/presentation/pages/jadwal_bulanan_page_new.dart:454:8 • prefer_final_fields
+  error • Undefined name 'sortedEntries' • lib/features/promotor/presentation/pages/jadwal_bulanan_page_new.dart:607:21 • undefined_identifier
+  error • Expected to find '}' • lib/features/promotor/presentation/pages/jadwal_bulanan_page_new.dart:615:3 • expected_token
+  error • 'finally' can't be used as an identifier because it's a keyword • lib/features/promotor/presentation/pages/laporan_allbrand_input_page.dart:328:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/promotor/presentation/pages/laporan_allbrand_input_page.dart:328:7 • missing_statement
+  error • Expected to find ';' • lib/features/promotor/presentation/pages/laporan_allbrand_input_page.dart:328:7 • expected_token
+  error • Undefined name 'finally' • lib/features/promotor/presentation/pages/laporan_allbrand_input_page.dart:328:7 • undefined_identifier
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:110:28 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:111:15 • undefined_method
+  error • The method '_sumBrandUnits' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:112:15 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:113:33 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:114:15 • undefined_method
+  error • The method '_sumBrandUnits' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:115:15 • undefined_method
+  error • The method '_sumLeasingUnits' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:130:28 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:132:15 • undefined_method
+  error • The method '_jsonMapOrEmpty' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:201:18 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:202:12 • undefined_method
+  error • The method '_jsonMapOrEmpty' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:206:18 • undefined_method
+  error • The method '_jsonMapOrEmpty' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:209:21 • undefined_method
+  error • A value of type 'double' can't be assigned to a variable of type 'int' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:210:16 • invalid_assignment
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:210:16 • undefined_method
+  error • The method '_jsonMapOrEmpty' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:216:18 • undefined_method
+  error • The method '_jsonMapOrEmpty' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:220:21 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:222:11 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:223:11 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:224:11 • undefined_method
+  error • The method '_asInt' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:225:11 • undefined_method
+  error • Undefined name '_openInput' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:315:20 • undefined_identifier
+  error • The method '_openDetail' isn't defined for the type '_LaporanAllbrandPageState' • lib/features/promotor/presentation/pages/laporan_allbrand_page.dart:531:20 • undefined_method
+  error • Expected to find ';' • lib/features/promotor/presentation/pages/leaderboard_page.dart:549:5 • expected_token
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/leaderboard_page.dart:550:9 • expected_token
+  error • Expected to find ',' • lib/features/promotor/presentation/pages/leaderboard_page.dart:821:11 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/promotor/presentation/pages/leaderboard_page.dart:821:11 • extra_positional_arguments
+  error • Local variable 'mappedItems' can't be referenced before it is declared • lib/features/promotor/presentation/pages/leaderboard_page.dart:829:28 • referenced_before_declaration
+  error • Local variable 'mappedItems' can't be referenced before it is declared • lib/features/promotor/presentation/pages/leaderboard_page.dart:833:28 • referenced_before_declaration
+  error • Local variable 'mappedItems' can't be referenced before it is declared • lib/features/promotor/presentation/pages/leaderboard_page.dart:834:30 • referenced_before_declaration
+  error • Local variable 'mappedItems' can't be referenced before it is declared • lib/features/promotor/presentation/pages/leaderboard_page.dart:838:22 • referenced_before_declaration
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/leaderboard_page.dart:845:13 • expected_token
+  error • Expected to find ';' • lib/features/promotor/presentation/pages/leaderboard_page.dart:1692:5 • expected_token
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/leaderboard_page.dart:1694:7 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/promotor/presentation/pages/leaderboard_page.dart:1696:23 • invalid_assignment
+  error • The argument type 'Iterable<Map<String, dynamic>>' can't be assigned to the parameter type 'List<Map<String, dynamic>>'.  • lib/features/promotor/presentation/pages/leaderboard_page.dart:1700:35 • argument_type_not_assignable
+  error • Expected to find ',' • lib/features/promotor/presentation/pages/rekomendasi_order_page.dart:237:5 • expected_token
+  error • Local variable 'items' can't be referenced before it is declared • lib/features/promotor/presentation/pages/rekomendasi_order_page.dart:237:5 • referenced_before_declaration
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/promotor/presentation/pages/rekomendasi_order_page.dart:237:5 • extra_positional_arguments
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/rekomendasi_order_page.dart:244:7 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the function '_recommendedItems' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/promotor/presentation/pages/rekomendasi_order_page.dart:245:12 • return_of_invalid_type
+warning • Duplicate import • lib/features/promotor/presentation/pages/stock_validation_page.dart:7:8 • duplicate_import
+  error • Missing concrete implementation of 'State.build' • lib/features/promotor/presentation/pages/stok_toko_page.dart:25:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_isLoading' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:31:8 • unused_field
+warning • The value of the field '_isSubmittingValidation' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:32:8 • unused_field
+warning • The value of the field '_hasValidationForSelectedDate' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:34:8 • unused_field
+warning • The value of the field '_searchQuery' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:36:10 • unused_field
+warning • The value of the field '_storeGrade' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:40:11 • unused_field
+warning • The value of the field '_pendingChipItems' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:47:30 • unused_field
+warning • The value of the field '_chipRequests' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:48:30 • unused_field
+warning • The value of the field '_actionMessage' isn't used • lib/features/promotor/presentation/pages/stok_toko_page.dart:51:11 • unused_field
+warning • The declaration '_buildFriendlyValidationError' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:69:10 • unused_element
+warning • The declaration '_selectDate' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:209:16 • unused_element
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/promotor/presentation/pages/stok_toko_page.dart:544:20 • invalid_assignment
+  error • Expected to find ';' • lib/features/promotor/presentation/pages/stok_toko_page.dart:557:5 • expected_token
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/stok_toko_page.dart:558:5 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/promotor/presentation/pages/stok_toko_page.dart:597:22 • invalid_assignment
+  error • Expected to find ';' • lib/features/promotor/presentation/pages/stok_toko_page.dart:610:5 • expected_token
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/stok_toko_page.dart:611:3 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/promotor/presentation/pages/stok_toko_page.dart:685:26 • invalid_assignment
+  error • Expected to find ';' • lib/features/promotor/presentation/pages/stok_toko_page.dart:704:5 • expected_token
+  error • Expected to find ')' • lib/features/promotor/presentation/pages/stok_toko_page.dart:705:3 • expected_token
+warning • The declaration '_submitValidation' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:707:16 • unused_element
+warning • The declaration '_reportStockMovedOutBatch' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:764:16 • unused_element
+warning • The declaration '_buildValidatedSection' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:802:10 • unused_element
+warning • The declaration '_buildInlineStatusChip' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:934:10 • unused_element
+warning • The declaration '_buildChipSummarySection' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:956:10 • unused_element
+warning • The declaration '_buildSoldChipHistorySection' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1030:10 • unused_element
+warning • The declaration '_buildSearchBar' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1125:10 • unused_element
+warning • The declaration '_buildFilterBar' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1163:10 • unused_element
+  error • Undefined name '_filteredList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1248:9 • undefined_identifier
+  error • Undefined name '_filteredList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1251:26 • undefined_identifier
+warning • The declaration '_buildSummaryBar' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1266:10 • unused_element
+  error • Undefined name '_groupedList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1267:27 • undefined_identifier
+  error • Undefined name '_filteredList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1268:27 • undefined_identifier
+  error • Undefined name '_filteredList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1269:24 • undefined_identifier
+  error • Undefined name '_filteredList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1273:27 • undefined_identifier
+  error • Undefined name '_filteredList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1277:24 • undefined_identifier
+  error • Undefined name '_filteredList' • lib/features/promotor/presentation/pages/stok_toko_page.dart:1281:26 • undefined_identifier
+warning • The declaration '_buildStockSourceBanner' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1363:10 • unused_element
+warning • The declaration '_buildGroupCard' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1495:10 • unused_element
+warning • The declaration '_buildOutgoingTransfersSection' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1639:10 • unused_element
+warning • The declaration '_submitSoldChipRequest' isn't referenced • lib/features/promotor/presentation/pages/stok_toko_page.dart:1721:16 • unused_element
+warning • The value of the local variable 'targetOmzet' isn't used • lib/features/promotor/presentation/pages/target_detail_page.dart:277:11 • unused_local_variable
+warning • The value of the local variable 'targetFokus' isn't used • lib/features/promotor/presentation/pages/target_detail_page.dart:282:11 • unused_local_variable
+warning • The value of the local variable 'ringOffset' isn't used • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:826:11 • unused_local_variable
+warning • The declaration '_buildPromotorHeaderV2' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:1345:10 • unused_element
+warning • The declaration '_buildDateRowV2' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:1477:10 • unused_element
+warning • The declaration '_buildTargetAllTypeCardV2' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:1511:10 • unused_element
+warning • The declaration '_buildMiniStatV2' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:2037:10 • unused_element
+warning • The declaration '_buildReferenceHeader' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:2753:10 • unused_element
+warning • The declaration '_buildAllTypeSummaryCard' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:2852:10 • unused_element
+warning • The declaration '_buildActivityStatusCard' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:3108:10 • unused_element
+warning • The declaration '_buildInsightGrid' isn't referenced • lib/features/promotor/presentation/tabs/promotor_home_tab_backup.dart:3165:10 • unused_element
+  error • Expected to find ';' • lib/features/sator/presentation/pages/allbrand_monitor_page.dart:149:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/allbrand_monitor_page.dart:151:7 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the function '_filteredCards' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/allbrand_monitor_page.dart:461:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/sator/presentation/pages/allbrand_monitor_page.dart:478:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/allbrand_monitor_page.dart:479:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/allbrand_monitor_page.dart:480:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/allbrand_monitor_page.dart:481:3 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the function '_filteredChipStocks' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/chip_approval_page.dart:181:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/sator/presentation/pages/chip_approval_page.dart:196:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/chip_approval_page.dart:197:3 • expected_token
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • lib/features/sator/presentation/pages/chip_approval_page.dart:264:5 • missing_catch_or_finally
+  error • Missing concrete implementation of 'State.build' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:15:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_isLoading' isn't used • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:21:8 • unused_field
+   info • The private field _isSubmitting could be 'final' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:22:8 • prefer_final_fields
+warning • The value of the field '_isSubmitting' isn't used • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:22:8 • unused_field
+   info • The private field _filter could be 'final' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:23:10 • prefer_final_fields
+warning • The value of the field '_filter' isn't used • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:23:10 • unused_field
+  error • A value of type 'List<dynamic>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:93:18 • invalid_assignment
+  error • Undefined name '_normalizeItemStatus' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:94:18 • undefined_identifier
+  error • Undefined name 'grouped' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:106:7 • undefined_identifier
+  error • Undefined name 'key' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:106:27 • undefined_identifier
+  error • Undefined name 'item' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:106:46 • undefined_identifier
+  error • Undefined name 'grouped' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:108:12 • undefined_identifier
+warning • The declaration '_copySelectedImeis' isn't referenced • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:160:16 • unused_element
+  error • Undefined name '_filteredItems' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:161:22 • undefined_identifier
+  error • Undefined name 'groupedKeys' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:197:9 • undefined_identifier
+  error • A value of type 'Center' can't be returned from the method '_copySelectedImeis' because it has a return type of 'Future<void>' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:198:14 • return_of_invalid_type
+  error • A value of type 'RefreshIndicator' can't be returned from the method '_copySelectedImeis' because it has a return type of 'Future<void>' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:201:12 • return_of_invalid_type
+  error • Undefined name 'groupedKeys' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:205:19 • undefined_identifier
+  error • The method '_openComments' isn't defined for the type '_ImeiNormalisasiPageState' • lib/features/sator/presentation/pages/imei_normalisasi_page.dart:262:9 • undefined_method
+warning • The value of the field '_specialRewards' isn't used • lib/features/sator/presentation/pages/kpi_bonus_page.dart:21:30 • unused_field
+warning • The value of the field '_rewards' isn't used • lib/features/sator/presentation/pages/kpi_bonus_page.dart:22:30 • unused_field
+   info • The private field _showKpiDetail could be 'final' • lib/features/sator/presentation/pages/kpi_bonus_page.dart:26:8 • prefer_final_fields
+warning • The value of the field '_showKpiDetail' isn't used • lib/features/sator/presentation/pages/kpi_bonus_page.dart:26:8 • unused_field
+warning • The declaration '_buildKpiCalculationDetail' isn't referenced • lib/features/sator/presentation/pages/kpi_bonus_page.dart:484:10 • unused_element
+warning • The declaration '_buildKpiDetailRow' isn't referenced • lib/features/sator/presentation/pages/kpi_bonus_page.dart:589:10 • unused_element
+warning • The declaration '_buildKpiReason' isn't referenced • lib/features/sator/presentation/pages/kpi_bonus_page.dart:602:10 • unused_element
+warning • The declaration '_buildKpiFormulaNote' isn't referenced • lib/features/sator/presentation/pages/kpi_bonus_page.dart:631:10 • unused_element
+warning • The value of the local variable 'potentialBonus' isn't used • lib/features/sator/presentation/pages/kpi_bonus_page.dart:782:11 • unused_local_variable
+warning • The value of the local variable 'specialBonus' isn't used • lib/features/sator/presentation/pages/kpi_bonus_page.dart:793:11 • unused_local_variable
+  error • Expected to find ';' • lib/features/sator/presentation/pages/leaderboard/sator_leaderboard_page.dart:488:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/leaderboard/sator_leaderboard_page.dart:489:5 • expected_token
+   info • Unnecessary use of 'toList' in a spread • lib/features/sator/presentation/pages/leaderboard/sator_leaderboard_page.dart:911:30 • unnecessary_to_list_in_spreads
+   info • Unnecessary use of 'toList' in a spread • lib/features/sator/presentation/pages/leaderboard/sator_leaderboard_page.dart:918:14 • unnecessary_to_list_in_spreads
+   info • Unnecessary use of multiple underscores • lib/features/sator/presentation/pages/leaderboard/sator_leaderboard_page.dart:1134:49 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/sator/presentation/pages/leaderboard/sator_leaderboard_page.dart:1134:53 • unnecessary_underscores
+  error • A value of type 'Iterable<Map<String, String>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sator_stock_management_page.dart:292:21 • invalid_assignment
+  error • Expected to find ',' • lib/features/sator/presentation/pages/sator_stock_management_page.dart:310:5 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/sator/presentation/pages/sator_stock_management_page.dart:310:5 • extra_positional_arguments
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sator_stock_management_page.dart:311:72 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/finalisasi_sellin_page.dart:92:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/finalisasi_sellin_page.dart:94:5 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/finalisasi_sellin_page.dart:95:24 • invalid_assignment
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:209:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:211:5 • expected_token
+  error • The argument type 'Iterable<Map<String, dynamic>>' can't be assigned to the parameter type 'List<Map<String, dynamic>>'.  • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:211:42 • argument_type_not_assignable
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the method '_applyValidatedCounts' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:282:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:297:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:298:3 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:366:15 • invalid_assignment
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:370:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:371:5 • expected_token
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1186:5 • missing_catch_or_finally
+  error • The method '_buildExportWidget' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1287:40 • undefined_method
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1337:5 • missing_catch_or_finally
+  error • The method '_buildExportWidget' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1341:55 • undefined_method
+  error • A value of type 'Container' can't be returned from the method '_downloadImage' because it has a return type of 'Future<void>' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1373:12 • return_of_invalid_type
+  error • Undefined name 'isGroupOrder' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1404:19 • undefined_identifier
+  error • Undefined name 'isGroupOrder' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1413:19 • undefined_identifier
+  error • Undefined name 'dateStr' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1420:21 • undefined_identifier
+  error • The method '_Th' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1439:19 • undefined_method
+  error • The values in a const list literal must be constants • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1439:19 • non_constant_list_element
+  error • The method '_Th' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1440:19 • undefined_method
+  error • The values in a const list literal must be constants • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1440:19 • non_constant_list_element
+  error • The method '_Th' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1441:19 • undefined_method
+  error • The values in a const list literal must be constants • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1441:19 • non_constant_list_element
+  error • The method '_Th' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1442:19 • undefined_method
+  error • The values in a const list literal must be constants • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1442:19 • non_constant_list_element
+  error • Undefined name 'items' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1445:18 • undefined_identifier
+  error • The method '_Td' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1451:21 • undefined_method
+  error • The method '_Td' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1452:21 • undefined_method
+  error • The method '_Td' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1453:21 • undefined_method
+  error • The method '_Td' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1454:21 • undefined_method
+  error • Undefined name 'formatter' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1454:25 • undefined_identifier
+  error • Undefined name 'totalQty' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1471:36 • undefined_identifier
+  error • Undefined name 'formatter' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1473:35 • undefined_identifier
+  error • Undefined name 'totalValue' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1473:52 • undefined_identifier
+  error • 'class' can't be used as an identifier because it's a keyword • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:1 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:1 • missing_statement
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:1 • expected_token
+  error • Undefined name 'class' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:1 • undefined_identifier
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:7 • expected_token
+  error • Undefined name '_Th' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:7 • undefined_identifier
+  error • 'extends' can't be used as an identifier because it's a keyword • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:11 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:11 • missing_statement
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:11 • expected_token
+  error • Undefined name 'extends' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:11 • undefined_identifier
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1489:19 • expected_token
+  error • The name '_Th' isn't a class • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1491:9 • creation_with_non_type
+  error • The getter 'text' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1491:18 • undefined_getter
+warning • The declaration 'build' isn't referenced • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1494:10 • unused_element
+  error • The final variable 'text' can't be read because it's potentially unassigned at this point • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1498:9 • read_potentially_unassigned_final
+  error • 'class' can't be used as an identifier because it's a keyword • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:1 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:1 • missing_statement
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:1 • expected_token
+  error • Undefined name 'class' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:1 • undefined_identifier
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:7 • expected_token
+  error • Undefined name '_Td' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:7 • undefined_identifier
+  error • 'extends' can't be used as an identifier because it's a keyword • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:11 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:11 • missing_statement
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:11 • expected_token
+  error • Undefined name 'extends' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:11 • undefined_identifier
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1510:19 • expected_token
+  error • The name '_Td' isn't a class • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1513:9 • creation_with_non_type
+  error • The getter 'text' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1513:18 • undefined_getter
+  error • The setter 'align' isn't defined for the type '_OrderManualPageState' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1513:30 • undefined_setter
+warning • The declaration 'build' isn't referenced • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1516:10 • unused_element
+  error • The final variable 'text' can't be read because it's potentially unassigned at this point • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1520:9 • read_potentially_unassigned_final
+  error • The final variable 'align' can't be read because it's potentially unassigned at this point • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1521:20 • read_potentially_unassigned_final
+  error • Expected to find '}' • lib/features/sator/presentation/pages/sell_in/order_manual_page.dart:1527:1 • expected_token
+warning • Unused import: 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:7:8 • unused_import
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the method '_applyValidatedCounts' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:435:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:448:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:449:3 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the function '_orderedItems' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:522:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:525:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:526:3 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:537:15 • invalid_assignment
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:543:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:544:5 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:548:15 • invalid_assignment
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:552:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:553:5 • expected_token
+  error • Expected to find '}' • lib/features/sator/presentation/pages/sell_in/rekomendasi_page.dart:1602:7 • expected_token
+  error • A value of type 'Iterable<DropdownMenuItem<String>>' can't be assigned to a variable of type 'List<DropdownMenuItem<String>>' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:65:35 • invalid_assignment
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:87:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:88:9 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the method '_autoMatchProducts' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:145:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:205:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:206:3 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:229:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart:231:7 • expected_token
+warning • The declaration '_safeList' isn't referenced • lib/features/sator/presentation/pages/sell_in/sell_in_dashboard_page.dart:51:25 • unused_element
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:102:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:103:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:515:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:517:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:521:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:522:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:528:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:529:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:561:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:562:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:568:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:569:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:577:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:578:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:582:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:583:7 • expected_token
+  error • A value of type 'Iterable<Map<String, String>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:594:22 • invalid_assignment
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:608:25 • invalid_assignment
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:612:25 • invalid_assignment
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:613:21 • invalid_assignment
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:617:21 • invalid_assignment
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:618:26 • invalid_assignment
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:620:26 • invalid_assignment
+   info • Statements in an if should be enclosed in a block • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:637:7 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:771:9 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/sator/presentation/pages/visiting/pre_visit_page.dart:778:9 • curly_braces_in_flow_control_structures
+  error • Expected to find ',' • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:314:5 • expected_token
+  error • Local variable 'stores' can't be referenced before it is declared • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:314:5 • referenced_before_declaration
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:314:5 • extra_positional_arguments
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:320:7 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the method '_enrichStoreRows' because it has a return type of 'Future<List<Map<String, dynamic>>>' • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:321:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:336:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:338:5 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the function '_filteredStores' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/sator/presentation/pages/visiting/visiting_dashboard_page.dart:346:16 • return_of_invalid_type
+warning • The declaration '<unnamed>' isn't referenced • lib/features/sator/presentation/tabs/sator_home_tab.dart:1:1 • unused_element
+   info • Unnecessary braces in a string interpolation • lib/features/sator/presentation/tabs/sator_home_tab.dart:1506:16 • unnecessary_brace_in_string_interps
+   info • Unnecessary use of multiple underscores • lib/features/sator/presentation/tabs/sator_home_tab.dart:2182:43 • unnecessary_underscores
+   info • Unnecessary braces in a string interpolation • lib/features/sator/presentation/tabs/sator_home_tab.dart:2212:45 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/features/sator/presentation/tabs/sator_home_tab.dart:2413:39 • unnecessary_brace_in_string_interps
+   info • Unnecessary use of 'toList' in a spread • lib/features/sator/presentation/tabs/sator_home_tab.dart:2421:18 • unnecessary_to_list_in_spreads
+   info • Unnecessary braces in a string interpolation • lib/features/sator/presentation/tabs/sator_home_tab.dart:2577:81 • unnecessary_brace_in_string_interps
+   info • Unnecessary use of 'toList' in a spread • lib/features/sator/presentation/tabs/sator_home_tab.dart:2584:18 • unnecessary_to_list_in_spreads
+   info • Unnecessary braces in a string interpolation • lib/features/sator/presentation/tabs/sator_home_tab.dart:2708:87 • unnecessary_brace_in_string_interps
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3151:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3152:5 • expected_token
+warning • The value of the local variable 'dash' isn't used • lib/features/sator/presentation/tabs/sator_home_tab.dart:3268:11 • unused_local_variable
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3463:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3464:11 • expected_token
+warning • The declaration '_buildHeader' isn't referenced • lib/features/sator/presentation/tabs/sator_home_tab.dart:3812:10 • unused_element
+  error • The named parameter 'itemBuilder' is required, but there's no corresponding argument • lib/features/sator/presentation/tabs/sator_home_tab.dart:3887:13 • missing_required_argument
+  error • 'catch' can't be used as an identifier because it's a keyword • lib/features/sator/presentation/tabs/sator_home_tab.dart:3900:23 • expected_identifier_but_got_keyword
+  error • The method 'catch' isn't defined for the type '_SatorHomeTabState' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3900:23 • undefined_method
+  error • Undefined name 'e' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3900:30 • undefined_identifier
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3900:31 • expected_token
+  error • Undefined name 'e' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3901:57 • undefined_identifier
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3906:19 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3907:17 • expected_token
+  error • Expected to find ']' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3907:17 • expected_token
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3908:16 • expected_executable
+   info • An uninitialized variable should have an explicit type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:15 • prefer_typing_uninitialized_variables
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:15 • strict_top_level_inference
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:15 • expected_token
+  error • Variables must be declared using the keywords 'const', 'final', 'var' or a type name • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:15 • missing_const_final_var_or_type
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:26 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:28 • expected_executable
+   info • An uninitialized variable should have an explicit type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:29 • prefer_typing_uninitialized_variables
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:29 • strict_top_level_inference
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:29 • expected_token
+  error • Variables must be declared using the keywords 'const', 'final', 'var' or a type name • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:29 • missing_const_final_var_or_type
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:36 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:38 • expected_executable
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:41 • expected_token
+   info • An uninitialized variable should have an explicit type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:47 • prefer_typing_uninitialized_variables
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:47 • expected_executable
+  error • Expected an identifier • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:47 • missing_identifier
+  error • The constant '' must be initialized • lib/features/sator/presentation/tabs/sator_home_tab.dart:3909:47 • const_not_initialized
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3910:17 • strict_top_level_inference
+   info • The variable name 'PopupMenuItem' isn't a lowerCamelCase identifier • lib/features/sator/presentation/tabs/sator_home_tab.dart:3910:17 • non_constant_identifier_names
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3911:19 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/sator/presentation/tabs/sator_home_tab.dart:3911:24 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/sator/presentation/tabs/sator_home_tab.dart:3911:24 • obsolete_colon_for_default_value
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3912:19 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/sator/presentation/tabs/sator_home_tab.dart:3912:24 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/sator/presentation/tabs/sator_home_tab.dart:3912:24 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/features/sator/presentation/tabs/sator_home_tab.dart:3912:26 • non_constant_default_value
+  error • A function body must be provided • lib/features/sator/presentation/tabs/sator_home_tab.dart:3919:18 • missing_function_body
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3919:18 • expected_executable
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3920:17 • strict_top_level_inference
+   info • The variable name 'PopupMenuItem' isn't a lowerCamelCase identifier • lib/features/sator/presentation/tabs/sator_home_tab.dart:3920:17 • non_constant_identifier_names
+  error • The name 'PopupMenuItem' is already defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3920:17 • duplicate_definition
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3921:19 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/sator/presentation/tabs/sator_home_tab.dart:3921:24 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/sator/presentation/tabs/sator_home_tab.dart:3921:24 • obsolete_colon_for_default_value
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3922:19 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/sator/presentation/tabs/sator_home_tab.dart:3922:24 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/sator/presentation/tabs/sator_home_tab.dart:3922:24 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/features/sator/presentation/tabs/sator_home_tab.dart:3922:26 • non_constant_default_value
+  error • A function body must be provided • lib/features/sator/presentation/tabs/sator_home_tab.dart:3929:18 • missing_function_body
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3929:18 • expected_executable
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3930:17 • strict_top_level_inference
+   info • The variable name 'PopupMenuItem' isn't a lowerCamelCase identifier • lib/features/sator/presentation/tabs/sator_home_tab.dart:3930:17 • non_constant_identifier_names
+  error • The name 'PopupMenuItem' is already defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3930:17 • duplicate_definition
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3931:19 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/sator/presentation/tabs/sator_home_tab.dart:3931:24 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/sator/presentation/tabs/sator_home_tab.dart:3931:24 • obsolete_colon_for_default_value
+   info • Missing type annotation • lib/features/sator/presentation/tabs/sator_home_tab.dart:3932:19 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/sator/presentation/tabs/sator_home_tab.dart:3932:24 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/sator/presentation/tabs/sator_home_tab.dart:3932:24 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/features/sator/presentation/tabs/sator_home_tab.dart:3932:26 • non_constant_default_value
+  error • A function body must be provided • lib/features/sator/presentation/tabs/sator_home_tab.dart:3939:18 • missing_function_body
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3939:18 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3940:15 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3940:16 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3941:13 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3941:14 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3942:11 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3942:12 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3943:9 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3943:10 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3944:7 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3944:8 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3945:5 • expected_executable
+  error • Unexpected text ';' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3945:6 • unexpected_token
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:3946:3 • expected_executable
+warning • The declaration '_buildTodayStatus' isn't referenced • lib/features/sator/presentation/tabs/sator_home_tab.dart:3948:10 • unused_element
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3954:23 • undefined_function
+  error • Undefined name '_dailyProgress' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3954:30 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3955:20 • undefined_function
+  error • Undefined name '_dailyProgress' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3955:27 • undefined_identifier
+  error • The function '_toDouble' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3956:20 • undefined_function
+  error • Undefined name '_dailyProgress' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3956:30 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3957:25 • undefined_function
+  error • Undefined name '_dailyProgress' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3957:32 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3958:22 • undefined_function
+  error • Undefined name '_dailyProgress' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3958:29 • undefined_identifier
+  error • The function '_toDouble' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:3959:22 • undefined_function
+  error • Undefined name '_dailyProgress' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3959:32 • undefined_identifier
+  error • Undefined name 'widget' • lib/features/sator/presentation/tabs/sator_home_tab.dart:3964:20 • undefined_identifier
+warning • The declaration '_buildKpiSection' isn't referenced • lib/features/sator/presentation/tabs/sator_home_tab.dart:4131:10 • unused_element
+  error • Undefined name '_kpiData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4132:23 • undefined_identifier
+  error • Undefined name '_kpiComponents' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4172:18 • undefined_identifier
+warning • The declaration '_buildTeamTargetSection' isn't referenced • lib/features/sator/presentation/tabs/sator_home_tab.dart:4232:10 • unused_element
+  error • Undefined name '_isLoadingTeamTarget' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4233:9 • undefined_identifier
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4236:9 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4267:25 • undefined_function
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4267:32 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4268:25 • undefined_function
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4268:32 • undefined_identifier
+  error • The function '_toDouble' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4269:25 • undefined_function
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4269:35 • undefined_identifier
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4271:8 • undefined_identifier
+  error • The function '_toDouble' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4287:23 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4343:17 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4345:41 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4356:25 • undefined_function
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4356:32 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4357:25 • undefined_function
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4357:32 • undefined_identifier
+  error • The function '_toDouble' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4358:25 • undefined_function
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4358:35 • undefined_identifier
+  error • Undefined name '_teamTargetData' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4360:8 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4394:32 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/sator/presentation/tabs/sator_home_tab.dart:4395:32 • undefined_function
+  error • Undefined name '_teamBonusTotal' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4446:32 • undefined_identifier
+warning • The declaration '_buildAlertsSection' isn't referenced • lib/features/sator/presentation/tabs/sator_home_tab.dart:4460:10 • unused_element
+  error • Undefined name '_alerts' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4485:16 • undefined_identifier
+  error • Undefined name '_alerts' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4527:17 • undefined_identifier
+  error • Undefined name '_alerts' • lib/features/sator/presentation/tabs/sator_home_tab.dart:4532:38 • undefined_identifier
+warning • The declaration '_buildQuickAccess' isn't referenced • lib/features/sator/presentation/tabs/sator_home_tab.dart:4553:10 • unused_element
+  error • Expected a method, getter, setter or operator declaration • lib/features/sator/presentation/tabs/sator_home_tab.dart:4704:1 • expected_executable
+warning • The value of the field '_salesDaily' isn't used • lib/features/sator/presentation/tabs/sator_sales_tab.dart:50:30 • unused_field
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:435:22 • invalid_assignment
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:444:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:445:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:697:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:698:5 • expected_token
+  error • Expected to find ',' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:716:5 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/sator/presentation/tabs/sator_sales_tab.dart:716:5 • extra_positional_arguments
+  error • Local variable 'mergedFeed' can't be referenced before it is declared • lib/features/sator/presentation/tabs/sator_sales_tab.dart:716:17 • referenced_before_declaration
+  error • Local variable 'mergedFeed' can't be referenced before it is declared • lib/features/sator/presentation/tabs/sator_sales_tab.dart:716:41 • referenced_before_declaration
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:716:67 • expected_token
+  error • The method '_buildReportsTab' isn't defined for the type '_SatorSalesTabState' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:927:29 • undefined_method
+  error • The method '_buildReportsTab' isn't defined for the type '_SatorSalesTabState' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:966:17 • undefined_method
+  error • The method 'SalesCard' isn't defined for the type '_SatorSalesTabState' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:1985:20 • undefined_method
+  error • The named parameter 'child' is required, but there's no corresponding argument • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2210:17 • missing_required_argument
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2215:27 • missing_catch_or_finally
+  error • Undefined name 'rows' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2230:26 • undefined_identifier
+  error • Undefined name 'rows' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2234:24 • undefined_identifier
+  error • Undefined name 'rows' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2238:25 • undefined_identifier
+  error • Undefined name 'rows' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2242:30 • undefined_identifier
+  error • Undefined name 'focusTypeUnits' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2247:30 • undefined_identifier
+  error • The returned type 'ListView' isn't returnable from a 'Future<void>' function, as required by the closure's context • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2258:12 • return_of_invalid_type_from_closure
+  error • Undefined name 'rows' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2261:12 • undefined_identifier
+warning • Dead code • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2339:3 • dead_code
+   info • The local variable '_buildWeeklyReport' starts with an underscore • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2339:10 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_buildWeeklyReport' isn't referenced • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2339:10 • unused_element
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2449:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2451:5 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2535:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2537:5 • expected_token
+   info • The local variable '_buildMonthlyReport' starts with an underscore • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2584:10 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_buildMonthlyReport' isn't referenced • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2584:10 • unused_element
+  error • 'class' can't be used as an identifier because it's a keyword • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:1 • expected_identifier_but_got_keyword
+  error • Expected to find ',' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:1 • expected_token
+  error • Too many positional arguments: 0 expected, but 5 found • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:1 • extra_positional_arguments_could_be_named
+  error • Undefined name 'class' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:1 • undefined_identifier
+  error • Expected to find ',' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:7 • expected_token
+  error • Undefined name 'SalesCard' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:7 • undefined_identifier
+  error • 'extends' can't be used as an identifier because it's a keyword • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:17 • expected_identifier_but_got_keyword
+  error • Expected to find ',' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:17 • expected_token
+  error • Undefined name 'extends' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:17 • undefined_identifier
+  error • Expected to find ',' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:25 • expected_token
+  error • Expected to find ',' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2725:41 • expected_token
+  error • Expected an identifier • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2726:3 • missing_identifier
+  error • Expected to find '}' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2726:3 • expected_token
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2843:1 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2844:1 • expected_token
+  error • Expected to find ']' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2844:1 • expected_token
+  error • Expected to find '}' • lib/features/sator/presentation/tabs/sator_sales_tab.dart:2844:1 • expected_token
+  error • A value of type 'Iterable<Map<String, String>>' can't be assigned to a variable of type 'List<Map<String, String>>' • lib/features/sator/presentation/tabs/sator_workplace_tab.dart:151:28 • invalid_assignment
+  error • Expected to find ';' • lib/features/sator/presentation/tabs/sator_workplace_tab.dart:160:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/presentation/tabs/sator_workplace_tab.dart:161:7 • expected_token
+  error • Expected to find ';' • lib/features/sator/services/stok_gudang_ai_service.dart:73:5 • expected_token
+  error • Expected to find ')' • lib/features/sator/services/stok_gudang_ai_service.dart:75:7 • expected_token
+  error • Expected to find ';' • lib/features/shared/presentation/pages/team_stock_flow_page.dart:224:5 • expected_token
+  error • Expected to find ')' • lib/features/shared/presentation/pages/team_stock_flow_page.dart:226:7 • expected_token
+  error • A value of type 'Iterable<Map<String, String>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/shared/presentation/pages/team_stock_flow_page.dart:229:25 • invalid_assignment
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the function '_filteredRows' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/spv/presentation/pages/spv_allbrand_page.dart:226:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/spv/presentation/pages/spv_allbrand_page.dart:234:5 • expected_token
+  error • Expected to find ')' • lib/features/spv/presentation/pages/spv_allbrand_page.dart:235:3 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be returned from the function '_filteredChipStocks' because it has a return type of 'List<Map<String, dynamic>>' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:53:12 • return_of_invalid_type
+  error • Expected to find ';' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:67:5 • expected_token
+  error • Expected to find ')' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:68:3 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:219:23 • invalid_assignment
+  error • Expected to find ',' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:225:9 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:225:9 • extra_positional_arguments
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:225:22 • invalid_assignment
+  error • Expected to find ',' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:231:9 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:231:9 • extra_positional_arguments
+  error • Expected to find ')' • lib/features/spv/presentation/pages/spv_chip_monitor_page.dart:231:27 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:176:19 • invalid_assignment
+  error • Expected to find ',' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:183:5 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/spv/presentation/pages/spv_stock_management_page.dart:183:5 • extra_positional_arguments
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:183:18 • invalid_assignment
+  error • Expected to find ';' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:188:5 • expected_token
+  error • Expected to find ')' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:189:3 • expected_token
+  error • A value of type 'Iterable<Map<String, String>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:298:21 • invalid_assignment
+  error • Expected to find ',' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:317:5 • expected_token
+  error • Too many positional arguments: 1 expected, but 2 found • lib/features/spv/presentation/pages/spv_stock_management_page.dart:317:5 • extra_positional_arguments
+  error • Expected to find ')' • lib/features/spv/presentation/pages/spv_stock_management_page.dart:318:72 • expected_token
+  error • Expected to find ';' • lib/features/spv/presentation/spv_dashboard.dart:284:5 • expected_token
+  error • Expected to find ')' • lib/features/spv/presentation/spv_dashboard.dart:285:7 • expected_token
+  error • A value of type 'Iterable<Map<String, Object>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/spv/presentation/spv_dashboard.dart:292:35 • invalid_assignment
+  error • Expected to find ';' • lib/features/spv/presentation/spv_dashboard.dart:340:5 • expected_token
+  error • Expected to find ')' • lib/features/spv/presentation/spv_dashboard.dart:341:7 • expected_token
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/spv/presentation/spv_dashboard.dart:341:58 • invalid_assignment
+  error • Missing concrete implementation of 'State.build' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:18:7 • non_abstract_class_inherits_abstract_member
+   info • The private field _activeSection could be 'final' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:30:10 • prefer_final_fields
+warning • The value of the field '_products' isn't used • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:42:30 • unused_field
+warning • The value of the field '_selectedProductId' isn't used • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:55:11 • unused_field
+warning • The declaration '_showClosingSheet' isn't referenced • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:407:16 • unused_element
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:484:31 • creation_with_non_type
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:492:31 • creation_with_non_type
+  error • The method '_buildDateField' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:493:25 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:497:31 • creation_with_non_type
+  error • The method '_buildDateField' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:498:25 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:502:31 • creation_with_non_type
+  error • The method '_buildInputField' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:503:25 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:509:31 • creation_with_non_type
+  error • The method '_buildInputField' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:510:25 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:516:31 • creation_with_non_type
+  error • The method '_buildInputField' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:517:25 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:523:31 • creation_with_non_type
+  error • The method '_inputDecoration' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:528:39 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:543:31 • creation_with_non_type
+  error • The method '_buildInputField' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:544:25 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:549:31 • creation_with_non_type
+  error • The method '_buildMultiPickerCard' isn't defined for the type '_PromotorVastPageState' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:550:25 • undefined_method
+  error • The name 'SizedBox' isn't a class • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:558:31 • creation_with_non_type
+warning • The declaration '_markReminderDone' isn't referenced • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:652:16 • unused_element
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:667:18 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:668:15 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:668:16 • expected_class_member
+  error • Getters, setters and methods can't be declared to be 'const' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:15 • const_method
+   info • Missing type annotation • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:21 • strict_top_level_inference
+   info • The variable name 'SizedBox' isn't a lowerCamelCase identifier • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:21 • non_constant_identifier_names
+   info • Missing type annotation • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:30 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:36 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:36 • obsolete_colon_for_default_value
+  error • A function body must be provided • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:41 • missing_function_body
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:669:41 • expected_class_member
+   info • Missing type annotation • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:670:15 • strict_top_level_inference
+   info • The variable name 'SizedBox' isn't a lowerCamelCase identifier • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:670:15 • non_constant_identifier_names
+  error • The name 'SizedBox' is already defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:670:15 • duplicate_definition
+   info • Missing type annotation • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:671:17 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:671:22 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:671:22 • obsolete_colon_for_default_value
+   info • Missing type annotation • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:672:17 • strict_top_level_inference
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:672:22 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:672:22 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:672:24 • non_constant_default_value
+  error • A function body must be provided • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:681:16 • missing_function_body
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:681:16 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:682:13 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:682:14 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:683:11 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:683:12 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:684:9 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:684:10 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:685:7 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:685:8 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:686:5 • expected_class_member
+  error • Expected a class member • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:686:6 • expected_class_member
+  error • Undefined name '_pendingItems' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:690:9 • undefined_identifier
+  error • Undefined name '_pendingItems' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:698:22 • undefined_identifier
+  error • The function '_showClosingSheet' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:718:38 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:725:54 • undefined_function
+  error • Undefined name '_currency' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:730:26 • undefined_identifier
+  error • The function '_toNum' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:730:43 • undefined_function
+  error • Undefined name '_currency' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:730:81 • undefined_identifier
+  error • The function '_toNum' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:730:98 • undefined_function
+  error • Undefined name '_pendingItems' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:738:18 • undefined_identifier
+  error • Undefined name '_historyItems' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:743:9 • undefined_identifier
+  error • Undefined name '_historyItems' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:750:18 • undefined_identifier
+  error • Undefined name '_historyItems' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:753:22 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:754:32 • undefined_function
+  error • Undefined name '_dateFormat' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:785:17 • undefined_identifier
+  error • Undefined name '_reminders' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:803:9 • undefined_identifier
+  error • Undefined name '_reminders' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:810:18 • undefined_identifier
+  error • Undefined name '_reminders' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:813:22 • undefined_identifier
+  error • Undefined name '_dateFormat' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:839:23 • undefined_identifier
+  error • The function '_markReminderDone' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:847:50 • undefined_function
+  error • Undefined name '_isLoading' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:911:13 • undefined_identifier
+  error • Undefined name '_refresh' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:916:26 • undefined_identifier
+  error • Undefined name 'context' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:942:39 • undefined_identifier
+  error • Undefined name '_monthlySummary' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:991:21 • undefined_identifier
+  error • Undefined name '_dailySummary' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:992:19 • undefined_identifier
+  error • The function '_toNum' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:993:20 • undefined_function
+  error • The function '_toNum' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:994:20 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1018:26 • undefined_function
+  error • Undefined name '_store' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1023:26 • undefined_identifier
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1037:29 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1059:40 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1060:39 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1061:35 • undefined_function
+  error • The function '_toInt' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1062:38 • undefined_function
+  error • Undefined name '_activeSection' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1126:30 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1128:30 • undefined_function
+  error • Undefined name '_activeSection' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1128:45 • undefined_identifier
+  error • Undefined name '_activeSection' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1170:13 • undefined_identifier
+  error • The function '_buildInputTab' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1172:53 • undefined_function
+  error • The function '_buildSummaryTab' isn't defined • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1181:52 • undefined_function
+  error • Undefined name '_activeSection' • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1204:19 • undefined_identifier
+  error • Expected a method, getter, setter or operator declaration • lib/features/vast_finance/presentation/pages/promotor_vast_page.dart:1239:1 • expected_executable
+  error • Missing concrete implementation of 'State.build' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:16:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_dateFormat' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:18:9 • unused_field
+   info • The private field _activeSection could be 'final' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:21:10 • prefer_final_fields
+   info • The private field _selectedPeriod could be 'final' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:22:10 • prefer_final_fields
+warning • The value of the field '_selectedPeriod' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:22:10 • unused_field
+warning • The value of the field '_profileName' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:23:10 • unused_field
+warning • The value of the field '_profileArea' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:24:10 • unused_field
+warning • The value of the field '_daily' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:25:25 • unused_field
+warning • The value of the field '_monthly' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:26:25 • unused_field
+warning • The value of the field '_weekly' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:27:25 • unused_field
+warning • The value of the field '_alerts' isn't used • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:29:30 • unused_field
+   info • The private field _alertFilter could be 'final' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:30:10 • prefer_final_fields
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:188:16 • invalid_assignment
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:194:5 • expected_token
+  error • Expected to find ')' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:195:5 • expected_token
+warning • The declaration '_copyExportCsv' isn't referenced • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:199:16 • unused_element
+  error • 'case' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:232:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:232:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:232:7 • expected_token
+  error • Undefined name 'case' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:232:7 • undefined_identifier
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:232:12 • expected_token
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:232:19 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:232:19 • unexpected_token
+  error • A value of type 'Widget' can't be returned from the method '_copyExportCsv' because it has a return type of 'Future<void>' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:233:16 • return_of_invalid_type
+  error • The method '_buildAlertTab' isn't defined for the type '_SatorVastPageState' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:233:49 • undefined_method
+warning • Dead code • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:7 • dead_code
+  error • 'case' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:7 • expected_token
+  error • Undefined name 'case' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:7 • undefined_identifier
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:12 • expected_token
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:20 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:234:20 • unexpected_token
+  error • A value of type 'Widget' can't be returned from the method '_copyExportCsv' because it has a return type of 'Future<void>' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:235:16 • return_of_invalid_type
+  error • The method '_buildExportTab' isn't defined for the type '_SatorVastPageState' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:235:50 • undefined_method
+  error • 'case' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:236:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:236:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:236:7 • expected_token
+  error • Undefined name 'case' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:236:7 • undefined_identifier
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:236:12 • expected_token
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:236:18 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:236:18 • unexpected_token
+  error • 'default' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:237:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:237:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:237:7 • expected_token
+  error • Undefined name 'default' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:237:7 • undefined_identifier
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:237:14 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:237:14 • unexpected_token
+  error • A value of type 'Widget' can't be returned from the method '_copyExportCsv' because it has a return type of 'Future<void>' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:238:16 • return_of_invalid_type
+  error • The method '_buildHomeTab' isn't defined for the type '_SatorVastPageState' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:238:51 • undefined_method
+  error • Undefined name '_activeSection' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:261:19 • undefined_identifier
+  error • Undefined name '_isLoading' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:282:13 • undefined_identifier
+  error • Undefined name '_refresh' • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:285:26 • undefined_identifier
+  error • The function '_buildHeader' isn't defined • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:293:21 • undefined_function
+  error • The function '_buildHeroCard' isn't defined • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:294:21 • undefined_function
+  error • The function '_buildQuickActions' isn't defined • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:295:21 • undefined_function
+  error • The function '_buildActiveSection' isn't defined • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:297:21 • undefined_function
+  error • Expected a method, getter, setter or operator declaration • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:304:1 • expected_executable
+warning • The declaration '_SatorAction' isn't referenced • lib/features/vast_finance/presentation/pages/sator_vast_page.dart:306:7 • unused_element
+  error • Missing concrete implementation of 'State.build' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:16:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_dateFormat' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:18:9 • unused_field
+   info • The private field _activeSection could be 'final' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:21:10 • prefer_final_fields
+   info • The private field _selectedPeriod could be 'final' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:22:10 • prefer_final_fields
+warning • The value of the field '_selectedPeriod' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:22:10 • unused_field
+warning • The value of the field '_profileName' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:23:10 • unused_field
+warning • The value of the field '_profileArea' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:24:10 • unused_field
+warning • The value of the field '_daily' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:25:25 • unused_field
+warning • The value of the field '_monthly' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:26:25 • unused_field
+warning • The value of the field '_weekly' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:27:25 • unused_field
+warning • The value of the field '_alerts' isn't used • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:29:30 • unused_field
+   info • The private field _alertFilter could be 'final' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:30:10 • prefer_final_fields
+  error • A value of type 'Iterable<Map<String, dynamic>>' can't be assigned to a variable of type 'List<Map<String, dynamic>>' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:180:16 • invalid_assignment
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:186:5 • expected_token
+  error • Expected to find ')' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:187:5 • expected_token
+warning • The declaration '_markAlertRead' isn't referenced • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:191:16 • unused_element
+warning • The declaration '_copyCsv' isn't referenced • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:200:16 • unused_element
+  error • 'case' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:233:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:233:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:233:7 • expected_token
+  error • Undefined name 'case' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:233:7 • undefined_identifier
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:233:12 • expected_token
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:233:19 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:233:19 • unexpected_token
+  error • A value of type 'Widget' can't be returned from the method '_copyCsv' because it has a return type of 'Future<void>' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:234:16 • return_of_invalid_type
+  error • The method '_buildAlertsTab' isn't defined for the type '_SpvVastPageState' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:234:49 • undefined_method
+warning • Dead code • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:7 • dead_code
+  error • 'case' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:7 • expected_token
+  error • Undefined name 'case' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:7 • undefined_identifier
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:12 • expected_token
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:20 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:235:20 • unexpected_token
+  error • A value of type 'Widget' can't be returned from the method '_copyCsv' because it has a return type of 'Future<void>' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:236:16 • return_of_invalid_type
+  error • The method '_buildExportTab' isn't defined for the type '_SpvVastPageState' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:236:50 • undefined_method
+  error • 'case' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:237:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:237:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:237:7 • expected_token
+  error • Undefined name 'case' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:237:7 • undefined_identifier
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:237:12 • expected_token
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:237:18 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:237:18 • unexpected_token
+  error • 'default' can't be used as an identifier because it's a keyword • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:238:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:238:7 • missing_statement
+  error • Expected to find ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:238:7 • expected_token
+  error • Undefined name 'default' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:238:7 • undefined_identifier
+  error • Expected an identifier • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:238:14 • missing_identifier
+  error • Unexpected text ';' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:238:14 • unexpected_token
+  error • A value of type 'Widget' can't be returned from the method '_copyCsv' because it has a return type of 'Future<void>' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:239:16 • return_of_invalid_type
+  error • The method '_buildOverviewTab' isn't defined for the type '_SpvVastPageState' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:239:51 • undefined_method
+  error • Undefined name '_activeSection' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:262:19 • undefined_identifier
+  error • Undefined name '_isLoading' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:283:13 • undefined_identifier
+  error • Undefined name '_refresh' • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:286:26 • undefined_identifier
+  error • The function '_buildHeader' isn't defined • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:294:21 • undefined_function
+  error • The function '_buildHeroCard' isn't defined • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:295:21 • undefined_function
+  error • The function '_buildQuickActions' isn't defined • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:296:21 • undefined_function
+  error • The function '_buildActiveSection' isn't defined • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:298:21 • undefined_function
+  error • Expected a method, getter, setter or operator declaration • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:305:1 • expected_executable
+warning • The declaration '_SpvAction' isn't referenced • lib/features/vast_finance/presentation/pages/spv_vast_page.dart:307:7 • unused_element
+

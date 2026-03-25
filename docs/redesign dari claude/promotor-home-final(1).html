@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Promotor Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #1a1510;
+  --s1:        #211c16;
+  --s2:        #2a2318;
+  --s3:        #332b1e;
+  --s4:        #3d3325;
+  --gold:      #c9923a;
+  --gold-lt:   #e8b06a;
+  --gold-dim:  rgba(201,146,58,0.12);
+  --gold-glow: rgba(201,146,58,0.28);
+  --cream:     #f0e8d8;
+  --cream2:    #c8bfad;
+  --muted:     #6e6254;
+  --muted2:    #4a4036;
+  --green:     #6aab7a;
+  --green-dim: rgba(106,171,122,0.12);
+  --amber:     #d4853a;
+  --red:       #c05a4a;
+  --red-dim:   rgba(192,90,74,0.1);
+  --blue:      #5b8dd9;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #0e0b08;
+  font-family: 'Outfit', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding: 40px 20px 60px;
+  gap: 12px;
+}
+
+.page-title {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: #4a4036; margin-bottom: 4px;
+}
+
+/* ── PHONE ── */
+.phone {
+  width: 370px;
+  height: 800px;
+  background: var(--bg);
+  border-radius: 50px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 9px #1e1810,
+    0 0 0 11px #110e09,
+    0 50px 140px rgba(0,0,0,0.95),
+    0 0 80px rgba(201,146,58,0.06);
+}
+
+.island {
+  position: absolute;
+  top: 11px; left: 50%;
+  transform: translateX(-50%);
+  width: 110px; height: 30px;
+  background: #080603;
+  border-radius: 18px;
+  z-index: 200;
+}
+
+/* Status bar */
+.sbar {
+  height: 50px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 0 24px 8px;
+  position: relative; z-index: 10;
+}
+.sbar-time { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: var(--cream); }
+.sbar-r { display: flex; align-items: center; gap: 5px; opacity: 0.6; font-size: 10px; color: var(--cream2); font-weight: 600; }
+
+/* Scroll area */
+.scroll {
+  height: calc(800px - 50px);
+  overflow-y: auto;
+  padding-bottom: 85px;
+  scrollbar-width: none;
+}
+.scroll::-webkit-scrollbar { display: none; }
+
+/* ─── HEADER ─── */
+.header {
+  padding: 10px 20px 10px;
+  border-bottom: 1px solid var(--s2);
+}
+.h-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.h-greeting { font-size: 11px; color: var(--muted); margin-bottom: 1px; }
+.h-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; font-weight: 900;
+  color: var(--cream); line-height: 1;
+}
+.h-store {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--gold-dim);
+  border: 1px solid rgba(201,146,58,0.2);
+  border-radius: 6px; padding: 3px 8px;
+  font-size: 9px; font-weight: 700; color: var(--gold);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-top: 3px;
+}
+.h-store::before {
+  content:''; width:5px; height:5px; border-radius:50%;
+  background:var(--gold); animation: blink 2.5s ease infinite;
+}
+.h-right { display: flex; gap: 7px; padding-top: 4px; }
+.hbtn {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--s1); border: 1px solid var(--s3);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.hbtn svg { width: 13px; height: 13px; stroke: var(--muted); stroke-width: 2; fill: none; }
+.h-notif { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--red); border: 1.5px solid var(--bg); }
+
+.h-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.h-date { font-size: 9px; color: var(--muted); }
+
+/* ─── TAB BAR ─── */
+.tab-bar { display: flex; background: var(--s2); border-radius: 100px; padding: 3px; border: 1px solid var(--s3); }
+.tab-btn { font-size: 8px; font-weight: 700; border-radius: 100px; padding: 4px 11px; cursor: pointer; color: var(--muted); white-space: nowrap; }
+.tab-btn.on { background: var(--gold); color: #1a0e00; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn .22s ease; }
+
+/* ─── ABSEN PILL ─── */
+.absen-row {
+  margin: 10px 16px 0;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.absen-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--s2); border: 1px solid var(--s3);
+  border-radius: 100px; padding: 5px 10px;
+}
+.absen-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px rgba(106,171,122,0.6); }
+.absen-txt { font-size: 10px; color: var(--cream2); font-weight: 600; }
+.absen-time { font-size: 10px; color: var(--muted); }
+.absen-status { font-size: 9px; color: var(--muted); }
+
+/* ─── HERO / KPI SUMMARY ─── */
+.hero { margin: 10px 16px 0; background: linear-gradient(145deg,#261f13,#1c1610); border:1px solid rgba(201,146,58,0.22); border-radius:18px; padding:16px 16px 0; position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,146,58,0.6),transparent); }
+.hero-glow { position:absolute; top:-30px; right:-30px; width:150px; height:150px; background:radial-gradient(circle,rgba(201,146,58,0.08),transparent 70%); pointer-events:none; }
+.hero-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.hero-lbl { font-size:9px; font-weight:700; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:5px; }
+.hero-nominal { font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--cream); line-height:1; }
+.hero-nominal small { font-size:11px; color:var(--muted); font-family:'Outfit',sans-serif; }
+.hero-sub { font-size:9px; color:var(--muted); margin-top:4px; }
+.hero-sub strong { color:var(--cream2); }
+.ring { flex-shrink:0; position:relative; width:62px; height:62px; }
+.ring svg { width:62px; height:62px; transform:rotate(-90deg); }
+.ring-bg { fill:none; stroke:var(--s3); stroke-width:5; }
+.ring-fill { fill:none; stroke-width:5; stroke-linecap:round; stroke-dasharray:157; }
+.ring-txt { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ring-pct { font-family:'Playfair Display',serif; font-size:13px; font-weight:900; line-height:1; }
+.ring-lbl { font-size:7px; color:var(--muted); }
+.prog-meta { display:flex; justify-content:space-between; font-size:9px; color:var(--muted); margin-bottom:5px; }
+.prog-meta strong { color:var(--gold-lt); }
+.prog-track { height:5px; background:var(--s3); border-radius:100px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:100px; background:linear-gradient(90deg,var(--gold),var(--gold-lt)); box-shadow:0 0 8px var(--gold-glow); }
+
+/* hero strip (bulanan) */
+.hero-strip { display:flex; border-top:1px solid var(--s3); margin:12px -16px 0; }
+.hs { flex:1; padding:9px 0; text-align:center; border-right:1px solid var(--s3); }
+.hs:last-child { border-right:none; }
+.hs-lbl { font-size:7px; font-weight:700; color:var(--muted); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:3px; }
+.hs-val { font-family:'Playfair Display',serif; font-size:13px; color:var(--cream); line-height:1; }
+.hs-sub { font-size:8px; color:var(--muted); margin-top:1px; }
+.hs-sub strong { color:var(--gold); }
+
+/* hero-period (bottom of hero) */
+.hero-period { display:flex; border-top:1px solid var(--s3); margin:12px -16px 0; }
+.hp { flex:1; padding:9px 0 11px; text-align:center; border-right:1px solid var(--s3); }
+.hp:last-child { border-right:none; }
+.hp-lbl { font-size:7px; font-weight:700; color:var(--muted); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:3px; }
+.hp-val { font-family:'Playfair Display',serif; font-size:14px; font-weight:900; color:var(--cream); line-height:1; }
+.hp-sub { font-size:8px; margin-top:1px; }
+
+/* ─── STAT 3 ─── */
+.stat3 { display:flex; gap:8px; margin:10px 16px 0; }
+.s3 { flex:1; background:var(--s1); border:1px solid var(--s3); border-radius:14px; padding:10px 11px; }
+.s3-icon { width:24px; height:24px; border-radius:7px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; }
+.s3-icon svg { width:10px; height:10px; stroke-width:2; fill:none; }
+.s3-val { font-family:'Playfair Display',serif; font-size:20px; font-weight:900; line-height:1; margin-bottom:2px; }
+.s3-lbl { font-size:7px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; }
+.s3-note { font-size:8px; font-weight:700; margin-top:3px; }
+
+/* ─── SECTION HEAD ─── */
+.sec-head { display:flex; justify-content:space-between; align-items:center; padding:14px 16px 8px; }
+.sec-title { font-size:13px; font-weight:700; color:var(--cream2); }
+.sec-note { font-size:9px; color:var(--muted); }
+
+/* ─── CARD BASE ─── */
+.card {
+  margin: 0 14px 10px;
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 10%, rgba(201,146,58,0.5) 50%, transparent 90%);
+}
+.card-glow {
+  position: absolute; top: -40px; right: -40px;
+  width: 150px; height: 150px;
+  background: radial-gradient(circle, rgba(201,146,58,0.08), transparent 70%);
+  pointer-events: none;
+}
+
+/* section label */
+.sec-label {
+  padding: 13px 16px 10px;
+  border-bottom: 1px solid var(--s3);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.sec-label-txt {
+  font-size: 9px; font-weight: 700; color: var(--muted);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.sec-label-txt::before { content:''; width:14px; height:1px; background:var(--gold); opacity:0.4; }
+
+/* bar utility */
+.bar { background: var(--s3); border-radius: 100px; overflow: hidden; }
+.bar-fill {
+  height: 100%; border-radius: 100px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-lt));
+  box-shadow: 0 0 8px var(--gold-glow);
+  width: var(--w, 0%);
+  animation: fill 1.3s ease both;
+  animation-delay: var(--d, 0.7s);
+}
+.bar-fill.grn { background: linear-gradient(90deg, #4d8f5e, var(--green)); box-shadow: 0 0 8px rgba(106,171,122,0.3); }
+.bar-fill.amb { background: linear-gradient(90deg, #a0622a, var(--amber)); box-shadow: none; }
+.bar-fill.dim  { background: var(--muted2); box-shadow: none; }
+.bar-fill.red-fill { background: var(--red); box-shadow: none; }
+
+/* ─── TARGET ALL-TYPE CARD ─── */
+.tc-body { padding: 14px 16px 12px; border-bottom: 1px solid var(--s3); }
+.tc-nominal-lbl { font-size: 9px; color: var(--muted); font-weight: 500; margin-bottom: 1px; }
+.tc-nominal {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px; font-weight: 900;
+  color: var(--cream); line-height: 1; margin-bottom: 3px; letter-spacing: -0.5px;
+}
+.tc-nominal .rp { font-size: 14px; font-weight: 500; color: var(--muted); margin-right: 2px; }
+.tc-realisasi {
+  font-size: 10px; color: var(--muted); margin-bottom: 12px;
+}
+.tc-realisasi strong { color: var(--cream2); font-weight: 600; }
+.tc-prog-row { display: flex; align-items: center; gap: 10px; }
+.tc-pct-box {
+  flex-shrink: 0;
+  background: var(--s2); border: 1px solid var(--s4);
+  border-radius: 10px; padding: 8px 12px; text-align: center; min-width: 62px;
+}
+.tc-pct-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; color: var(--gold); line-height: 1;
+}
+.tc-pct-lbl { font-size: 8px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.tc-prog { flex: 1; }
+.tc-prog-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-bottom: 5px; }
+.tc-prog-labels span { color: var(--cream2); font-weight: 600; }
+.bar.h5 { height: 5px; }
+.bar.h4 { height: 4px; }
+.bar.h3 { height: 3px; }
+
+/* period row */
+.tc-period { display: flex; }
+.tc-period-item {
+  flex: 1; padding: 11px 16px;
+  border-right: 1px solid var(--s3);
+}
+.tc-period-item:last-child { border-right: none; }
+.tcp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.tcp-lbl { font-size: 8px; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.tcp-pct {
+  font-size: 9px; font-weight: 700; color: var(--gold);
+  background: var(--gold-dim); border-radius: 4px; padding: 1px 5px;
+}
+.tcp-achieved {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px; color: var(--cream2); line-height: 1; margin-bottom: 2px;
+}
+.tcp-achieved small { font-size: 9px; color: var(--muted); font-family: 'Outfit', sans-serif; }
+.tcp-target { font-size: 9px; color: var(--muted); margin-bottom: 6px; }
+.tcp-target span { color: var(--cream2); font-weight: 600; }
+
+/* ─── FOKUS PRODUK ─── */
+.fp-summary { display: flex; border-bottom: 1px solid var(--s3); }
+.fp-sum-item {
+  flex: 1; text-align: center; padding: 10px 6px;
+  border-right: 1px solid var(--s3);
+}
+.fp-sum-item:last-child { border-right: none; }
+.fp-sum-lbl { font-size: 8px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+.fp-sum-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; color: var(--cream); line-height: 1;
+}
+.fp-sum-val.grn { color: var(--green); }
+.fp-sum-val.amb { color: var(--amber); }
+.fp-sum-val.gld { color: var(--gold); }
+
+.fp-list { padding: 4px 0; }
+.fp-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.fp-row:last-child { border-bottom: none; }
+.fp-row-num { font-size: 11px; color: var(--muted2); width: 14px; flex-shrink: 0; font-weight: 700; }
+.fp-row-info { flex: 1; min-width: 0; }
+.fp-row-name {
+  font-size: 11px; font-weight: 600; color: var(--cream2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;
+}
+.fp-row-prog { display: flex; align-items: center; gap: 6px; }
+.bar.fp-bar { flex: 1; height: 3px; }
+.fp-row-pct { font-size: 9px; font-weight: 700; width: 26px; text-align: right; flex-shrink: 0; }
+.fp-row-right { text-align: right; flex-shrink: 0; }
+.fp-row-count {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px; color: var(--cream); line-height: 1;
+}
+.fp-row-count small { font-size: 10px; color: var(--muted); font-family: 'Outfit', sans-serif; font-weight: 400; }
+.fp-row-unit { font-size: 8px; color: var(--muted); text-align: right; }
+
+/* ─── AKTIVITAS CARD ─── */
+.act-card {
+  margin: 0 14px 10px;
+  background: var(--s1); border: 1px solid var(--s3);
+  border-radius: 14px; padding: 11px 14px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer; position: relative; overflow: hidden;
+}
+.act-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--gold), var(--amber));
+  border-radius: 14px 0 0 14px;
+}
+.act-icon {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--gold-dim); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.act-icon svg { width: 15px; height: 15px; stroke: var(--gold); stroke-width: 2; fill: none; }
+.act-info { flex: 1; min-width: 0; }
+.act-title { font-size: 12px; font-weight: 700; color: var(--cream); margin-bottom: 5px; }
+.act-bar-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.act-bar-track { flex: 1; height: 3px; background: var(--s3); border-radius: 100px; overflow: hidden; }
+.act-bar-fill {
+  height: 100%; border-radius: 100px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-lt));
+  width: 0; animation: fill 1.2s 0.8s ease forwards; --w: 60%;
+}
+.act-pct { font-size: 9px; font-weight: 700; color: var(--gold); white-space: nowrap; }
+.act-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.act-pill {
+  font-size: 8px; font-weight: 600; border-radius: 100px; padding: 2px 7px;
+  display: flex; align-items: center; gap: 3px;
+}
+.act-pill.done { color: var(--green); background: rgba(106,171,122,0.1); border: 1px solid rgba(106,171,122,0.2); }
+.act-pill.todo { color: var(--muted); background: var(--s2); border: 1px solid var(--s3); }
+.act-pill::before { content:''; width:4px; height:4px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.act-pill.more { color: var(--muted2); background: var(--s2); border: 1px solid var(--s3); }
+.act-pill.more::before { display:none; }
+.act-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.act-count { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); line-height: 1; }
+.act-count small { font-size: 11px; color: var(--muted); font-family: 'Outfit', sans-serif; }
+.act-arrow svg { width: 14px; height: 14px; stroke: var(--muted2); stroke-width: 2; fill: none; }
+
+/* ─── BADGE ─── */
+.badge { font-size:7px; font-weight:700; border-radius:100px; padding:2px 7px; white-space:nowrap; }
+.bd-red { color:var(--red); background:var(--red-dim); border:1px solid rgba(192,90,74,0.2); }
+.bd-grn { color:var(--green); background:var(--green-dim); border:1px solid rgba(106,171,122,0.2); }
+.bd-gld { color:var(--gold); background:var(--gold-dim); border:1px solid rgba(201,146,58,0.2); }
+.bd-amb { color:var(--amber); background:rgba(212,133,58,0.1); border:1px solid rgba(212,133,58,0.2); }
+.bd-dim { color:var(--muted); background:var(--s2); border:1px solid var(--s3); }
+
+/* chip */
+.chip { font-size: 8px; font-weight: 700; border-radius: 5px; padding: 2px 6px; }
+.chip-gold { color: var(--gold); background: var(--gold-dim); border: 1px solid rgba(201,146,58,0.2); }
+.chip-grn  { color: var(--green); background: rgba(106,171,122,0.1); border: 1px solid rgba(106,171,122,0.2); }
+
+/* ─── WEEK PROGRESS ─── */
+.week-wrap { padding: 0 0 14px; }
+.week-wrap-inner { padding-top: 12px; padding-bottom: 0; }
+.week-row { display:flex; gap:6px; margin-bottom:4px; }
+.wk { flex:1; text-align:center; }
+.wk-bar { height:4px; border-radius:100px; overflow:hidden; background:var(--s3); margin-bottom:3px; }
+.wk-fill { height:100%; border-radius:100px; width:0; animation:fill 1.2s ease forwards; }
+.wk-lbl { font-size:7px; color:var(--muted); }
+.wk-lbl.on { color:var(--gold); font-weight:700; }
+
+/* ─── 3 METRIC ─── */
+.metric3 { display:flex; gap:8px; margin:10px 16px 0; }
+.mc { flex:1; background:var(--s1); border:1px solid var(--s3); border-radius:14px; padding:11px 10px; text-align:center; }
+.mc-lbl { font-size:7px; font-weight:700; color:var(--muted); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:6px; }
+.mc-ring { position:relative; width:48px; height:48px; margin:0 auto 6px; }
+.mc-ring svg { width:48px; height:48px; transform:rotate(-90deg); }
+.mc-ring-bg { fill:none; stroke:var(--s3); stroke-width:4; }
+.mc-ring-fill { fill:none; stroke-width:4; stroke-linecap:round; stroke-dasharray:120; }
+.mc-ring-txt { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.mc-pct { font-family:'Playfair Display',serif; font-size:11px; font-weight:900; line-height:1; }
+.mc-sub { font-size:8px; color:var(--muted); }
+
+/* ─── BONUS CARD ─── */
+.bonus-card {
+  margin: 0 14px 10px;
+  background: linear-gradient(145deg, #231c12 0%, #1c1610 100%);
+  border: 1px solid rgba(201,146,58,0.18);
+  border-radius: 18px; overflow: hidden;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 40px rgba(201,146,58,0.04);
+}
+.bonus-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,146,58,0.6), transparent);
+}
+.bonus-glow {
+  position: absolute; bottom: -40px; right: -40px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(201,146,58,0.08), transparent 70%);
+  pointer-events: none;
+}
+.bonus-top {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(201,146,58,0.08);
+}
+.bonus-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.bonus-lbl { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+.bonus-status {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--gold-dim); border: 1px solid rgba(201,146,58,0.2);
+  border-radius: 6px; padding: 3px 8px;
+  font-size: 9px; font-weight: 700; color: var(--gold);
+}
+.bonus-cols { display: flex; gap: 10px; margin-bottom: 12px; }
+.bonus-col-daily {
+  flex: 1;
+  background: var(--s2); border: 1px solid var(--s3);
+  border-radius: 12px; padding: 10px 12px;
+}
+.bcol-lbl { font-size: 8px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+.bcol-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; color: var(--gold-lt); line-height: 1; margin-bottom: 2px;
+}
+.bcol-val small { font-size: 10px; color: var(--muted); font-family: 'Outfit', sans-serif; }
+.bcol-sub { font-size: 8px; color: var(--muted); }
+.bonus-col-total { flex: 1.1; }
+.bonus-total-lbl { font-size: 8px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+.bonus-total-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; font-weight: 900;
+  color: var(--gold-lt); line-height: 1; margin-bottom: 2px;
+}
+.bonus-total-val small { font-size: 11px; color: var(--muted); font-family: 'Outfit', sans-serif; font-weight: 400; }
+.bonus-total-sub { font-size: 9px; color: var(--muted); margin-bottom: 8px; }
+.bonus-total-sub strong { color: var(--cream2); }
+.bonus-prog-meta { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-bottom: 5px; }
+.bonus-prog-meta strong { color: var(--gold); }
+.bar.bonus-bar { height: 6px; }
+.bonus-rows { padding: 2px 0; }
+.bonus-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.bonus-row:last-child { border-bottom: none; }
+.bonus-row-lbl { font-size: 10px; color: var(--muted); }
+.bonus-row-val { font-size: 11px; font-weight: 700; color: var(--cream2); }
+.bonus-row-val.gld { color: var(--gold); }
+.bonus-cta-wrap { padding: 0 16px 14px; }
+.bonus-cta {
+  width: 100%;
+  background: linear-gradient(135deg, var(--gold), #a8742a);
+  color: #1a1208; border: none; border-radius: 11px; padding: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 800; cursor: pointer; letter-spacing: 0.04em;
+  box-shadow: 0 4px 18px rgba(201,146,58,0.3);
+}
+
+/* ─── DETAIL BTN ─── */
+.detail-btn { margin:10px 16px 0; background:var(--s1); border:1px solid rgba(201,146,58,0.25); border-radius:14px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+.db-title { font-size:12px; font-weight:700; color:var(--cream2); margin-bottom:2px; }
+.db-sub { font-size:9px; color:var(--muted); }
+.db-arrow { width:28px; height:28px; border-radius:50%; background:var(--gold-dim); border:1px solid rgba(201,146,58,0.3); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.db-arrow svg { width:11px; height:11px; stroke:var(--gold); stroke-width:2.5; fill:none; }
+
+/* ─── KPI ITEM ─── */
+.kbi { padding:9px 14px; border-bottom:1px solid rgba(255,255,255,0.03); }
+.kbi:last-child { border-bottom:none; }
+.kbi-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.kbi-name { font-size:10px; color:var(--cream2); font-weight:600; }
+.kbi-right { display:flex; align-items:center; gap:5px; }
+.kbi-weight { font-size:7px; color:var(--muted2); background:var(--s2); border:1px solid var(--s3); border-radius:100px; padding:1px 6px; }
+.kbi-pct { font-size:12px; font-weight:800; }
+.kbi-track { height:4px; background:var(--s3); border-radius:100px; overflow:hidden; }
+.kbi-fill { height:100%; border-radius:100px; width:0; animation:fill 1.2s ease forwards; }
+
+/* ─── COMPARE CARD ─── */
+.compare-card { margin:0 16px 10px; background:var(--s1); border:1px solid var(--s3); border-radius:16px; overflow:hidden; }
+.compare-head { padding:10px 14px; border-bottom:1px solid var(--s3); display:flex; justify-content:space-between; }
+.compare-title { font-size:11px; font-weight:700; color:var(--cream2); }
+.compare-sub { font-size:8px; color:var(--muted); }
+.compare-body { display:flex; }
+.cb-area { flex:1; padding:12px 14px; text-align:center; border-right:1px solid var(--s3); }
+.cb-area:last-child { border-right:none; }
+.cb-name { font-size:8px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; }
+.cb-kpi { font-family:'Playfair Display',serif; font-size:26px; font-weight:900; line-height:1; margin-bottom:4px; }
+.cb-bar { height:4px; background:var(--s3); border-radius:100px; overflow:hidden; margin:0 auto 5px; width:80px; }
+.cb-fill { height:100%; border-radius:100px; width:0; animation:fill 1.2s ease forwards; }
+.cb-unit { font-size:9px; color:var(--muted); }
+.cb-unit strong { color:var(--cream2); }
+
+/* ─── BOTTOM NAV ── */
+.nav {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(22,18,12,0.97);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid var(--s3);
+  padding: 10px 8px 22px;
+  display: flex; justify-content: space-around;
+  z-index: 100;
+}
+.nav-item {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+  padding: 5px 12px; border-radius: 10px; cursor: pointer;
+}
+.nav-item.on { background: var(--gold-dim); }
+.nav-item svg { width: 18px; height: 18px; stroke-width: 2; fill: none; stroke: var(--muted2); }
+.nav-item.on svg { stroke: var(--gold); }
+.nav-lbl { font-size: 8px; font-weight: 700; color: var(--muted2); letter-spacing: 0.04em; text-transform: uppercase; }
+.nav-item.on .nav-lbl { color: var(--gold); }
+
+/* annot */
+.annot {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 9px; color: #5a4f40;
+  font-weight: 600; letter-spacing: 0.04em;
+  margin: 0 14px 2px;
+  padding: 0 4px;
+}
+.annot::before { content:''; flex:1; height:1px; background:#2a2318; }
+.annot::after  { content:''; flex:1; height:1px; background:#2a2318; }
+
+.gap { height: 10px; }
+
+@keyframes fill { from{width:0} to{width:var(--w,0%)} }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
+/* ─── AKTIVITAS OVERLAY ─── */
+.act-overlay {
+  position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:300;
+  display:none; align-items:flex-end;
+  backdrop-filter: blur(4px);
+}
+.act-overlay.open { display:flex; }
+.act-sheet {
+  width:100%; background:var(--s1); border-radius:24px 24px 0 0;
+  border-top:1px solid var(--s3); overflow:hidden;
+  animation: slideUp .3s ease;
+}
+.act-sheet-handle {
+  width:36px; height:4px; border-radius:100px;
+  background:var(--s3); margin:10px auto 0;
+}
+.act-sheet-head {
+  display:flex; justify-content:space-between; align-items:flex-end;
+  padding:12px 18px 10px;
+  border-bottom:1px solid var(--s3);
+}
+.act-sheet-bar {
+  height:4px; background:var(--s3); margin:0;
+}
+.act-sheet-bar-fill {
+  height:100%; background:linear-gradient(90deg,var(--gold),var(--gold-lt));
+  box-shadow:0 0 8px var(--gold-glow);
+}
+.act-sheet-list { padding:4px 0; max-height:320px; overflow-y:auto; }
+.asl-row {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 18px; border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.asl-row:last-child { border-bottom:none; }
+.asl-icon {
+  width:28px; height:28px; border-radius:8px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.asl-row.done .asl-icon { background:var(--green-dim); }
+.asl-row.todo .asl-icon { background:var(--s2); }
+.asl-icon svg { width:13px; height:13px; }
+.asl-info { flex:1; }
+.asl-name { font-size:11px; font-weight:700; color:var(--cream2); margin-bottom:2px; }
+.asl-sub { font-size:9px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="page-title">Home · Promotor Role</div>
+
+<div class="phone">
+  <div class="island"></div>
+
+  <!-- STATUS BAR -->
+  <div class="sbar">
+    <div class="sbar-time">09:46</div>
+    <div class="sbar-r">
+      <svg width="13" height="10" viewBox="0 0 13 10" fill="#c8bfad"><rect x="0" y="4" width="2" height="6" rx="1"/><rect x="3" y="2.5" width="2" height="7.5" rx="1"/><rect x="6" y="1" width="2" height="9" rx="1"/><rect x="9" y="0" width="2" height="10" rx="1"/></svg>
+      4G &nbsp;
+      <svg width="22" height="10" viewBox="0 0 22 10" fill="none"><rect x="0.5" y="0.5" width="18" height="9" rx="2" stroke="#c8bfad" stroke-opacity="0.4"/><rect x="2" y="2" width="13" height="6" rx="1.5" fill="#c8bfad"/><path d="M20 3.5v3a1.5 1.5 0 0 0 0-3z" fill="#c8bfad" opacity="0.4"/></svg>
+      78%
+    </div>
+  </div>
+
+  <div class="scroll">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="h-top">
+        <div>
+          <div class="h-greeting">Selamat datang,</div>
+          <div class="h-name">Anissa</div>
+          <div class="h-store">King Cell · Kupang</div>
+        </div>
+        <div class="h-right">
+          <div class="hbtn">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <div class="hbtn">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <div class="h-notif"></div>
+          </div>
+        </div>
+      </div>
+      <div class="h-bottom">
+        <div class="h-date">Kamis, 12 Mar 2026</div>
+        <div class="tab-bar">
+          <div class="tab-btn on" onclick="switchTab('harian')">Harian</div>
+          <div class="tab-btn" onclick="switchTab('mingguan')">Mingguan</div>
+          <div class="tab-btn" onclick="switchTab('bulanan')">Bulanan</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ TAB HARIAN ══════════ -->
+    <div class="tab-panel active" id="tab-harian">
+
+      <!-- ABSEN -->
+      <div class="absen-row" style="margin-bottom:2px;">
+        <div class="absen-status">Selasa, <strong style="color:var(--cream2)">12 Maret 2026</strong></div>
+        <div class="absen-pill">
+          <div class="absen-dot"></div>
+          <div class="absen-txt">Absen Masuk</div>
+          <div class="absen-time">09:46</div>
+        </div>
+      </div>
+
+      <!-- HERO HARIAN -->
+      <div class="hero" style="padding-bottom:16px;">
+        <div class="hero-glow"></div>
+        <div class="hero-top">
+          <div>
+            <div class="hero-lbl">Target Harian</div>
+            <div class="hero-nominal"><small>Rp </small>3.800.000</div>
+            <div class="hero-sub">Realisasi hari ini: <strong>Rp 2.280.000</strong></div>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 62 62"><circle class="ring-bg" cx="31" cy="31" r="25"/><circle class="ring-fill" cx="31" cy="31" r="25" style="stroke:var(--gold);stroke-dashoffset:86"/></svg>
+            <div class="ring-txt"><div class="ring-pct" style="color:var(--gold)">60%</div><div class="ring-lbl">Hari ini</div></div>
+          </div>
+        </div>
+        <div class="prog-meta"><span>Progress hari ini</span><strong>Sisa Rp 1.520.000</strong></div>
+        <div class="prog-track"><div class="prog-fill" style="width:60%"></div></div>
+      </div>
+
+      <!-- PENCAPAIAN KEMARIN — 3 kolom: AllType, Fokus, Vast Finance -->
+      <div class="sec-head" style="padding-top:12px;padding-bottom:6px;"><div class="sec-title">Pencapaian Kemarin</div><div class="sec-note">Rabu, 11 Mar</div></div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="compare-body">
+          <div class="cb-area">
+            <div class="cb-name">All Type</div>
+            <div class="cb-kpi" style="color:var(--green);font-size:16px;">3,0Jt</div>
+            <div class="cb-bar"><div class="cb-fill" style="--w:80%;background:var(--green)"></div></div>
+            <div class="cb-unit">Target <strong>Rp 3,8Jt</strong></div>
+            <div style="margin-top:5px;font-size:8px;color:var(--green);font-weight:700;">✓ 80%</div>
+          </div>
+          <div class="cb-area">
+            <div class="cb-name">Fokus Produk</div>
+            <div class="cb-kpi" style="color:var(--gold);font-size:22px;">3</div>
+            <div class="cb-bar"><div class="cb-fill" style="--w:60%;background:var(--gold)"></div></div>
+            <div class="cb-unit">Target <strong>5 unit</strong></div>
+            <div style="margin-top:5px;font-size:8px;color:var(--gold);font-weight:700;">60%</div>
+          </div>
+          <div class="cb-area">
+            <div class="cb-name">Vast Finance</div>
+            <div class="cb-kpi" style="color:var(--blue);font-size:22px;">2</div>
+            <div class="cb-bar"><div class="cb-fill" style="--w:40%;background:var(--blue)"></div></div>
+            <div class="cb-unit">Target <strong>5 unit</strong></div>
+            <div style="margin-top:5px;font-size:8px;color:var(--amber);font-weight:700;">40%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AKTIVITAS HARI INI (clickable → detail overlay) -->
+      <div class="act-card" style="margin-top:0;" onclick="openAktivitas()">
+        <div class="act-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="act-info">
+          <div class="act-title">Aktivitas Hari Ini</div>
+          <div class="act-bar-row">
+            <div class="act-bar-track"><div class="act-bar-fill" style="--w:60%"></div></div>
+            <div class="act-pct">3/5 selesai</div>
+          </div>
+          <div class="act-pills">
+            <div class="act-pill done">Absen Masuk</div>
+            <div class="act-pill done">Input Stok</div>
+            <div class="act-pill done">Lapor Jual</div>
+            <div class="act-pill todo">Jadwal</div>
+            <div class="act-pill more">+2 lagi →</div>
+          </div>
+        </div>
+        <div class="act-right">
+          <div class="act-count">3<small>/5</small></div>
+          <div class="act-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+      </div>
+
+      <!-- AKTIVITAS DETAIL OVERLAY -->
+      <div class="act-overlay" id="aktOverlay" onclick="closeAktivitas()">
+        <div class="act-sheet" onclick="event.stopPropagation()">
+          <div class="act-sheet-handle"></div>
+          <div class="act-sheet-head">
+            <div>
+              <div style="font-size:9px;color:var(--muted);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Detail Aktivitas</div>
+              <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:var(--cream);">Hari Ini</div>
+            </div>
+            <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:900;color:var(--gold);">3<span style="font-size:14px;color:var(--muted);font-family:'Outfit',sans-serif;">/5</span></div>
+          </div>
+          <div class="act-sheet-bar">
+            <div class="act-sheet-bar-fill" style="width:60%"></div>
+          </div>
+          <div class="act-sheet-list">
+            <div class="asl-row done">
+              <div class="asl-icon"><svg viewBox="0 0 24 24" stroke="var(--green)" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="asl-info"><div class="asl-name">Absen Masuk</div><div class="asl-sub">09:46 · Selesai</div></div>
+              <div class="badge bd-grn">✓ Done</div>
+            </div>
+            <div class="asl-row done">
+              <div class="asl-icon"><svg viewBox="0 0 24 24" stroke="var(--green)" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="asl-info"><div class="asl-name">Input Stok</div><div class="asl-sub">10:15 · Selesai</div></div>
+              <div class="badge bd-grn">✓ Done</div>
+            </div>
+            <div class="asl-row done">
+              <div class="asl-icon"><svg viewBox="0 0 24 24" stroke="var(--green)" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="asl-info"><div class="asl-name">Lapor Jual</div><div class="asl-sub">11:30 · Selesai</div></div>
+              <div class="badge bd-grn">✓ Done</div>
+            </div>
+            <div class="asl-row todo">
+              <div class="asl-icon"><svg viewBox="0 0 24 24" stroke="var(--muted)" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div>
+              <div class="asl-info"><div class="asl-name">Input Jadwal</div><div class="asl-sub">Belum dikerjakan</div></div>
+              <div class="badge bd-dim">Pending</div>
+            </div>
+            <div class="asl-row todo">
+              <div class="asl-icon"><svg viewBox="0 0 24 24" stroke="var(--muted)" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div>
+              <div class="asl-info"><div class="asl-name">Update Display</div><div class="asl-sub">Belum dikerjakan</div></div>
+              <div class="badge bd-dim">Pending</div>
+            </div>
+            <div class="asl-row todo">
+              <div class="asl-icon"><svg viewBox="0 0 24 24" stroke="var(--amber)" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div>
+              <div class="asl-info"><div class="asl-name">Absen Pulang</div><div class="asl-sub">Buka setelah 16:00</div></div>
+              <div class="badge bd-amb">Nanti</div>
+            </div>
+          </div>
+          <div style="padding:0 16px 16px;"><button class="bonus-cta" onclick="closeAktivitas()">Tutup</button></div>
+        </div>
+      </div>
+
+      <!-- BONUS HARIAN -->
+      <div class="annot">Estimasi Bonus Hari Ini</div>
+      <div class="bonus-card">
+        <div class="bonus-glow"></div>
+        <div class="bonus-top">
+          <div class="bonus-head">
+            <div class="bonus-lbl">Bonus Hari Ini</div>
+            <div class="bonus-status">⚡ On Track</div>
+          </div>
+          <div class="bonus-cols">
+            <div class="bonus-col-daily">
+              <div class="bcol-lbl">Unit Terjual</div>
+              <div class="bcol-val">6 <span style="font-size:10px;color:var(--muted);font-family:'Outfit',sans-serif">unit</span></div>
+              <div class="bcol-sub">dari target 8 unit</div>
+            </div>
+            <div class="bonus-col-total">
+              <div class="bonus-total-lbl">Bonus Hari Ini</div>
+              <div class="bonus-total-val"><small>Rp </small>125.000</div>
+              <div class="bonus-total-sub">Target: <strong>Rp 175.000</strong></div>
+              <div class="bonus-prog-meta"><span>Progress</span><strong>71%</strong></div>
+              <div class="bar bonus-bar"><div class="bar-fill" style="--w:71%;--d:1s"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bonus-rows">
+          <div class="bonus-row"><div class="bonus-row-lbl">Bonus all-type unit</div><div class="bonus-row-val gld">Rp 75.000</div></div>
+          <div class="bonus-row"><div class="bonus-row-lbl">Bonus fokus produk</div><div class="bonus-row-val gld">Rp 50.000</div></div>
+          <div class="bonus-row"><div class="bonus-row-lbl">Sisa yang bisa diraih hari ini</div><div class="bonus-row-val">Rp 50.000</div></div>
+        </div>
+      </div>
+      <div class="gap"></div>
+
+    </div><!-- end tab-harian -->
+
+    <!-- ══════════ TAB MINGGUAN ══════════ -->
+    <div class="tab-panel" id="tab-mingguan">
+
+      <!-- HERO MINGGUAN -->
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-top">
+          <div>
+            <div class="hero-lbl">Target Mingguan</div>
+            <div class="hero-nominal"><small>Rp </small>19.000.000</div>
+            <div class="hero-sub">Realisasi: <strong>Rp 8.550.000</strong></div>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 62 62"><circle class="ring-bg" cx="31" cy="31" r="25"/><circle class="ring-fill" cx="31" cy="31" r="25" style="stroke:var(--amber);stroke-dashoffset:113"/></svg>
+            <div class="ring-txt"><div class="ring-pct" style="color:var(--amber)">45%</div><div class="ring-lbl">Minggu ini</div></div>
+          </div>
+        </div>
+        <div class="prog-meta"><span>Minggu ke-2 · Hari ke-4 dari 6</span><strong>Sisa Rp 10.450.000</strong></div>
+        <div class="prog-track"><div class="prog-fill" style="width:45%;background:linear-gradient(90deg,var(--amber),var(--gold))"></div></div>
+        <div class="week-wrap-inner" style="padding:12px 0 0;">
+          <div style="font-size:8px;color:var(--muted);margin-bottom:6px;font-weight:600;">Progress 4 Minggu — Maret 2026</div>
+          <div class="week-row">
+            <div class="wk"><div class="wk-bar"><div class="wk-fill" style="--w:100%;background:var(--green)"></div></div><div class="wk-lbl">Mg 1 ✓</div></div>
+            <div class="wk"><div class="wk-bar"><div class="wk-fill" style="--w:45%;background:var(--amber)"></div></div><div class="wk-lbl on">Mg 2 ←</div></div>
+            <div class="wk"><div class="wk-bar" style="opacity:0.3"></div><div class="wk-lbl">Mg 3</div></div>
+            <div class="wk"><div class="wk-bar" style="opacity:0.3"></div><div class="wk-lbl">Mg 4</div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:8px;margin-top:4px;padding-bottom:12px;">
+            <span style="color:var(--green)">Mg 1: 100% ✓</span>
+            <span style="color:var(--amber)">Mg 2: 45%</span>
+            <span style="color:var(--muted)">Mg 3: —</span>
+            <span style="color:var(--muted)">Mg 4: —</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 METRIK MINGGUAN: AllType, Fokus, Vast Finance -->
+      <div class="sec-head"><div class="sec-title">Pencapaian Minggu Ini</div><div class="sec-note">Hari ke-4/6</div></div>
+      <div class="metric3">
+        <div class="mc">
+          <div class="mc-lbl">All Type</div>
+          <div class="mc-ring"><svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--amber);stroke-dashoffset:78"/></svg><div class="mc-ring-txt"><div class="mc-pct" style="color:var(--amber)">35%</div></div></div>
+          <div class="mc-sub" style="color:var(--amber)">8,5Jt</div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Fokus Produk</div>
+          <div class="mc-ring"><svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--gold);stroke-dashoffset:72"/></svg><div class="mc-ring-txt"><div class="mc-pct" style="color:var(--gold)">40%</div></div></div>
+          <div class="mc-sub" style="color:var(--gold)">10 unit</div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Vast Finance</div>
+          <div class="mc-ring"><svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--blue);stroke-dashoffset:84"/></svg><div class="mc-ring-txt"><div class="mc-pct" style="color:var(--blue)">30%</div></div></div>
+          <div class="mc-sub" style="color:var(--blue)">9 unit</div>
+        </div>
+      </div>
+
+      <!-- BONUS MINGGUAN -->
+      <div class="annot">Estimasi Bonus Minggu Ini</div>
+      <div class="bonus-card">
+        <div class="bonus-glow"></div>
+        <div class="bonus-top">
+          <div class="bonus-head">
+            <div class="bonus-lbl">Bonus Akumulasi Minggu Ini</div>
+            <div class="bonus-status">📈 Progress</div>
+          </div>
+          <div class="bonus-cols">
+            <div class="bonus-col-daily">
+              <div class="bcol-lbl">Unit Terjual</div>
+              <div class="bcol-val">26 <span style="font-size:10px;color:var(--muted);font-family:'Outfit',sans-serif">unit</span></div>
+              <div class="bcol-sub">target 74 unit/minggu</div>
+            </div>
+            <div class="bonus-col-total">
+              <div class="bonus-total-lbl">Estimasi Bonus Mg Ini</div>
+              <div class="bonus-total-val"><small>Rp </small>520.000</div>
+              <div class="bonus-total-sub">Target: <strong>Rp 800.000</strong></div>
+              <div class="bonus-prog-meta"><span>Progress</span><strong>65%</strong></div>
+              <div class="bar bonus-bar"><div class="bar-fill" style="--w:65%;--d:1s"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bonus-rows">
+          <div class="bonus-row"><div class="bonus-row-lbl">Bonus all-type minggu ini</div><div class="bonus-row-val gld">Rp 312.500</div></div>
+          <div class="bonus-row"><div class="bonus-row-lbl">Bonus fokus produk</div><div class="bonus-row-val gld">Rp 207.500</div></div>
+          <div class="bonus-row"><div class="bonus-row-lbl">Sisa yang bisa diraih</div><div class="bonus-row-val">Rp 280.000</div></div>
+        </div>
+        <div class="bonus-cta-wrap"><button class="bonus-cta">Lihat Detail Bonus →</button></div>
+      </div>
+
+      <div class="gap"></div>
+
+    </div><!-- end tab-mingguan -->
+
+    <!-- ══════════ TAB BULANAN ══════════ -->
+    <div class="tab-panel" id="tab-bulanan">
+
+      <!-- HERO BULANAN -->
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-top">
+          <div>
+            <div class="hero-lbl">Target Bulanan</div>
+            <div class="hero-nominal"><small>Rp </small>114.012.000</div>
+            <div class="hero-sub">Realisasi: <strong>Rp 38.500.000</strong></div>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 62 62"><circle class="ring-bg" cx="31" cy="31" r="25"/><circle class="ring-fill" cx="31" cy="31" r="25" style="stroke:var(--gold);stroke-dashoffset:130"/></svg>
+            <div class="ring-txt"><div class="ring-pct" style="color:var(--gold)">34%</div><div class="ring-lbl">Bulanan</div></div>
+          </div>
+        </div>
+        <div class="prog-meta"><span>Progress Maret 2026</span><strong>Sisa Rp 75.512.000</strong></div>
+        <div class="prog-track"><div class="prog-fill" style="width:34%"></div></div>
+        <div class="hero-strip">
+          <div class="hs"><div class="hs-lbl">Hari Kerja</div><div class="hs-val">12/26</div><div class="hs-sub">Sisa <strong>14 hari</strong></div></div>
+          <div class="hs"><div class="hs-lbl">Target/Hari</div><div class="hs-val">Rp 5,4Jt</div><div class="hs-sub">sisa hari kerja</div></div>
+          <div class="hs"><div class="hs-lbl">vs Feb</div><div class="hs-val" style="color:var(--green)">↑ +8%</div><div class="hs-sub">lebih baik</div></div>
+        </div>
+      </div>
+
+      <!-- 3 METRIK BULANAN: AllType, Fokus, Vast Finance -->
+      <div class="sec-head"><div class="sec-title">Pencapaian Bulan Ini</div><div class="sec-note">Maret 2026</div></div>
+      <div class="metric3">
+        <div class="mc">
+          <div class="mc-lbl">All Type</div>
+          <div class="mc-ring"><svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--gold);stroke-dashoffset:92"/></svg><div class="mc-ring-txt"><div class="mc-pct" style="color:var(--gold)">34%</div></div></div>
+          <div class="mc-sub" style="color:var(--gold)">38,5Jt</div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Fokus Produk</div>
+          <div class="mc-ring"><svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--green);stroke-dashoffset:85"/></svg><div class="mc-ring-txt"><div class="mc-pct" style="color:var(--green)">29%</div></div></div>
+          <div class="mc-sub" style="color:var(--green)">29 unit</div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Vast Finance</div>
+          <div class="mc-ring"><svg viewBox="0 0 48 48"><circle class="mc-ring-bg" cx="24" cy="24" r="19"/><circle class="mc-ring-fill" cx="24" cy="24" r="19" style="stroke:var(--blue);stroke-dashoffset:96"/></svg><div class="mc-ring-txt"><div class="mc-pct" style="color:var(--blue)">20%</div></div></div>
+          <div class="mc-sub" style="color:var(--blue)">18 unit</div>
+        </div>
+      </div>
+
+      <!-- FOKUS PRODUK BULANAN -->
+      <div class="sec-head"><div class="sec-title">Fokus Produk Bulanan</div><div class="sec-note">6 Tipe Aktif</div></div>
+      <div class="card">
+        <div class="card-glow"></div>
+        <div class="fp-summary">
+          <div class="fp-sum-item"><div class="fp-sum-lbl">Target</div><div class="fp-sum-val">100</div></div>
+          <div class="fp-sum-item"><div class="fp-sum-lbl">Terjual</div><div class="fp-sum-val grn">29</div></div>
+          <div class="fp-sum-item"><div class="fp-sum-lbl">Sisa</div><div class="fp-sum-val amb">71</div></div>
+          <div class="fp-sum-item"><div class="fp-sum-lbl">Progress</div><div class="fp-sum-val gld">29%</div></div>
+        </div>
+        <div class="fp-list">
+          <div class="fp-row">
+            <div class="fp-row-num">1</div>
+            <div class="fp-row-info"><div class="fp-row-name">Samsung Galaxy A55</div><div class="fp-row-prog"><div class="bar fp-bar"><div class="bar-fill grn" style="--w:80%;--d:0.9s"></div></div><div class="fp-row-pct" style="color:var(--green)">80%</div></div></div>
+            <div class="fp-row-right"><div class="fp-row-count">8<small>/10</small></div><div class="fp-row-unit">unit</div></div>
+          </div>
+          <div class="fp-row">
+            <div class="fp-row-num">2</div>
+            <div class="fp-row-info"><div class="fp-row-name">iPhone 15 128GB</div><div class="fp-row-prog"><div class="bar fp-bar"><div class="bar-fill" style="--w:50%;--d:1s"></div></div><div class="fp-row-pct" style="color:var(--gold)">50%</div></div></div>
+            <div class="fp-row-right"><div class="fp-row-count">5<small>/10</small></div><div class="fp-row-unit">unit</div></div>
+          </div>
+          <div class="fp-row">
+            <div class="fp-row-num">3</div>
+            <div class="fp-row-info"><div class="fp-row-name">Xiaomi 14T Pro</div><div class="fp-row-prog"><div class="bar fp-bar"><div class="bar-fill amb" style="--w:33%;--d:1.1s"></div></div><div class="fp-row-pct" style="color:var(--amber)">33%</div></div></div>
+            <div class="fp-row-right"><div class="fp-row-count">5<small>/15</small></div><div class="fp-row-unit">unit</div></div>
+          </div>
+          <div class="fp-row">
+            <div class="fp-row-num">4</div>
+            <div class="fp-row-info"><div class="fp-row-name">OPPO Reno 12</div><div class="fp-row-prog"><div class="bar fp-bar"><div class="bar-fill" style="--w:40%;--d:1.2s"></div></div><div class="fp-row-pct" style="color:var(--gold)">40%</div></div></div>
+            <div class="fp-row-right"><div class="fp-row-count">4<small>/10</small></div><div class="fp-row-unit">unit</div></div>
+          </div>
+          <div class="fp-row">
+            <div class="fp-row-num">5</div>
+            <div class="fp-row-info"><div class="fp-row-name">Vivo V30e</div><div class="fp-row-prog"><div class="bar fp-bar"><div class="bar-fill amb" style="--w:20%;--d:1.3s"></div></div><div class="fp-row-pct" style="color:var(--amber)">20%</div></div></div>
+            <div class="fp-row-right"><div class="fp-row-count">2<small>/10</small></div><div class="fp-row-unit">unit</div></div>
+          </div>
+          <div class="fp-row">
+            <div class="fp-row-num">6</div>
+            <div class="fp-row-info"><div class="fp-row-name">Realme C65</div><div class="fp-row-prog"><div class="bar fp-bar"><div class="bar-fill dim" style="--w:0%"></div></div><div class="fp-row-pct" style="color:var(--muted)">0%</div></div></div>
+            <div class="fp-row-right"><div class="fp-row-count" style="color:var(--muted)">0<small>/5</small></div><div class="fp-row-unit">unit</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BONUS BULANAN -->
+      <div class="annot">Estimasi Bonus Bulan Ini</div>
+      <div class="bonus-card">
+        <div class="bonus-glow"></div>
+        <div class="bonus-top">
+          <div class="bonus-head">
+            <div class="bonus-lbl">Estimasi Bonus Bulan Ini</div>
+            <div class="bonus-status">⚡ On Track</div>
+          </div>
+          <div class="bonus-cols">
+            <div class="bonus-col-daily">
+              <div class="bcol-lbl">Unit Bulan Ini</div>
+              <div class="bcol-val">76 <span style="font-size:10px;color:var(--muted);font-family:'Outfit',sans-serif">unit</span></div>
+              <div class="bcol-sub">dari target 224 unit</div>
+            </div>
+            <div class="bonus-col-total">
+              <div class="bonus-total-lbl">Total Estimasi</div>
+              <div class="bonus-total-val"><small>Rp </small>1.000.000</div>
+              <div class="bonus-total-sub">Target: <strong>Rp 3.000.000</strong></div>
+              <div class="bonus-prog-meta"><span>Progress</span><strong>34%</strong></div>
+              <div class="bar bonus-bar"><div class="bar-fill" style="--w:34%;--d:1s"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bonus-rows">
+          <div class="bonus-row"><div class="bonus-row-lbl">Bonus penjualan unit</div><div class="bonus-row-val gld">Rp 750.000</div></div>
+          <div class="bonus-row"><div class="bonus-row-lbl">Bonus fokus produk</div><div class="bonus-row-val gld">Rp 250.000</div></div>
+          <div class="bonus-row"><div class="bonus-row-lbl">Sisa yang bisa diraih</div><div class="bonus-row-val">Rp 2.000.000</div></div>
+        </div>
+        <div class="bonus-cta-wrap"><button class="bonus-cta">Lihat Detail Bonus →</button></div>
+      </div>
+
+      <div class="detail-btn">
+        <div><div class="db-title">Laporan Bulanan Lengkap</div><div class="db-sub">AllType · Fokus · Aktivitas · Bonus</div></div>
+        <div class="db-arrow"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+      <div class="gap"></div>
+
+    </div><!-- end tab-bulanan -->
+
+  </div><!-- end scroll -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <div class="nav-item on">
+      <svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <div class="nav-lbl">Home</div>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <div class="nav-lbl">Aktivitas</div>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <div class="nav-lbl">Laporan</div>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <div class="nav-lbl">Chat</div>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div class="nav-lbl">Profil</div>
+    </div>
+  </nav>
+
+</div>
+
+<script>
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('on',['harian','mingguan','bulanan'][i]===tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+function openAktivitas(){
+  document.getElementById('aktOverlay').classList.add('open');
+}
+function closeAktivitas(){
+  document.getElementById('aktOverlay').classList.remove('open');
+}
+</script>
+</body>
+</html>

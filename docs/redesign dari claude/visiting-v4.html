@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VTrack – Visiting v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --red:#c05a4a;--red-dim:rgba(192,90,74,0.1);
+  --amber:#d4853a;--amber-dim:rgba(212,133,58,0.12);
+  --blue:#5b8dd9;--blue-dim:rgba(91,141,217,0.1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 20px 60px;}
+.page-lbl{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;margin-bottom:14px;}
+.phone{width:370px;height:800px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+.screen{position:absolute;top:50px;left:0;right:0;bottom:0;display:none;flex-direction:column;background:var(--bg);}
+.screen.active{display:flex;animation:fadeSlide .2s ease;}
+.scr-scroll{flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:90px;}
+.scr-scroll::-webkit-scrollbar{display:none;}
+.sticky{position:sticky;top:0;z-index:40;background:var(--bg);}
+.appbar{padding:10px 16px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--s2);}
+.back-btn{width:30px;height:30px;border-radius:9px;background:var(--s1);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;}
+.back-btn svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2.5;fill:none;}
+.ab-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--cream);flex:1;line-height:1;}
+.ab-sub{font-size:9px;color:var(--muted);margin-top:1px;}
+
+/* LIST */
+.visit-summary{display:flex;gap:1px;margin:10px 16px 0;border-radius:12px;overflow:hidden;border:1px solid var(--s3);}
+.vs-item{flex:1;background:var(--s1);padding:9px 6px;text-align:center;}
+.vs-item+.vs-item{border-left:1px solid var(--s3);}
+.vs-val{font-family:'Playfair Display',serif;font-size:16px;font-weight:900;line-height:1;}
+.vs-lbl{font-size:7px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;}
+.filter-row{display:flex;gap:5px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none;}
+.filter-row::-webkit-scrollbar{display:none;}
+.fc{font-size:8px;font-weight:700;border-radius:100px;padding:4px 11px;cursor:pointer;border:1px solid var(--s3);color:var(--muted);background:var(--s1);white-space:nowrap;flex-shrink:0;}
+.fc.on{background:var(--gold);border-color:var(--gold);color:#1a0e00;}
+.time-bar-wrap{margin:10px 16px 0;background:var(--s1);border:1px solid var(--s3);border-radius:11px;padding:9px 12px;}
+.tb-row{display:flex;justify-content:space-between;margin-bottom:5px;}
+.tb-label{font-size:9px;font-weight:700;color:var(--muted);}
+.tb-val{font-size:9px;font-weight:700;color:var(--cream2);}
+.tb-track{height:5px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.tb-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--gold),var(--gold-lt));}
+.tb-note{font-size:8px;color:var(--muted);margin-top:4px;}
+.tb-note strong{color:var(--amber);}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 6px;}
+.sh-left{display:flex;align-items:center;gap:5px;}
+.sh-dot{width:6px;height:6px;border-radius:50%;}
+.sh-title{font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.08em;}
+.sh-count{font-size:9px;color:var(--muted);}
+.row-group{margin:0 16px;background:var(--s1);border:1px solid var(--s3);border-radius:14px;overflow:hidden;margin-bottom:8px;}
+.toko-row{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:background .15s;}
+.toko-row:last-child{border-bottom:none;}
+.toko-row:active{background:rgba(255,255,255,0.02);}
+.tr-priority{font-size:7px;font-weight:800;border-radius:4px;padding:2px 5px;flex-shrink:0;margin-top:1px;}
+.tr-info{flex:1;min-width:0;}
+.tr-name{font-size:11px;font-weight:700;color:var(--cream);}
+.tr-sator{font-size:8px;color:var(--muted);margin-top:1px;}
+.tr-chips{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+.tr-chip{font-size:8px;font-weight:700;border-radius:100px;padding:2px 7px;border:1px solid;}
+.tr-vbadge{font-size:7px;font-weight:700;border-radius:100px;padding:2px 6px;margin-top:4px;display:inline-block;border:1px solid;}
+.tr-right{text-align:right;flex-shrink:0;}
+.tr-pct{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;line-height:1;}
+.tr-pct-lbl{font-size:7px;color:var(--muted);}
+.tr-gap{font-size:8px;font-weight:700;margin-top:2px;}
+
+/* BRIEFING */
+.store-hero{padding:12px 16px 10px;background:linear-gradient(160deg,#261f13,#1c1610);border-bottom:1px solid var(--s3);}
+.hero-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:var(--cream);line-height:1;}
+.hero-meta{font-size:9px;color:var(--muted);margin-top:3px;display:flex;gap:5px;flex-wrap:wrap;}
+.hero-badges{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;}
+.hbadge{font-size:7px;font-weight:700;border-radius:100px;padding:2px 8px;border:1px solid;}
+.toko-sum{display:flex;gap:1px;margin:10px 16px 0;border-radius:12px;overflow:hidden;border:1px solid var(--s3);}
+.ts-item{flex:1;background:var(--s1);padding:8px 4px;text-align:center;}
+.ts-item+.ts-item{border-left:1px solid var(--s3);}
+.ts-val{font-family:'Playfair Display',serif;font-size:13px;font-weight:900;line-height:1;}
+.ts-lbl{font-size:7px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-top:2px;}
+.promo-section{margin:10px 16px 0;}
+.ps-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.ps-title{font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.08em;}
+.ps-count{font-size:9px;color:var(--muted);}
+
+/* ═══════════ PROMOTOR CARD ═══════════ */
+.pc{background:var(--s1);border:1px solid var(--s3);border-radius:14px;overflow:hidden;margin-bottom:10px;}
+.pc.urgent{border-color:rgba(192,90,74,0.3);}
+.pc.warn{border-color:rgba(212,133,58,0.2);}
+
+/* 1. HEADER */
+.pc-head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:linear-gradient(135deg,rgba(255,255,255,0.02),transparent);border-bottom:1px solid var(--s3);}
+.pc-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:15px;font-weight:900;flex-shrink:0;}
+.pc-name{font-size:13px;font-weight:700;color:var(--cream);}
+.pc-hadir{font-size:8px;font-weight:700;border-radius:100px;padding:2px 7px;border:1px solid;margin-top:3px;display:inline-block;}
+.pc-pct-blk{text-align:right;flex-shrink:0;}
+.pc-pct{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;line-height:1;}
+.pc-gap{font-size:9px;font-weight:700;margin-top:2px;}
+
+/* section label */
+.ps-lbl{font-size:8px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.07em;padding:8px 14px 4px;border-top:1px solid var(--s3);}
+
+/* 2. PENCAPAIAN NOMINAL */
+.nom-wrap{padding:0 14px 10px;}
+.nom-main{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px;}
+.nom-achieved{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;}
+.nom-of{font-size:9px;color:var(--muted);margin-bottom:2px;}
+.nom-target{font-size:11px;font-weight:700;color:var(--cream2);}
+.nom-bar-wrap{height:5px;background:var(--s3);border-radius:100px;overflow:hidden;margin-bottom:4px;}
+.nom-bar{height:100%;border-radius:100px;}
+.nom-foot{display:flex;justify-content:space-between;}
+.nom-foot-l{font-size:8px;color:var(--muted);}
+.nom-foot-r{font-size:8px;font-weight:700;}
+
+/* 4 minggu */
+.week-wrap{padding:0 14px 10px;}
+.week-grid{display:flex;gap:4px;}
+.wk{flex:1;border-radius:9px;padding:6px 4px;text-align:center;border:1px solid var(--s3);background:var(--s2);}
+.wk.cur{border-width:1.5px;}
+.wk-label{font-size:7px;font-weight:800;margin-bottom:3px;}
+.wk-tgt{font-size:7px;color:var(--muted);margin-bottom:2px;}
+.wk-val{font-family:'Playfair Display',serif;font-size:11px;font-weight:900;line-height:1;}
+.wk-pct{font-size:7px;font-weight:700;margin-top:2px;}
+.wk-now{font-size:6px;font-weight:800;letter-spacing:0.05em;margin-top:2px;}
+
+/* 3. PRODUK FOKUS */
+.fokus-wrap{padding:0 14px 10px;}
+.fokus-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.fokus-row:last-child{margin-bottom:0;}
+.fokus-name{font-size:9px;font-weight:700;color:var(--cream2);width:60px;flex-shrink:0;}
+.fokus-bar-wrap{flex:1;height:4px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.fokus-bar{height:100%;border-radius:100px;}
+.fokus-right{text-align:right;flex-shrink:0;min-width:44px;}
+.fokus-val{font-family:'Playfair Display',serif;font-size:12px;font-weight:900;line-height:1;}
+.fokus-tgt{font-size:7px;color:var(--muted);}
+
+/* 4. ALLBRAND x/y */
+.ab-wrap{padding:0 14px 10px;}
+.ab-header{display:flex;margin-bottom:4px;}
+.ab-h-name{flex:1;font-size:7px;font-weight:700;color:var(--muted2);}
+.ab-h-today{width:36px;text-align:center;font-size:7px;font-weight:700;color:var(--muted2);}
+.ab-h-total{width:36px;text-align:center;font-size:7px;font-weight:700;color:var(--muted2);}
+.ab-h-fmt{width:52px;text-align:right;font-size:7px;font-weight:700;color:var(--muted2);}
+.ab-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.ab-row:last-child{margin-bottom:0;}
+.ab-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.ab-name{flex:1;font-size:9px;font-weight:700;color:var(--cream2);}
+.ab-today{width:36px;text-align:center;}
+.ab-today-val{font-family:'Playfair Display',serif;font-size:12px;font-weight:900;}
+.ab-sep{font-size:9px;color:var(--muted2);width:8px;text-align:center;}
+.ab-total{width:36px;text-align:center;}
+.ab-total-val{font-family:'Playfair Display',serif;font-size:12px;font-weight:900;color:var(--cream2);}
+.ab-bar-cell{width:52px;}
+.ab-mini-bar{height:3px;background:var(--s3);border-radius:100px;overflow:hidden;margin-top:2px;}
+.ab-mini-fill{height:100%;border-radius:100px;}
+
+/* 5. VAST FINANCE */
+.vast-wrap{padding:0 14px 10px;}
+.vast-stats{display:flex;gap:1px;background:var(--s3);border-radius:9px;overflow:hidden;margin-bottom:8px;}
+.vst{flex:1;background:var(--s2);padding:7px 4px;text-align:center;}
+.vst-val{font-family:'Playfair Display',serif;font-size:14px;font-weight:900;line-height:1;}
+.vst-lbl{font-size:7px;color:var(--muted);text-transform:uppercase;margin-top:1px;}
+.vast-bar-wrap{height:4px;background:var(--s3);border-radius:100px;overflow:hidden;margin-bottom:8px;}
+.vast-bar{height:100%;border-radius:100px;}
+/* vast detail rows */
+.vast-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.vast-row:last-child{border-bottom:none;}
+.vast-status{font-size:7px;font-weight:800;border-radius:4px;padding:1px 5px;width:52px;text-align:center;flex-shrink:0;}
+.vast-cust{flex:1;font-size:9px;font-weight:700;color:var(--cream2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vast-tipe{font-size:8px;color:var(--muted);}
+.vast-date{font-size:7px;color:var(--muted2);flex-shrink:0;}
+
+/* 6. ABSENSI */
+.absen-wrap{padding:0 14px 10px;}
+.absen-stats{display:flex;gap:1px;background:var(--s3);border-radius:9px;overflow:hidden;margin-bottom:8px;}
+.ast{flex:1;background:var(--s2);padding:7px 4px;text-align:center;}
+.ast-val{font-family:'Playfair Display',serif;font-size:14px;font-weight:900;line-height:1;}
+.ast-lbl{font-size:7px;color:var(--muted);text-transform:uppercase;margin-top:1px;}
+.absen-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.absen-row:last-child{border-bottom:none;}
+.absen-type{font-size:7px;font-weight:800;border-radius:4px;padding:1px 5px;width:36px;text-align:center;flex-shrink:0;}
+.absen-date{flex:1;font-size:9px;font-weight:700;color:var(--cream2);}
+.absen-note{font-size:8px;color:var(--muted);}
+
+/* 7. PROMOSI MEDSOS */
+.medsos-wrap{padding:0 14px 10px;}
+.medsos-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.medsos-row:last-child{border-bottom:none;}
+.medsos-platform{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.medsos-info{flex:1;min-width:0;}
+.medsos-title{font-size:10px;font-weight:700;color:var(--cream2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.medsos-meta{font-size:8px;color:var(--muted);margin-top:2px;}
+.medsos-right{text-align:right;flex-shrink:0;}
+.medsos-reach{font-family:'Playfair Display',serif;font-size:12px;font-weight:900;color:var(--gold);}
+.medsos-reach-lbl{font-size:7px;color:var(--muted);}
+
+/* 8. CATATAN TERAKHIR */
+.note-wrap{padding:9px 14px;display:flex;gap:7px;align-items:flex-start;}
+.note-dot{width:6px;height:6px;border-radius:50%;background:var(--muted2);flex-shrink:0;margin-top:3px;}
+.note-text{flex:1;font-size:9px;color:var(--muted);line-height:1.5;font-style:italic;}
+.note-time{font-size:7px;color:var(--muted2);flex-shrink:0;}
+
+/* mulai visit */
+.mulai-bar{position:absolute;bottom:0;left:0;right:0;padding:10px 16px 28px;background:rgba(20,16,10,0.97);backdrop-filter:blur(20px);border-top:1px solid var(--s3);z-index:80;}
+.mulai-btn{width:100%;background:var(--gold);border:none;border-radius:12px;padding:13px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#1a0e00;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;}
+.mulai-btn svg{width:14px;height:14px;stroke:#1a0e00;stroke-width:2.5;fill:none;}
+
+/* FORM */
+.form-section{margin:10px 16px 0;background:var(--s1);border:1px solid var(--s3);border-radius:14px;overflow:hidden;}
+.fs-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--s3);}
+.fs-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fs-icon svg{width:13px;height:13px;stroke-width:2;fill:none;}
+.fs-title{font-size:11px;font-weight:700;color:var(--cream);}
+.fs-sub{font-size:8px;color:var(--muted);}
+.fs-body{padding:10px 14px;}
+.foto-grid{display:flex;gap:8px;flex-wrap:wrap;}
+.foto-thumb{width:64px;height:64px;border-radius:10px;background:var(--s2);border:1px dashed var(--s3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;}
+.foto-thumb svg{width:20px;height:20px;stroke:var(--muted);stroke-width:1.5;fill:none;}
+.foto-thumb span{font-size:7px;font-weight:700;color:var(--muted);}
+.foto-added{width:64px;height:64px;border-radius:10px;background:var(--green-dim);border:1px solid rgba(106,171,122,0.3);display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;cursor:pointer;}
+.foto-del{position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:var(--red);color:#fff;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.qtag-wrap{display:flex;flex-wrap:wrap;gap:5px;}
+.qtag{font-size:9px;font-weight:700;border-radius:100px;padding:4px 10px;border:1px solid var(--s3);color:var(--muted);background:var(--s2);cursor:pointer;}
+.qtag.on{background:var(--gold-dim);border-color:rgba(201,146,58,0.35);color:var(--gold);}
+.inp-area{width:100%;background:var(--s2);border:1px solid var(--s3);border-radius:10px;padding:9px 12px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--cream);outline:none;resize:none;caret-color:var(--gold);line-height:1.5;margin-top:8px;}
+.inp-area:focus{border-color:rgba(201,146,58,0.3);}
+.inp-area::placeholder{color:var(--muted2);}
+.submit-bar{position:absolute;bottom:0;left:0;right:0;padding:10px 16px 28px;background:rgba(20,16,10,0.97);backdrop-filter:blur(20px);border-top:1px solid var(--s3);z-index:80;}
+.submit-btn{width:100%;background:var(--gold);border:none;border-radius:12px;padding:13px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#1a0e00;cursor:pointer;}
+
+/* SUCCESS */
+.success-screen{display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;height:100%;}
+.success-screen.show{display:flex;}
+.suc-icon{width:64px;height:64px;border-radius:20px;background:var(--green-dim);border:1.5px solid rgba(106,171,122,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;font-size:28px;}
+.suc-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--cream);margin-bottom:8px;}
+.suc-sub{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:24px;}
+.suc-btn{background:var(--gold);border-radius:12px;padding:11px 28px;font-size:12px;font-weight:700;color:#1a0e00;cursor:pointer;}
+
+/* NAV */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(20,16,10,0.97);backdrop-filter:blur(24px);border-top:1px solid var(--s3);padding:10px 8px 22px;display:flex;justify-content:space-around;z-index:100;}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 12px;border-radius:10px;cursor:pointer;}
+.ni.on{background:var(--gold-dim);}
+.ni svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:var(--muted2);}
+.ni.on svg{stroke:var(--gold);}
+.ni span{font-size:8px;font-weight:700;color:var(--muted2);letter-spacing:0.04em;text-transform:uppercase;}
+.ni.on span{color:var(--gold);}
+
+@keyframes fadeSlide{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+</style>
+</head>
+<body>
+<div class="page-lbl">Visiting v4 · Briefing Lengkap</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">09:41</span><span class="sbar-r">4G 78%</span></div>
+
+  <!-- ══ S1: LIST ══ -->
+  <div class="screen active" id="s1">
+    <div class="sticky">
+      <div class="appbar">
+        <div class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+        <div style="flex:1;"><div class="ab-title">Visiting</div><div class="ab-sub">Kamis 12 Mar · Minggu 2 · Time gone 39%</div></div>
+      </div>
+    </div>
+    <div class="scr-scroll">
+      <div class="visit-summary">
+        <div class="vs-item"><div class="vs-val" style="color:var(--green)">5</div><div class="vs-lbl">Sdh Visit</div></div>
+        <div class="vs-item"><div class="vs-val" style="color:var(--red)">9</div><div class="vs-lbl">Blm Visit</div></div>
+        <div class="vs-item"><div class="vs-val" style="color:var(--gold)">3</div><div class="vs-lbl">2x+</div></div>
+        <div class="vs-item"><div class="vs-val" style="color:var(--cream2)">14</div><div class="vs-lbl">Total</div></div>
+      </div>
+      <div class="time-bar-wrap">
+        <div class="tb-row"><div class="tb-label">Time Gone · Minggu 2 dari 4</div><div class="tb-val">39% bulan ini</div></div>
+        <div class="tb-track"><div class="tb-fill" style="width:39%"></div></div>
+        <div class="tb-note">Promotor dengan pencapaian <strong>&lt;19%</strong> = prioritas visit hari ini</div>
+      </div>
+      <div class="filter-row">
+        <div class="fc on" onclick="setF(this)">Semua (14)</div>
+        <div class="fc" onclick="setF(this)">🔴 Prioritas (6)</div>
+        <div class="fc" onclick="setF(this)">🟡 Sedang (5)</div>
+        <div class="fc" onclick="setF(this)">✓ Sudah (3)</div>
+      </div>
+      <div class="sec-head">
+        <div class="sh-left"><div class="sh-dot" style="background:var(--red)"></div><div class="sh-title">Prioritas Tinggi</div></div>
+        <div class="sh-count" id="highCount">—</div>
+      </div>
+      <div class="row-group" style="border-color:rgba(192,90,74,0.2);" id="highList"></div>
+      <div class="sec-head">
+        <div class="sh-left"><div class="sh-dot" style="background:var(--amber)"></div><div class="sh-title">Perlu Perhatian</div></div>
+        <div class="sh-count" id="medCount">—</div>
+      </div>
+      <div class="row-group" style="border-color:rgba(212,133,58,0.15);" id="medList"></div>
+      <div class="sec-head">
+        <div class="sh-left"><div class="sh-dot" style="background:var(--green)"></div><div class="sh-title">Sudah Dikunjungi</div></div>
+        <div class="sh-count" id="doneCount">—</div>
+      </div>
+      <div class="row-group" style="border-color:rgba(106,171,122,0.15);" id="doneList"></div>
+      <div style="height:8px"></div>
+    </div>
+    <nav class="nav">
+      <div class="ni"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></div>
+      <div class="ni on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/></svg><span>Monitor</span></div>
+      <div class="ni"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Tim</span></div>
+      <div class="ni"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Laporan</span></div>
+      <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
+    </nav>
+  </div>
+
+  <!-- ══ S2: BRIEFING ══ -->
+  <div class="screen" id="s2">
+    <div class="sticky">
+      <div class="appbar">
+        <div class="back-btn" onclick="goTo('s1')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+        <div style="flex:1;"><div class="ab-title" id="b2Name">—</div><div class="ab-sub">Briefing sebelum visit</div></div>
+      </div>
+    </div>
+    <div class="scr-scroll" id="briefScroll" style="padding-bottom:80px;">
+      <div class="store-hero">
+        <div class="hero-name" id="heroName">—</div>
+        <div class="hero-meta"><span id="heroArea">—</span><span style="color:var(--muted2)">·</span><span id="heroSator">—</span><span style="color:var(--muted2)">·</span><span id="heroVisit">—</span></div>
+        <div class="hero-badges" id="heroBadges"></div>
+      </div>
+      <div class="toko-sum" id="tokoSum"></div>
+      <div class="promo-section">
+        <div class="ps-header">
+          <div class="ps-title">Promotor di Toko Ini</div>
+          <div class="ps-count" id="promoCount">—</div>
+        </div>
+        <div id="promoCards"></div>
+      </div>
+    </div>
+    <div class="mulai-bar">
+      <button class="mulai-btn" onclick="goTo('s3')">
+        <svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Mulai Visit ke Toko Ini
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ S3: FORM ══ -->
+  <div class="screen" id="s3">
+    <div class="sticky">
+      <div class="appbar">
+        <div class="back-btn" onclick="goTo('s2')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+        <div style="flex:1;"><div class="ab-title">Form Visit</div><div class="ab-sub" id="s3Sub">—</div></div>
+      </div>
+    </div>
+    <div class="scr-scroll">
+      <div class="form-section">
+        <div class="fs-head">
+          <div class="fs-icon" style="background:var(--blue-dim);"><svg viewBox="0 0 24 24" stroke="var(--blue)"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+          <div><div class="fs-title">Foto Visit</div><div class="fs-sub">Min. 1 foto sebagai bukti</div></div>
+        </div>
+        <div class="fs-body"><div class="foto-grid" id="fotoGrid">
+          <div class="foto-thumb" onclick="addFoto()">
+            <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Ambil Foto</span>
+          </div>
+        </div></div>
+      </div>
+      <div class="form-section">
+        <div class="fs-head">
+          <div class="fs-icon" style="background:var(--gold-dim);"><svg viewBox="0 0 24 24" stroke="var(--gold)"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <div><div class="fs-title">Kondisi Toko</div><div class="fs-sub">Tap yang sesuai</div></div>
+        </div>
+        <div class="fs-body">
+          <div class="qtag-wrap" id="kondisiTags"></div>
+          <textarea class="inp-area" rows="2" placeholder="Catatan kondisi toko..."></textarea>
+        </div>
+      </div>
+      <div class="form-section" style="margin-bottom:10px;">
+        <div class="fs-head">
+          <div class="fs-icon" style="background:var(--amber-dim);"><svg viewBox="0 0 24 24" stroke="var(--amber)"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <div><div class="fs-title">Follow-up Action</div><div class="fs-sub">Apa yang disepakati?</div></div>
+        </div>
+        <div class="fs-body">
+          <div class="qtag-wrap" id="actionTags"></div>
+          <textarea class="inp-area" rows="2" placeholder="Kesepakatan dengan promotor..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="submit-bar"><button class="submit-btn" onclick="submitVisit()">Selesai & Simpan Visit</button></div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="success-screen" id="successScreen">
+    <div class="suc-icon">✓</div>
+    <div class="suc-title">Visit Tersimpan!</div>
+    <div class="suc-sub" id="sucSub">—</div>
+    <div class="suc-btn" onclick="backToList()">← Kembali ke List</div>
+  </div>
+</div>
+
+<script>
+const fmtRp = n => n>=1000000000?'Rp '+(n/1000000000).toFixed(1)+'M':n>=1000000?'Rp '+(n/1000000).toFixed(0)+' Jt':'Rp '+n.toLocaleString('id-ID');
+const fmtShort = n => n>=1000000000?(n/1000000000).toFixed(1)+'M':n>=1000000?(n/1000000).toFixed(0)+'Jt':n.toLocaleString('id-ID');
+const pctC = p => p<20?'var(--red)':p<40?'var(--amber)':'var(--green)';
+const pctBg = p => p<20?'var(--red-dim)':p<40?'var(--amber-dim)':'var(--green-dim)';
+const pctBc = p => p<20?'rgba(192,90,74,0.25)':p<40?'rgba(212,133,58,0.25)':'rgba(106,171,122,0.25)';
+const TIME_GONE = 39;
+
+const PROMOTORS = {
+  andi:{
+    name:'Andi Saputra',initial:'A',color:'#3a7ab5',bg:'rgba(58,122,181,0.15)',
+    hadir:true, absenDetail:[
+      {type:'Absen',date:'3 Mar 2026',note:'Sakit'},
+      {type:'Absen',date:'7 Mar 2026',note:'Izin'},
+      {type:'Telat',date:'5 Mar 2026',note:'30 menit'},
+      {type:'Telat',date:'9 Mar 2026',note:'15 menit'},
+      {type:'Telat',date:'11 Mar 2026',note:'45 menit'},
+    ],
+    targetBulanan:800000000, pencapaianBulanan:200000000,
+    weeks:[
+      {target:200000000,achieved:148000000},
+      {target:200000000,achieved:52000000},
+      {target:200000000,achieved:0},
+      {target:200000000,achieved:0},
+    ], currentWeek:1,
+    fokus:[{name:'X300 Pro',unit:3,target:15},{name:'iQOO 15',unit:5,target:15},{name:'V60 Lite',unit:11,target:20}],
+    allbrand:[
+      {n:'Vivo',c:'#3a7ab5',today:1,total:24},
+      {n:'Oppo',c:'#2ecc71',today:3,total:38},
+      {n:'Samsung',c:'#5b8dd9',today:2,total:19},
+      {n:'Infinix',c:'#e74c3c',today:4,total:22},
+      {n:'Xiaomi',c:'#e8b06a',today:0,total:8},
+      {n:'Realme',c:'#f39c12',today:0,total:5},
+    ],
+    vast:{target:8,approved:3,pending:2,rejected:1,
+      detail:[
+        {status:'Pending',customer:'Ahmad Ridwan',tipe:'X300 Pro 12/256',date:'11 Mar'},
+        {status:'Pending',customer:'Siti Marlina',tipe:'iQOO 15 16/512',date:'10 Mar'},
+        {status:'Approved',customer:'Budi Kusuma',tipe:'V60 Lite 12/512',date:'8 Mar'},
+        {status:'Approved',customer:'Dewi Susanti',tipe:'Y300 Plus',date:'6 Mar'},
+        {status:'Rejected',customer:'Eko Prasetyo',tipe:'X300 Pro 16/512',date:'4 Mar'},
+      ]
+    },
+    medsos:[
+      {platform:'📱',platformName:'Instagram',title:'Demo X300 Pro · Night Mode',reach:342,date:'Kemarin'},
+      {platform:'🎵',platformName:'TikTok',title:'Unboxing iQOO 15 · Review Cepat',reach:1240,date:'9 Mar'},
+      {platform:'📱',platformName:'Instagram',title:'Promo Kredit 0% Vivo',reach:187,date:'7 Mar'},
+    ],
+    lastNote:'Toko sepi dari pagi, Oppo promo cashback Rp300rb di sebelah.',
+    lastNoteTime:'12:44',
+  },
+  budi:{
+    name:'Budi Kartono',initial:'B',color:'#c9923a',bg:'rgba(201,146,58,0.15)',
+    hadir:true, absenDetail:[
+      {type:'Absen',date:'10 Mar 2026',note:'Sakit'},
+      {type:'Telat',date:'6 Mar 2026',note:'20 menit'},
+      {type:'Telat',date:'12 Mar 2026',note:'10 menit'},
+    ],
+    targetBulanan:640000000, pencapaianBulanan:171000000,
+    weeks:[
+      {target:160000000,achieved:130000000},
+      {target:160000000,achieved:41000000},
+      {target:160000000,achieved:0},
+      {target:160000000,achieved:0},
+    ], currentWeek:1,
+    fokus:[{name:'X300 Pro',unit:5,target:12},{name:'iQOO 15',unit:8,target:12},{name:'V60 Lite',unit:9,target:16}],
+    allbrand:[
+      {n:'Vivo',c:'#3a7ab5',today:2,total:31},
+      {n:'Oppo',c:'#2ecc71',today:0,total:12},
+      {n:'Samsung',c:'#5b8dd9',today:0,total:7},
+      {n:'Infinix',c:'#e74c3c',today:0,total:9},
+      {n:'Xiaomi',c:'#e8b06a',today:0,total:3},
+      {n:'Realme',c:'#f39c12',today:0,total:2},
+    ],
+    vast:{target:6,approved:2,pending:1,rejected:0,
+      detail:[
+        {status:'Pending',customer:'Hendra Wijaya',tipe:'V60 Lite 8/256',date:'11 Mar'},
+        {status:'Approved',customer:'Rina Wulandari',tipe:'iQOO 15 12/256',date:'7 Mar'},
+        {status:'Approved',customer:'Lukman Hakim',tipe:'X300 Pro 8/256',date:'5 Mar'},
+      ]
+    },
+    medsos:[
+      {platform:'📱',platformName:'Instagram',title:'Tutorial Kamera iQOO 15',reach:521,date:'10 Mar'},
+      {platform:'🎵',platformName:'TikTok',title:'Compare Vivo vs Oppo Camera',reach:2180,date:'8 Mar'},
+    ],
+    lastNote:'Sudah approach 3 customer tapi belum ada yang closing.',
+    lastNoteTime:'11:30',
+  },
+  citra:{
+    name:'Citra Lestari',initial:'C',color:'#6aab7a',bg:'rgba(106,171,122,0.15)',
+    hadir:true, absenDetail:[
+      {type:'Telat',date:'4 Mar 2026',note:'25 menit'},
+      {type:'Telat',date:'8 Mar 2026',note:'15 menit'},
+      {type:'Telat',date:'11 Mar 2026',note:'30 menit'},
+    ],
+    targetBulanan:720000000, pencapaianBulanan:137000000,
+    weeks:[
+      {target:180000000,achieved:103000000},
+      {target:180000000,achieved:34000000},
+      {target:180000000,achieved:0},
+      {target:180000000,achieved:0},
+    ], currentWeek:1,
+    fokus:[{name:'X300 Pro',unit:0,target:12},{name:'iQOO 15',unit:4,target:12},{name:'V60 Lite',unit:9,target:15}],
+    allbrand:[
+      {n:'Vivo',c:'#3a7ab5',today:0,total:13},
+      {n:'Oppo',c:'#2ecc71',today:4,total:44},
+      {n:'Samsung',c:'#5b8dd9',today:2,total:18},
+      {n:'Infinix',c:'#e74c3c',today:0,total:11},
+      {n:'Xiaomi',c:'#e8b06a',today:0,total:6},
+      {n:'Realme',c:'#f39c12',today:0,total:4},
+    ],
+    vast:{target:6,approved:1,pending:3,rejected:0,
+      detail:[
+        {status:'Pending',customer:'Agus Setiawan',tipe:'X300 Pro 12/256',date:'12 Mar'},
+        {status:'Pending',customer:'Maya Putri',tipe:'iQOO 15 12/256',date:'11 Mar'},
+        {status:'Pending',customer:'Rudi Santoso',tipe:'V60 Lite 12/512',date:'9 Mar'},
+        {status:'Approved',customer:'Indah Lestari',tipe:'Y300 Plus 8/256',date:'6 Mar'},
+      ]
+    },
+    medsos:[
+      {platform:'📱',platformName:'Instagram',title:'Review Vivo X300 Pro Camera',reach:289,date:'11 Mar'},
+      {platform:'🎵',platformName:'TikTok',title:'Vivo vs Oppo — Mana lebih bagus?',reach:890,date:'9 Mar'},
+      {platform:'📱',platformName:'WhatsApp Story',title:'Promo Hari Ini di Toko',reach:78,date:'Kemarin'},
+    ],
+    lastNote:'Vivo susah jual, customer pada pilih Oppo karena ada promo besar.',
+    lastNoteTime:'13:10',
+  },
+};
+
+const TOKO_DATA = [
+  {id:1,name:'King Cell Sudirman',area:'Area Barat',sator:'Pak Rudi',visitCount:0,lastVisit:null,priority:'high',promotors:['andi','budi']},
+  {id:2,name:'King Cell Gatot Sub.',area:'Area Timur',sator:'Bu Dewi',visitCount:1,lastVisit:'8 Mar',priority:'high',promotors:['citra']},
+  {id:3,name:'King Cell Semanggi',area:'Area Timur',sator:'Bu Dewi',visitCount:2,lastVisit:'9 Mar',priority:'done',promotors:['andi']},
+];
+
+const KONDISI_TAGS=['Toko ramai','Toko sepi','Display lengkap','Display kurang','Kompetitor promo','Promotor semangat','Butuh motivasi'];
+const ACTION_TAGS=['Follow up kredit Vast','Pasang materi promo','Perbaiki display','Coaching produk Vivo','Target minggu depan','Pantau lebih sering'];
+
+let selectedStore=null, visitedIds=new Set();
+
+function renderPromoCard(pKey){
+  const p = PROMOTORS[pKey];
+  if(!p) return '';
+  const pctBulan = Math.round(p.pencapaianBulanan/p.targetBulanan*100);
+  const gap = pctBulan - TIME_GONE;
+  const urgClass = pctBulan<20?'urgent':pctBulan<40?'warn':'';
+  const hadirColor = p.hadir?'var(--green)':'var(--red)';
+  const hadirBg = p.hadir?'var(--green-dim)':'var(--red-dim)';
+  const hadirBc = p.hadir?'rgba(106,171,122,0.2)':'rgba(192,90,74,0.2)';
+  const absenCount = p.absenDetail.filter(a=>a.type==='Absen').length;
+  const telatCount = p.absenDetail.filter(a=>a.type==='Telat').length;
+  const hadirCount = 26 - absenCount;
+
+  // weekly grid
+  const weekGrid = p.weeks.map((w,i)=>{
+    const isCur = i===p.currentWeek;
+    const isDone = i<p.currentWeek;
+    const wp = (isDone||isCur)&&w.target>0 ? Math.round(w.achieved/w.target*100) : null;
+    const wc = wp===null?'var(--muted2)':wp<25?'var(--red)':wp<60?'var(--amber)':'var(--green)';
+    const wbg = wp===null?'var(--s2)':wp<25?'var(--red-dim)':wp<60?'var(--amber-dim)':'var(--green-dim)';
+    const wbc = wp===null?'var(--s3)':pctBc(wp||0);
+    return `<div class="wk${isCur?' cur':''}" style="background:${wbg};border-color:${wbc};">
+      <div class="wk-label" style="color:${isCur?'var(--gold)':wc};">W${i+1}${isCur?' ▶':''}</div>
+      <div class="wk-tgt" style="color:var(--muted);">${fmtShort(w.target)}</div>
+      <div class="wk-val" style="color:${wc};">${wp!==null?fmtShort(w.achieved):'—'}</div>
+      <div class="wk-pct" style="color:${wc};">${wp!==null?wp+'%':''}</div>
+    </div>`;
+  }).join('');
+
+  // fokus
+  const fokusRows = p.fokus.map(f=>{
+    const fp = Math.round(f.unit/f.target*100);
+    return `<div class="fokus-row">
+      <div class="fokus-name">${f.name}</div>
+      <div class="fokus-bar-wrap"><div class="fokus-bar" style="width:${fp}%;background:${pctC(fp)}"></div></div>
+      <div class="fokus-right"><div class="fokus-val" style="color:${pctC(fp)}">${f.unit}</div><div class="fokus-tgt">/ ${f.target} unit</div></div>
+    </div>`;
+  }).join('');
+
+  // allbrand — format x/y
+  const maxTotal = Math.max(...p.allbrand.map(b=>b.total),1);
+  const abRows = p.allbrand.map(b=>`
+    <div class="ab-row">
+      <div class="ab-dot" style="background:${b.c}"></div>
+      <div class="ab-name">${b.n}</div>
+      <div class="ab-today"><div class="ab-today-val" style="color:${b.today>0?'var(--gold)':'var(--muted2)'}">${b.today}</div></div>
+      <div style="font-size:9px;color:var(--muted2);width:8px;text-align:center;">/</div>
+      <div class="ab-total"><div class="ab-total-val">${b.total}</div></div>
+      <div class="ab-bar-cell">
+        <div class="ab-mini-bar"><div class="ab-mini-fill" style="width:${Math.round(b.total/maxTotal*100)}%;background:${b.c}"></div></div>
+      </div>
+    </div>`).join('');
+
+  // vast
+  const vastPct = Math.round(p.vast.approved/p.vast.target*100);
+  const vastRows = p.vast.detail.map(v=>{
+    const sc = v.status==='Approved'?{c:'var(--green)',bg:'var(--green-dim)',bc:'rgba(106,171,122,0.2)'}:
+               v.status==='Pending'?{c:'var(--amber)',bg:'var(--amber-dim)',bc:'rgba(212,133,58,0.2)'}:
+               {c:'var(--red)',bg:'var(--red-dim)',bc:'rgba(192,90,74,0.2)'};
+    return `<div class="vast-row">
+      <div class="vast-status" style="color:${sc.c};background:${sc.bg};border:1px solid ${sc.bc};">${v.status}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="vast-cust">${v.customer}</div>
+        <div class="vast-tipe">${v.tipe}</div>
+      </div>
+      <div class="vast-date">${v.date}</div>
+    </div>`;
+  }).join('');
+
+  // absensi detail
+  const absenRows = p.absenDetail.map(a=>{
+    const isAbsen = a.type==='Absen';
+    return `<div class="absen-row">
+      <div class="absen-type" style="color:${isAbsen?'var(--red)':'var(--amber)'};background:${isAbsen?'var(--red-dim)':'var(--amber-dim)'};border:1px solid ${isAbsen?'rgba(192,90,74,0.2)':'rgba(212,133,58,0.2)'};">${a.type}</div>
+      <div class="absen-date">${a.date}</div>
+      <div class="absen-note">${a.note}</div>
+    </div>`;
+  }).join('');
+
+  // medsos
+  const medsosRows = p.medsos.map(m=>`
+    <div class="medsos-row">
+      <div class="medsos-platform" style="background:var(--s2);">${m.platform}</div>
+      <div class="medsos-info">
+        <div class="medsos-title">${m.title}</div>
+        <div class="medsos-meta">${m.platformName} · ${m.date}</div>
+      </div>
+      <div class="medsos-right">
+        <div class="medsos-reach">${m.reach.toLocaleString('id-ID')}</div>
+        <div class="medsos-reach-lbl">reach</div>
+      </div>
+    </div>`).join('');
+
+  return `
+  <div class="pc ${urgClass}">
+    <!-- 1. HEADER -->
+    <div class="pc-head">
+      <div class="pc-av" style="background:${p.bg};color:${p.color};">${p.initial}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-hadir" style="color:${hadirColor};background:${hadirBg};border-color:${hadirBc};">${p.hadir?'✓ Hadir Hari Ini':'✗ Absen Hari Ini'}</div>
+      </div>
+      <div class="pc-pct-blk">
+        <div class="pc-pct" style="color:${pctC(pctBulan)}">${pctBulan}%</div>
+        <div style="font-size:7px;color:var(--muted);text-align:right;">pencapaian</div>
+        <div class="pc-gap" style="color:${gap<0?'var(--red)':'var(--green)'}">${gap>0?'+':''}${gap}% vs time</div>
+      </div>
+    </div>
+
+    <!-- 2. PENCAPAIAN NOMINAL -->
+    <div class="ps-lbl">Pencapaian Bulanan</div>
+    <div class="nom-wrap">
+      <div class="nom-main">
+        <div>
+          <div class="nom-achieved" style="color:${pctC(pctBulan)}">${fmtRp(p.pencapaianBulanan)}</div>
+          <div class="nom-of">dari target <span class="nom-target">${fmtRp(p.targetBulanan)}</span></div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:${pctC(pctBulan)}">${pctBulan}%</div>
+          <div style="font-size:8px;color:${gap<0?'var(--red)':'var(--green)'};font-weight:700;">Gap ${gap>0?'+':''}${gap}%</div>
+        </div>
+      </div>
+      <div class="nom-bar-wrap"><div class="nom-bar" style="width:${pctBulan}%;background:${pctC(pctBulan)}"></div></div>
+      <div class="nom-foot">
+        <div class="nom-foot-l">Sisa: ${fmtRp(p.targetBulanan-p.pencapaianBulanan)}</div>
+        <div class="nom-foot-r" style="color:var(--muted);">Time gone: ${TIME_GONE}%</div>
+      </div>
+    </div>
+
+    <!-- 4 MINGGU -->
+    <div class="ps-lbl">Target per Minggu (4 × 25%)</div>
+    <div class="week-wrap">
+      <div class="week-grid">${weekGrid}</div>
+    </div>
+
+    <!-- 3. PRODUK FOKUS -->
+    <div class="ps-lbl">Produk Fokus (Unit)</div>
+    <div class="fokus-wrap">${fokusRows}</div>
+
+    <!-- 4. ALLBRAND -->
+    <div class="ps-lbl">Allbrand · Hari Ini / Total Bulan Ini</div>
+    <div class="ab-wrap">
+      <div class="ab-header">
+        <div class="ab-h-name">Brand</div>
+        <div class="ab-h-today">Hari Ini</div>
+        <div style="width:8px;"></div>
+        <div class="ab-h-total">Total</div>
+        <div class="ab-h-fmt">Bar</div>
+      </div>
+      ${abRows}
+    </div>
+
+    <!-- 5. VAST FINANCE -->
+    <div class="ps-lbl">Vast Finance (Pengajuan Kredit)</div>
+    <div class="vast-wrap">
+      <div class="vast-stats">
+        <div class="vst"><div class="vst-val" style="color:var(--gold)">${p.vast.target}</div><div class="vst-lbl">Target</div></div>
+        <div class="vst"><div class="vst-val" style="color:var(--green)">${p.vast.approved}</div><div class="vst-lbl">Approved</div></div>
+        <div class="vst"><div class="vst-val" style="color:var(--amber)">${p.vast.pending}</div><div class="vst-lbl">Pending</div></div>
+        <div class="vst"><div class="vst-val" style="color:var(--red)">${p.vast.rejected}</div><div class="vst-lbl">Rejected</div></div>
+      </div>
+      <div class="vast-bar-wrap" style="margin-top:6px;"><div class="vast-bar" style="width:${vastPct}%;background:${pctC(vastPct)}"></div></div>
+      <div style="margin-top:6px;">${vastRows}</div>
+    </div>
+
+    <!-- 6. ABSENSI -->
+    <div class="ps-lbl">Absensi Bulan Ini</div>
+    <div class="absen-wrap">
+      <div class="absen-stats">
+        <div class="ast"><div class="ast-val" style="color:var(--green)">${hadirCount}</div><div class="ast-lbl">Hadir</div></div>
+        <div class="ast"><div class="ast-val" style="color:var(--red)">${absenCount}</div><div class="ast-lbl">Absen</div></div>
+        <div class="ast"><div class="ast-val" style="color:var(--amber)">${telatCount}</div><div class="ast-lbl">Telat</div></div>
+      </div>
+      <div style="margin-top:6px;">${absenRows}</div>
+    </div>
+
+    <!-- 7. PROMOSI MEDSOS -->
+    <div class="ps-lbl">Aktivitas Promosi Medsos</div>
+    <div class="medsos-wrap">${medsosRows||'<div style="font-size:9px;color:var(--muted);padding:4px 0;">Belum ada laporan promosi.</div>'}</div>
+
+    <!-- 8. CATATAN TERAKHIR -->
+    <div class="ps-lbl" style="border-top:1px solid var(--s3);">Laporan Situasi Terakhir</div>
+    <div class="note-wrap">
+      <div class="note-dot"></div>
+      <div class="note-text">"${p.lastNote}"</div>
+      <div class="note-time">${p.lastNoteTime}</div>
+    </div>
+  </div>`;
+}
+
+function renderTokoRow(t){
+  const promos = t.promotors.map(k=>PROMOTORS[k]).filter(Boolean);
+  const pcts = promos.map(p=>Math.round(p.pencapaianBulanan/p.targetBulanan*100));
+  const worstPct = Math.min(...pcts);
+  const gap = worstPct - TIME_GONE;
+  const isVisited = visitedIds.has(t.id);
+  const chips = promos.map((p,i)=>`<div class="tr-chip" style="color:${pctC(pcts[i])};background:${pctBg(pcts[i])};border-color:${pctBc(pcts[i])};">${p.name.split(' ')[0]} ${pcts[i]}%</div>`).join('');
+  const vbg=isVisited?'var(--green-dim)':t.visitCount===0?'var(--red-dim)':'var(--s2)';
+  const vc=isVisited?'var(--green)':t.visitCount===0?'var(--red)':'var(--muted)';
+  const vbc=isVisited?'rgba(106,171,122,0.2)':t.visitCount===0?'rgba(192,90,74,0.2)':'var(--s3)';
+  const vt=isVisited?'✓ Visit hari ini':t.visitCount===0?'0× bulan ini':`${t.visitCount}× · ${t.lastVisit}`;
+  const pc=t.priority==='high'?'var(--red)':t.priority==='med'?'var(--amber)':'var(--green)';
+  const pbg=t.priority==='high'?'var(--red-dim)':t.priority==='med'?'var(--amber-dim)':'var(--green-dim)';
+  return `<div class="toko-row" onclick="openBriefing(${t.id})">
+    <div class="tr-priority" style="color:${pc};background:${pbg};">${t.priority==='high'?'TINGGI':t.priority==='med'?'SEDANG':'AMAN'}</div>
+    <div class="tr-info">
+      <div class="tr-name">${t.name}</div>
+      <div class="tr-sator">${t.sator} · ${promos.length} promotor</div>
+      <div class="tr-chips">${chips}</div>
+      <div class="tr-vbadge" style="color:${vc};background:${vbg};border-color:${vbc};">${vt}</div>
+    </div>
+    <div class="tr-right">
+      <div class="tr-pct" style="color:${pctC(worstPct)}">${worstPct}%</div>
+      <div class="tr-pct-lbl">terendah</div>
+      <div class="tr-gap" style="color:${gap<0?'var(--red)':'var(--green)'}">${gap>0?'+':''}${gap}%</div>
+    </div>
+  </div>`;
+}
+
+function openBriefing(id){
+  selectedStore = TOKO_DATA.find(t=>t.id===id);
+  if(!selectedStore) return;
+  const t = selectedStore;
+  const promos = t.promotors.map(k=>PROMOTORS[k]).filter(Boolean);
+  const pcts = promos.map(p=>Math.round(p.pencapaianBulanan/p.targetBulanan*100));
+  const worstPct = Math.min(...pcts);
+  const gap = worstPct - TIME_GONE;
+
+  document.getElementById('b2Name').textContent = t.name;
+  document.getElementById('heroName').textContent = t.name;
+  document.getElementById('heroArea').textContent = t.area;
+  document.getElementById('heroSator').textContent = 'Sator: '+t.sator;
+  document.getElementById('heroVisit').textContent = t.visitCount===0?'Belum pernah visit bulan ini':`${t.visitCount}× · terakhir ${t.lastVisit}`;
+  document.getElementById('s3Sub').textContent = t.name+' · '+promos.map(p=>p.name.split(' ')[0]).join(', ');
+  document.getElementById('heroBadges').innerHTML = [
+    `<div class="hbadge" style="color:${pctC(worstPct)};background:${pctBg(worstPct)};border-color:${pctBc(worstPct)};">${worstPct}% terendah</div>`,
+    `<div class="hbadge" style="color:${gap<0?'var(--red)':'var(--green)'};background:${gap<0?'var(--red-dim)':'var(--green-dim)'};border-color:${gap<0?'rgba(192,90,74,0.2)':'rgba(106,171,122,0.2)'};">Gap ${gap>0?'+':''}${gap}%</div>`,
+    `<div class="hbadge" style="color:var(--cream2);background:var(--s2);border-color:var(--s3);">${promos.length} promotor · Minggu 2</div>`,
+  ].join('');
+
+  const totalCapai = promos.reduce((a,p)=>a+p.pencapaianBulanan,0);
+  const totalTarget = promos.reduce((a,p)=>a+p.targetBulanan,0);
+  const hadir = promos.filter(p=>p.hadir).length;
+  const totalKredit = promos.reduce((a,p)=>a+p.vast.approved,0);
+  document.getElementById('tokoSum').innerHTML = `
+    <div class="ts-item"><div class="ts-val" style="color:${hadir<promos.length?'var(--amber)':'var(--green)'}">${hadir}/${promos.length}</div><div class="ts-lbl">Hadir</div></div>
+    <div class="ts-item"><div class="ts-val" style="color:var(--gold);font-size:10px;">${fmtShort(totalCapai)}</div><div class="ts-lbl">Capaian</div></div>
+    <div class="ts-item"><div class="ts-val" style="color:var(--cream2);font-size:10px;">${fmtShort(totalTarget)}</div><div class="ts-lbl">Target</div></div>
+    <div class="ts-item"><div class="ts-val" style="color:var(--green)">${totalKredit}</div><div class="ts-lbl">Kredit OK</div></div>`;
+
+  document.getElementById('promoCount').textContent = promos.length+' orang';
+  document.getElementById('promoCards').innerHTML = t.promotors.map(renderPromoCard).join('');
+  document.getElementById('briefScroll').scrollTop = 0;
+  goTo('s2');
+}
+
+function renderLists(){
+  const groups = {high:[],med:[],done:[]};
+  TOKO_DATA.forEach(t=>{ groups[visitedIds.has(t.id)?'done':t.priority==='done'?'done':t.priority]=groups[t.priority]||[]; (groups[t.priority]||groups.done).push(t); });
+  // simpler
+  const high=TOKO_DATA.filter(t=>t.priority==='high');
+  const med=TOKO_DATA.filter(t=>t.priority==='med');
+  const done=TOKO_DATA.filter(t=>t.priority==='done');
+  document.getElementById('highList').innerHTML = high.map(renderTokoRow).join('')||'<div style="padding:14px;text-align:center;font-size:10px;color:var(--muted);">Tidak ada</div>';
+  document.getElementById('medList').innerHTML = med.map(renderTokoRow).join('')||'<div style="padding:14px;text-align:center;font-size:10px;color:var(--muted);">Tidak ada</div>';
+  document.getElementById('doneList').innerHTML = done.map(renderTokoRow).join('')||'<div style="padding:14px;text-align:center;font-size:10px;color:var(--muted);">Tidak ada</div>';
+  document.getElementById('highCount').textContent = high.length+' toko · disarankan hari ini';
+  document.getElementById('medCount').textContent = med.length+' toko';
+  document.getElementById('doneCount').textContent = done.length+' toko bulan ini';
+}
+
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('successScreen').classList.remove('show');
+  if(id) document.getElementById(id).classList.add('active');
+}
+
+function submitVisit(){
+  if(!selectedStore) return;
+  visitedIds.add(selectedStore.id);
+  document.getElementById('sucSub').innerHTML = `Visit ke <strong>${selectedStore.name}</strong> tersimpan.<br>Sator & Manager sudah bisa lihat.`;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('successScreen').classList.add('show');
+  renderLists();
+}
+
+function backToList(){
+  document.getElementById('successScreen').classList.remove('show');
+  goTo('s1');
+}
+
+function addFoto(){
+  const grid=document.getElementById('fotoGrid');
+  const n=grid.querySelectorAll('.foto-added').length;
+  const div=document.createElement('div');
+  div.className='foto-added';
+  div.innerHTML=`${'📸🏪📱🤝📋'[n%5]}<div class="foto-del" onclick="this.parentElement.remove()">×</div>`;
+  grid.insertBefore(div,grid.lastElementChild);
+}
+
+function renderFormTags(){
+  document.getElementById('kondisiTags').innerHTML=KONDISI_TAGS.map(t=>`<div class="qtag" onclick="this.classList.toggle('on')">${t}</div>`).join('');
+  document.getElementById('actionTags').innerHTML=ACTION_TAGS.map(t=>`<div class="qtag" onclick="this.classList.toggle('on')">${t}</div>`).join('');
+}
+
+function setF(el){ document.querySelectorAll('.fc').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+
+renderLists();
+renderFormTags();
+</script>
+</body>
+</html>

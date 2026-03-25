@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Ruang Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --red:#c05a4a;--blue:#5b8dd9;--purple:#8b6fd4;--amber:#d4853a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:#0a0805;font-family:'Outfit',sans-serif;
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;padding:40px 20px 60px;gap:40px;
+}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;}
+
+/* ── PHONE ── */
+.phone{
+  width:370px;height:800px;background:var(--bg);border-radius:50px;
+  overflow:hidden;position:relative;
+  box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);
+}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;position:relative;z-index:10;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+
+/* ── CHAT ROOM HEADER ── */
+.room-header{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px 10px;
+  background:var(--bg);
+  border-bottom:1px solid var(--s2);
+  position:sticky;top:0;z-index:50;
+}
+.room-header::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,146,58,0.3),transparent);
+}
+.rh-back{
+  width:32px;height:32px;border-radius:10px;
+  background:var(--s1);border:1px solid var(--s3);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.rh-back svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2.5;fill:none;}
+.rh-av{
+  width:38px;height:38px;border-radius:12px;flex-shrink:0;
+  background:var(--s2);border:1px solid var(--s3);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:13px;font-weight:900;color:var(--cream2);
+  position:relative;
+}
+.rh-online{
+  position:absolute;bottom:-2px;right:-2px;
+  width:9px;height:9px;border-radius:50%;
+  background:var(--green);border:2px solid var(--bg);
+}
+.rh-info{flex:1;min-width:0;}
+.rh-name{font-size:13px;font-weight:700;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rh-sub{font-size:9px;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:4px;}
+.rh-sub-dot{width:5px;height:5px;border-radius:50%;background:var(--green);}
+.rh-actions{display:flex;gap:6px;}
+.rh-btn{
+  width:32px;height:32px;border-radius:10px;
+  background:var(--s1);border:1px solid var(--s3);
+  display:flex;align-items:center;justify-content:center;
+}
+.rh-btn svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2;fill:none;}
+
+/* ── MESSAGE AREA ── */
+.msg-area{
+  height:calc(800px - 50px - 60px - 66px);
+  overflow-y:auto;padding:14px 14px 10px;
+  display:flex;flex-direction:column;gap:2px;
+  scrollbar-width:none;
+}
+.msg-area::-webkit-scrollbar{display:none;}
+
+/* date divider */
+.date-div{
+  display:flex;align-items:center;gap:8px;
+  margin:10px 0 8px;
+}
+.date-div::before,.date-div::after{content:'';flex:1;height:1px;background:var(--s3);}
+.date-div-lbl{
+  font-size:9px;font-weight:700;color:var(--muted2);
+  background:var(--s2);border:1px solid var(--s3);
+  border-radius:100px;padding:3px 10px;white-space:nowrap;
+}
+
+/* bubble base */
+.msg-row{display:flex;align-items:flex-end;gap:6px;margin-bottom:4px;}
+.msg-row.out{flex-direction:row-reverse;}
+
+/* avatar kecil dalam chat (grup) */
+.msg-av{
+  width:26px;height:26px;border-radius:8px;flex-shrink:0;
+  background:var(--s2);border:1px solid var(--s3);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:9px;font-weight:900;color:var(--cream2);
+  align-self:flex-end;
+}
+.msg-av.hide{visibility:hidden;}
+
+.bubble-wrap{display:flex;flex-direction:column;max-width:75%;}
+.msg-row.out .bubble-wrap{align-items:flex-end;}
+.msg-sender{
+  font-size:9px;font-weight:700;color:var(--gold);
+  margin-bottom:3px;padding-left:2px;
+}
+
+/* incoming bubble */
+.bubble{
+  padding:9px 12px;border-radius:16px 16px 16px 4px;
+  background:var(--s1);border:1px solid var(--s3);
+  font-size:11px;color:var(--cream2);line-height:1.5;
+  position:relative;
+}
+/* outgoing bubble */
+.msg-row.out .bubble{
+  background:linear-gradient(135deg,#2d200e,#221809);
+  border-color:rgba(201,146,58,0.2);
+  border-radius:16px 16px 4px 16px;
+  color:var(--cream);
+}
+.bubble-meta{
+  display:flex;align-items:center;gap:4px;
+  margin-top:4px;padding-right:2px;
+}
+.msg-row.out .bubble-meta{justify-content:flex-end;}
+.bubble-time{font-size:8px;color:var(--muted);}
+.bubble-check svg{width:12px;height:8px;stroke:var(--gold);stroke-width:2.5;fill:none;}
+
+/* system message */
+.sys-msg{
+  text-align:center;font-size:9px;color:var(--muted);
+  margin:6px 0;padding:4px 12px;
+  background:var(--s2);border-radius:100px;
+  align-self:center;border:1px solid var(--s3);
+}
+
+/* image attachment bubble */
+.bubble.has-img{padding:6px 6px 8px;}
+.bubble-img{
+  width:100%;height:90px;object-fit:cover;border-radius:10px;
+  background:var(--s2);display:flex;align-items:center;justify-content:center;
+  margin-bottom:6px;overflow:hidden;
+}
+.bubble-img-placeholder{
+  width:100%;height:90px;border-radius:10px;
+  background:linear-gradient(135deg,var(--s2),var(--s3));
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:6px;
+}
+.bubble-img-placeholder svg{width:24px;height:24px;stroke:var(--muted2);stroke-width:1.5;fill:none;}
+.bubble-img-caption{font-size:10px;color:var(--cream2);padding:0 4px;}
+
+/* reply preview */
+.bubble-reply{
+  background:var(--s2);border-left:2px solid var(--gold);
+  border-radius:6px;padding:5px 8px;margin-bottom:6px;
+}
+.br-sender{font-size:8px;font-weight:700;color:var(--gold);margin-bottom:2px;}
+.br-text{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* reaction */
+.bubble-reactions{display:flex;gap:3px;margin-top:4px;}
+.reaction{
+  background:var(--s2);border:1px solid var(--s3);border-radius:100px;
+  padding:2px 6px;font-size:10px;display:flex;align-items:center;gap:3px;cursor:pointer;
+}
+.reaction span{font-size:8px;color:var(--muted);font-weight:700;}
+
+/* ── INPUT AREA ── */
+.input-area{
+  position:absolute;bottom:0;left:0;right:0;
+  background:var(--bg);
+  border-top:1px solid var(--s2);
+  padding:10px 14px 20px;
+}
+.input-row{display:flex;align-items:flex-end;gap:8px;}
+.input-extras{display:flex;gap:5px;padding-bottom:2px;}
+.input-extra-btn{
+  width:32px;height:32px;border-radius:9px;
+  background:var(--s1);border:1px solid var(--s3);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.input-extra-btn svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2;fill:none;}
+.input-box{
+  flex:1;background:var(--s1);border:1px solid var(--s3);
+  border-radius:12px;padding:8px 12px;
+  font-family:'Outfit',sans-serif;font-size:11px;color:var(--cream2);
+  outline:none;resize:none;min-height:36px;max-height:80px;
+  line-height:1.5;
+}
+.input-box::placeholder{color:var(--muted);}
+.send-btn{
+  width:36px;height:36px;border-radius:11px;
+  background:linear-gradient(135deg,var(--gold),#a8742a);
+  border:none;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 12px var(--gold-glow);flex-shrink:0;cursor:pointer;
+}
+.send-btn svg{width:14px;height:14px;stroke:#1a0e00;stroke-width:2.5;fill:none;}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg-row{animation:fadeIn 0.2s ease both;}
+</style>
+</head>
+<body>
+
+<div class="page-title">Ruang Chat · King Cell</div>
+
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">17:49</span><span class="sbar-r">4G 70%</span></div>
+
+  <!-- ROOM HEADER -->
+  <div class="room-header">
+    <div class="rh-back">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div class="rh-av">
+      EM
+      <div class="rh-online"></div>
+    </div>
+    <div class="rh-info">
+      <div class="rh-name">ERAFONE MEGASTORE</div>
+      <div class="rh-sub"><div class="rh-sub-dot"></div>2 anggota · online</div>
+    </div>
+    <div class="rh-actions">
+      <div class="rh-btn">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </div>
+      <div class="rh-btn">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- MESSAGE AREA -->
+  <div class="msg-area" id="msgArea">
+
+    <!-- Date divider -->
+    <div class="date-div"><div class="date-div-lbl">Senin, 10 Mar 2026</div></div>
+
+    <!-- System message -->
+    <div class="sys-msg">Kamu bergabung ke grup ini</div>
+
+    <!-- Incoming -->
+    <div class="msg-row" style="animation-delay:0.05s">
+      <div class="msg-av">R</div>
+      <div class="bubble-wrap">
+        <div class="msg-sender">Rina S.</div>
+        <div class="bubble">Selamat pagi! Ada update stok Samsung A55 hari ini?</div>
+        <div class="bubble-meta"><div class="bubble-time">08:12</div></div>
+      </div>
+    </div>
+
+    <!-- Outgoing -->
+    <div class="msg-row out" style="animation-delay:0.1s">
+      <div class="bubble-wrap">
+        <div class="bubble">Pagi Rin! Stok A55 masih ada 4 unit, tapi sedang proses pengiriman 6 unit tambahan 📦</div>
+        <div class="bubble-meta">
+          <div class="bubble-time">08:15</div>
+          <div class="bubble-check"><svg viewBox="0 0 16 10"><polyline points="1 5 4 8 9 1"/><polyline points="7 8 12 1"/></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Incoming with reaction -->
+    <div class="msg-row" style="animation-delay:0.12s">
+      <div class="msg-av hide">R</div>
+      <div class="bubble-wrap">
+        <div class="bubble">Oke siap! Nanti saya infokan ke tim display ya. Terima kasih 🙏</div>
+        <div class="bubble-reactions">
+          <div class="reaction">👍 <span>2</span></div>
+        </div>
+        <div class="bubble-meta"><div class="bubble-time">08:17</div></div>
+      </div>
+    </div>
+
+    <!-- Date divider -->
+    <div class="date-div"><div class="date-div-lbl">Selasa, 11 Mar 2026</div></div>
+
+    <!-- Incoming with image -->
+    <div class="msg-row" style="animation-delay:0.15s">
+      <div class="msg-av">R</div>
+      <div class="bubble-wrap">
+        <div class="msg-sender">Rina S.</div>
+        <div class="bubble has-img">
+          <div class="bubble-img-placeholder">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="bubble-img-caption">Foto display A55 sudah dipasang 🎉</div>
+        </div>
+        <div class="bubble-meta"><div class="bubble-time">09:45</div></div>
+      </div>
+    </div>
+
+    <!-- Outgoing -->
+    <div class="msg-row out" style="animation-delay:0.18s">
+      <div class="bubble-wrap">
+        <div class="bubble">Bagus! Rapih banget tampilannya. Nanti saya share ke Sator juga 👏</div>
+        <div class="bubble-meta">
+          <div class="bubble-time">09:52</div>
+          <div class="bubble-check"><svg viewBox="0 0 16 10"><polyline points="1 5 4 8 9 1"/><polyline points="7 8 12 1"/></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Incoming with reply -->
+    <div class="msg-row" style="animation-delay:0.2s">
+      <div class="msg-av">R</div>
+      <div class="bubble-wrap">
+        <div class="msg-sender">Rina S.</div>
+        <div class="bubble">
+          <div class="bubble-reply">
+            <div class="br-sender">Kamu</div>
+            <div class="br-text">Nanti saya share ke Sator juga 👏</div>
+          </div>
+          Siap bu! Oh iya, stok A55 sudah kosong bu sekarang. Perlu restock segera 🙏
+        </div>
+        <div class="bubble-reactions">
+          <div class="reaction">👀 <span>1</span></div>
+          <div class="reaction">⚡ <span>1</span></div>
+        </div>
+        <div class="bubble-meta"><div class="bubble-time">11:23</div></div>
+      </div>
+    </div>
+
+    <!-- Date divider -->
+    <div class="date-div"><div class="date-div-lbl">Hari ini</div></div>
+
+    <!-- Outgoing -->
+    <div class="msg-row out" style="animation-delay:0.22s">
+      <div class="bubble-wrap">
+        <div class="bubble">Sudah saya koordinasi dengan gudang. Pengiriman besok pagi 6 unit A55 + 2 unit iPhone 15 💪</div>
+        <div class="bubble-meta">
+          <div class="bubble-time">08:30</div>
+          <div class="bubble-check"><svg viewBox="0 0 16 10"><polyline points="1 5 4 8 9 1"/><polyline points="7 8 12 1"/></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Incoming -->
+    <div class="msg-row" style="animation-delay:0.25s">
+      <div class="msg-av">R</div>
+      <div class="bubble-wrap">
+        <div class="msg-sender">Rina S.</div>
+        <div class="bubble">Wah mantap! Terima kasih bu. Sudah kami siapkan area displaynya 🙏</div>
+        <div class="bubble-meta"><div class="bubble-time">08:33</div></div>
+      </div>
+    </div>
+
+    <!-- Unread marker -->
+    <div class="date-div" style="margin-top:8px;">
+      <div class="date-div-lbl" style="background:var(--gold-dim);border-color:rgba(201,146,58,0.2);color:var(--gold);">1 pesan baru</div>
+    </div>
+
+    <!-- Incoming unread -->
+    <div class="msg-row" style="animation-delay:0.28s">
+      <div class="msg-av">R</div>
+      <div class="bubble-wrap">
+        <div class="msg-sender">Rina S.</div>
+        <div class="bubble">Bu, ada customer tanya iPhone 15 Pro Max warna hitam. Stok ada tidak? 🙏</div>
+        <div class="bubble-meta"><div class="bubble-time">17:41</div></div>
+      </div>
+    </div>
+
+  </div><!-- end msg-area -->
+
+  <!-- INPUT AREA -->
+  <div class="input-area">
+    <div class="input-row">
+      <div class="input-extras">
+        <div class="input-extra-btn">
+          <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </div>
+        <div class="input-extra-btn">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+      </div>
+      <textarea class="input-box" placeholder="Tulis pesan..." rows="1"></textarea>
+      <button class="send-btn">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// auto scroll to bottom on load
+const msgArea = document.getElementById('msgArea');
+msgArea.scrollTop = msgArea.scrollHeight;
+
+// auto resize textarea
+const textarea = document.querySelector('.input-box');
+textarea.addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+});
+
+// send button demo
+document.querySelector('.send-btn').addEventListener('click', sendMsg);
+textarea.addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); }
+});
+
+function sendMsg(){
+  const text = textarea.value.trim();
+  if(!text) return;
+
+  const row = document.createElement('div');
+  row.className = 'msg-row out';
+  row.style.animationDelay = '0s';
+  const now = new Date();
+  const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  row.innerHTML = `
+    <div class="bubble-wrap">
+      <div class="bubble">${text.replace(/</g,'&lt;')}</div>
+      <div class="bubble-meta">
+        <div class="bubble-time">${time}</div>
+        <div class="bubble-check"><svg viewBox="0 0 16 10"><polyline points="1 5 4 8 9 1"/><polyline points="7 8 12 1"/></svg></div>
+      </div>
+    </div>`;
+  msgArea.appendChild(row);
+  textarea.value = '';
+  textarea.style.height = 'auto';
+  msgArea.scrollTop = msgArea.scrollHeight;
+}
+</script>
+</body>
+</html>

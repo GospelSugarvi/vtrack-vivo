@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --red:#c05a4a;--red-dim:rgba(192,90,74,0.1);
+  --amber:#d4853a;--blue:#5b8dd9;--purple:#8b6fd4;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:#0a0805;font-family:'Outfit',sans-serif;
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;padding:40px 20px 60px;
+}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;margin-bottom:14px;}
+
+/* ── PHONE ── */
+.phone{
+  width:370px;height:800px;background:var(--bg);border-radius:50px;
+  overflow:hidden;position:relative;
+  box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);
+}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+
+/* scroll */
+.scroll{height:calc(800px - 50px);overflow-y:auto;padding-bottom:88px;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* ── HEADER ── */
+.chat-header{
+  padding:14px 20px 12px;
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--s2);
+  position:sticky;top:0;background:var(--bg);z-index:50;
+}
+.chat-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--cream);}
+.hbtn{
+  width:34px;height:34px;border-radius:10px;
+  background:var(--s1);border:1px solid var(--s3);
+  display:flex;align-items:center;justify-content:center;
+}
+.hbtn svg{width:14px;height:14px;stroke:var(--muted);stroke-width:2;fill:none;}
+
+/* ── SEARCH ── */
+.search-wrap{margin:10px 16px 0;}
+.search-box{
+  display:flex;align-items:center;gap:8px;
+  background:var(--s1);border:1px solid var(--s3);border-radius:12px;padding:9px 12px;
+}
+.search-box svg{width:13px;height:13px;stroke:var(--muted);stroke-width:2;fill:none;flex-shrink:0;}
+.search-box input{
+  background:none;border:none;outline:none;
+  font-family:'Outfit',sans-serif;font-size:11px;color:var(--cream2);
+  width:100%;
+}
+.search-box input::placeholder{color:var(--muted);}
+
+/* ── SHORTCUT PILLS (Announce, Tim, Global, Create) ── */
+.shortcuts{
+  display:flex;gap:10px;padding:14px 16px 12px;
+  overflow-x:auto;scrollbar-width:none;
+  border-bottom:1px solid var(--s2);
+}
+.shortcuts::-webkit-scrollbar{display:none;}
+.sc-item{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
+.sc-icon{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.sc-icon svg{width:20px;height:20px;stroke-width:2;fill:none;}
+.sc-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.04em;}
+.sc-badge{
+  position:absolute;top:-3px;right:-3px;
+  min-width:15px;height:15px;border-radius:100px;
+  background:var(--red);border:1.5px solid var(--bg);
+  font-size:8px;font-weight:800;color:#fff;
+  display:flex;align-items:center;justify-content:center;padding:0 3px;
+}
+
+/* Announce = gold/amber */
+.sc-announce{background:linear-gradient(145deg,#2d1f0e,#1f1609);border:1px solid rgba(201,146,58,0.3);}
+.sc-announce svg{stroke:var(--gold);}
+/* Tim = green */
+.sc-tim{background:linear-gradient(145deg,#0e1f12,#091409);border:1px solid rgba(106,171,122,0.25);}
+.sc-tim svg{stroke:var(--green);}
+/* Global = purple */
+.sc-global{background:linear-gradient(145deg,#1a1226,#110d1a);border:1px solid rgba(139,111,212,0.25);}
+.sc-global svg{stroke:var(--purple);}
+/* Create = dim */
+.sc-create{background:var(--s1);border:1px solid var(--s3);border-style:dashed;}
+.sc-create svg{stroke:var(--muted);}
+
+/* ── SECTION HEADER ── */
+.sec-hd{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px 6px;
+}
+.sec-hd-lbl{font-size:9px;font-weight:700;color:var(--muted2);letter-spacing:0.14em;text-transform:uppercase;}
+.sec-hd-action{font-size:9px;font-weight:700;color:var(--gold);}
+
+/* ── CHAT ROW (Announcements, Global, Tim) ── */
+.chat-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  cursor:pointer;
+  transition:background 0.15s;
+}
+.chat-row:active{background:var(--s1);}
+.cr-av{
+  width:44px;height:44px;border-radius:14px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.cr-av-letter{font-family:'Playfair Display',serif;font-size:16px;font-weight:900;}
+.cr-unread-dot{
+  position:absolute;bottom:-2px;right:-2px;
+  width:10px;height:10px;border-radius:50%;
+  background:var(--gold);border:2px solid var(--bg);
+}
+.cr-body{flex:1;min-width:0;}
+.cr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.cr-name{font-size:12px;font-weight:700;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.cr-time{font-size:9px;color:var(--muted);flex-shrink:0;}
+.cr-preview{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
+.cr-meta{display:flex;align-items:center;gap:5px;}
+.cr-members{font-size:9px;color:var(--muted2);display:flex;align-items:center;gap:3px;}
+.cr-members svg{width:9px;height:9px;stroke:var(--muted2);stroke-width:2;fill:none;}
+.cr-unread-count{
+  margin-left:auto;min-width:18px;height:18px;border-radius:100px;
+  background:var(--gold);color:#1a0e00;
+  font-size:9px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;padding:0 5px;
+}
+
+/* Announce row accent */
+.cr-av.announce{background:linear-gradient(145deg,#2d1f0e,#1f1609);border:1px solid rgba(201,146,58,0.25);}
+.cr-av.announce .cr-av-letter{color:var(--gold);}
+/* Global row accent */
+.cr-av.global{background:linear-gradient(145deg,#1a1226,#110d1a);border:1px solid rgba(139,111,212,0.2);}
+.cr-av.global .cr-av-letter{color:var(--purple);}
+/* Tim/group row */
+.cr-av.team{background:linear-gradient(145deg,#0e1f12,#091409);border:1px solid rgba(106,171,122,0.2);}
+.cr-av.team .cr-av-letter{color:var(--green);}
+/* Store / toko */
+.cr-av.store{background:var(--s2);border:1px solid var(--s3);}
+.cr-av.store .cr-av-letter{color:var(--cream2);}
+
+/* ── TOKO COLLAPSIBLE ── */
+.toko-section{}
+.toko-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px 8px;
+  cursor:pointer;
+  user-select:none;
+}
+.toko-header-left{display:flex;align-items:center;gap:8px;}
+.toko-hd-icon{
+  width:28px;height:28px;border-radius:8px;
+  background:var(--s2);border:1px solid var(--s3);
+  display:flex;align-items:center;justify-content:center;
+}
+.toko-hd-icon svg{width:12px;height:12px;stroke:var(--muted);stroke-width:2;fill:none;}
+.toko-hd-lbl{font-size:9px;font-weight:700;color:var(--muted2);letter-spacing:0.14em;text-transform:uppercase;}
+.toko-hd-count{
+  font-size:8px;font-weight:700;color:var(--muted);
+  background:var(--s2);border:1px solid var(--s3);
+  border-radius:100px;padding:2px 7px;
+}
+.toko-hd-right{display:flex;align-items:center;gap:8px;}
+.toko-unread{
+  font-size:8px;font-weight:800;color:var(--gold);
+  background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);
+  border-radius:100px;padding:2px 7px;
+}
+.toko-chevron{
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  transition:transform 0.3s ease;
+}
+.toko-chevron svg{width:12px;height:12px;stroke:var(--muted);stroke-width:2.5;fill:none;}
+.toko-chevron.open{transform:rotate(180deg);}
+
+.toko-list{
+  overflow:hidden;
+  max-height:600px;
+  transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease;
+  opacity:1;
+}
+.toko-list.collapsed{
+  max-height:0;
+  opacity:0;
+}
+
+/* store row highlight when has unread */
+.chat-row.has-unread .cr-av.store{border-color:rgba(201,146,58,0.3);}
+.chat-row.has-unread .cr-name{color:var(--cream);}
+
+/* ── BOTTOM NAV ── */
+.nav{
+  position:absolute;bottom:0;left:0;right:0;
+  background:rgba(20,16,10,0.97);backdrop-filter:blur(24px);
+  border-top:1px solid var(--s3);
+  padding:10px 8px 22px;
+  display:flex;justify-content:space-around;z-index:100;
+}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 12px;border-radius:10px;cursor:pointer;}
+.ni.on{background:var(--gold-dim);}
+.ni svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:var(--muted2);}
+.ni.on svg{stroke:var(--gold);}
+.ni span{font-size:8px;font-weight:700;color:var(--muted2);letter-spacing:0.04em;text-transform:uppercase;}
+.ni.on span{color:var(--gold);}
+.ni-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);margin-bottom:-1px;}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="page-title">Chat · King Cell</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">17:49</span><span class="sbar-r">4G 70%</span></div>
+
+  <div class="scroll">
+
+    <!-- HEADER -->
+    <div class="chat-header">
+      <div class="chat-title">Chat</div>
+      <div class="hbtn">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Cari percakapan...">
+      </div>
+    </div>
+
+    <!-- RECENT MESSAGES HEADER -->
+    <div class="sec-hd">
+      <div class="sec-hd-lbl">Pesan Terbaru</div>
+      <div class="sec-hd-action">Tandai dibaca</div>
+    </div>
+
+    <!-- ANNOUNCEMENTS -->
+    <div class="chat-row has-unread">
+      <div class="cr-av announce">
+        <div class="cr-av-letter">A</div>
+        <div class="cr-unread-dot"></div>
+      </div>
+      <div class="cr-body">
+        <div class="cr-top">
+          <div class="cr-name">Announcements</div>
+          <div class="cr-time">Kemarin</div>
+        </div>
+        <div class="cr-preview">Administrator: oiiii promtoro vivo kupang...</div>
+        <div class="cr-meta">
+          <div class="cr-members"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>31 anggota</div>
+          <div class="cr-unread-count">3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT GLOBAL -->
+    <div class="chat-row has-unread">
+      <div class="cr-av global">
+        <div class="cr-av-letter">G</div>
+        <div class="cr-unread-dot" style="background:var(--purple)"></div>
+      </div>
+      <div class="cr-body">
+        <div class="cr-top">
+          <div class="cr-name">Chat Global</div>
+          <div class="cr-time">Kemarin</div>
+        </div>
+        <div class="cr-preview">Administrator: testtting segala umta dan ba...</div>
+        <div class="cr-meta">
+          <div class="cr-members"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>32 anggota</div>
+          <div class="cr-unread-count" style="background:var(--purple)">1</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT TIM -->
+    <div class="chat-row">
+      <div class="cr-av team">
+        <div class="cr-av-letter">T</div>
+      </div>
+      <div class="cr-body">
+        <div class="cr-top">
+          <div class="cr-name">Chat King Cell</div>
+          <div class="cr-time">Sel</div>
+        </div>
+        <div class="cr-preview">YOHANIS TIPNONI: Pak</div>
+        <div class="cr-meta">
+          <div class="cr-members"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>2 anggota</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TOKO COLLAPSIBLE SECTION ═══ -->
+    <div class="toko-section">
+      <div class="toko-header" onclick="toggleToko()">
+        <div class="toko-header-left">
+          <div class="toko-hd-icon">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div class="toko-hd-lbl">Chat Toko</div>
+          <div class="toko-hd-count">5 toko</div>
+        </div>
+        <div class="toko-hd-right">
+          <div class="toko-unread">2 belum dibaca</div>
+          <div class="toko-chevron open" id="tokoChevron">
+            <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="toko-list" id="tokoList">
+
+        <!-- King Cell -->
+        <div class="chat-row has-unread">
+          <div class="cr-av store" style="border-color:rgba(201,146,58,0.3);">
+            <div class="cr-av-letter" style="color:var(--gold);font-size:13px;">KC</div>
+          </div>
+          <div class="cr-body">
+            <div class="cr-top">
+              <div class="cr-name">KING CELL</div>
+              <div class="cr-time">Sel</div>
+            </div>
+            <div class="cr-preview">YOHANIS TIPNONI: Pak siap...</div>
+            <div class="cr-meta">
+              <div class="cr-members"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>2 anggota</div>
+              <div class="cr-unread-count">1</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Erafone Megastore -->
+        <div class="chat-row has-unread">
+          <div class="cr-av store">
+            <div class="cr-av-letter" style="font-size:13px;">EM</div>
+          </div>
+          <div class="cr-body">
+            <div class="cr-top">
+              <div class="cr-name">ERAFONE MEGASTORE</div>
+              <div class="cr-time">Sen</div>
+            </div>
+            <div class="cr-preview">Rina: Stok A55 sudah kosong bu...</div>
+            <div class="cr-meta">
+              <div class="cr-members"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>2 anggota</div>
+              <div class="cr-unread-count">1</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Erafone Lippo -->
+        <div class="chat-row">
+          <div class="cr-av store">
+            <div class="cr-av-letter" style="font-size:13px;">EL</div>
+          </div>
+          <div class="cr-body">
+            <div class="cr-top">
+              <div class="cr-name">ERAFONE LIPPO</div>
+              <div class="cr-time">Min</div>
+            </div>
+            <div class="cr-preview">Budi: Oke siap pak</div>
+            <div class="cr-meta">
+              <div class="cr-members"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>2 anggota</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Samsung Store -->
+        <div class="chat-row">
+          <div class="cr-av store">
+            <div class="cr-av-letter" style="font-size:13px;">SS</div>
+          </div>
+          <div class="cr-body">
+            <div class="cr-top">
+              <div class="cr-name">SAMSUNG STORE</div>
+              <div class="cr-time">Sab</div>
+            </div>
+            <div class="cr-preview">Dian: Laporan sudah dikirim</div>
+            <div class="cr-meta">
+              <div class="cr-members"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>3 anggota</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- iBox -->
+        <div class="chat-row">
+          <div class="cr-av store">
+            <div class="cr-av-letter" style="font-size:15px;">iB</div>
+          </div>
+          <div class="cr-body">
+            <div class="cr-top">
+              <div class="cr-name">iBOX KUPANG</div>
+              <div class="cr-time">Jum</div>
+            </div>
+            <div class="cr-preview">Maya: Target minggu kemarin tercapai</div>
+            <div class="cr-meta">
+              <div class="cr-members"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>2 anggota</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end toko-list -->
+    </div><!-- end toko-section -->
+
+  </div><!-- end scroll -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Aktivitas</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Laporan</span></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
+  </nav>
+
+</div>
+
+<script>
+function toggleToko(){
+  const list = document.getElementById('tokoList');
+  const chevron = document.getElementById('tokoChevron');
+  list.classList.toggle('collapsed');
+  chevron.classList.toggle('open');
+}
+</script>
+</body>
+</html>

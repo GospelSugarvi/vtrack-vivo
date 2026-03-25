@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Cell – Workspace Timeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#1a1510;--s1:#211c16;--s2:#2a2318;--s3:#332b1e;--s4:#3d3325;
+  --gold:#c9923a;--gold-lt:#e8b06a;--gold-dim:rgba(201,146,58,0.12);--gold-glow:rgba(201,146,58,0.28);
+  --cream:#f0e8d8;--cream2:#c8bfad;--muted:#6e6254;--muted2:#4a4036;
+  --green:#6aab7a;--green-dim:rgba(106,171,122,0.12);
+  --amber:#d4853a;--red:#c05a4a;--blue:#5b8dd9;--purple:#8b6fd4;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 20px 60px;gap:14px;}
+.page-title{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#3d3325;}
+.phone{width:370px;height:800px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #1e1810,0 0 0 11px #110e09,0 50px 140px rgba(0,0,0,0.95);}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:30px;background:#080503;border-radius:18px;z-index:200;}
+.sbar{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px;position:relative;z-index:10;}
+.sbar-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--cream);}
+.sbar-r{font-size:10px;color:var(--muted);font-weight:600;}
+.scroll{height:calc(800px - 50px);overflow-y:auto;padding-bottom:85px;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* HEADER */
+.header{padding:12px 22px 14px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--s2);}
+.h-eyebrow{font-size:9px;font-weight:700;color:var(--gold);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:3px;display:flex;align-items:center;gap:5px;}
+.h-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gold);animation:blink 2.5s ease infinite;}
+.h-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--cream);line-height:1;}
+.h-sub{font-size:10px;color:var(--muted);margin-top:3px;}
+.h-btn{width:36px;height:36px;border-radius:11px;background:var(--s1);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;position:relative;margin-top:4px;}
+.h-btn svg{width:14px;height:14px;stroke:var(--muted);stroke-width:2;fill:none;}
+.h-notif{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg);}
+
+/* PROGRESS CARD */
+.prog-card{margin:14px 18px 16px;background:linear-gradient(135deg,#231c12,#1c1610);border:1px solid rgba(201,146,58,0.18);border-radius:18px;padding:14px 16px;position:relative;overflow:hidden;}
+.prog-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,146,58,0.5),transparent);}
+.prog-glow{position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(201,146,58,0.08),transparent 70%);pointer-events:none;}
+.prog-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.prog-date{font-size:9px;color:var(--muted);margin-bottom:3px;}
+.prog-status{font-size:13px;font-weight:700;color:var(--cream2);}
+.prog-status strong{color:var(--gold);font-family:'Playfair Display',serif;font-size:18px;}
+.prog-pct{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;color:var(--muted2);line-height:1;text-align:right;}
+.prog-pct-lbl{font-size:8px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;text-align:right;}
+.prog-track{height:4px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--gold),var(--gold-lt));box-shadow:0 0 8px var(--gold-glow);width:0;animation:fill 1.3s 0.5s ease forwards;--w:0%;}
+
+/* TIMELINE */
+.timeline{padding:4px 20px 0 22px;}
+.tl-group-label{font-size:8px;font-weight:800;color:var(--muted2);letter-spacing:0.16em;text-transform:uppercase;padding-left:32px;margin-bottom:10px;margin-top:4px;display:flex;align-items:center;gap:8px;}
+.tl-group-label::after{content:'';flex:1;height:1px;background:var(--s2);}
+
+.tl-item{display:flex;position:relative;animation:fadeUp 0.35s ease both;}
+.tl-item:nth-child(1){animation-delay:.05s}.tl-item:nth-child(2){animation-delay:.1s}.tl-item:nth-child(3){animation-delay:.15s}.tl-item:nth-child(4){animation-delay:.2s}.tl-item:nth-child(5){animation-delay:.25s}.tl-item:nth-child(6){animation-delay:.3s}.tl-item:nth-child(7){animation-delay:.35s}.tl-item:nth-child(8){animation-delay:.4s}
+
+.tl-left{display:flex;flex-direction:column;align-items:center;width:32px;flex-shrink:0;padding-top:3px;}
+.tl-dot{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--s4);background:var(--s2);z-index:1;}
+.tl-dot svg{width:11px;height:11px;stroke-width:2;fill:none;stroke:var(--muted);}
+.tl-dot.done{background:var(--green-dim);border-color:rgba(106,171,122,0.35);}
+.tl-dot.done svg{stroke:var(--green);}
+.tl-dot.gold{background:var(--gold-dim);border-color:rgba(201,146,58,0.35);}
+.tl-dot.gold svg{stroke:var(--gold);}
+.tl-dot.blue{background:rgba(91,141,217,0.12);border-color:rgba(91,141,217,0.3);}
+.tl-dot.blue svg{stroke:var(--blue);}
+.tl-dot.red-d{background:rgba(192,90,74,0.1);border-color:rgba(192,90,74,0.25);}
+.tl-dot.red-d svg{stroke:var(--red);}
+.tl-dot.purple{background:rgba(139,111,212,0.12);border-color:rgba(139,111,212,0.3);}
+.tl-dot.purple svg{stroke:var(--purple);}
+
+.tl-line{width:1px;flex:1;min-height:16px;background:var(--s3);margin-top:3px;margin-bottom:3px;opacity:0.5;}
+
+.tl-content{flex:1;padding:0 0 16px 12px;}
+.tl-item:last-child .tl-content{padding-bottom:4px;}
+.tl-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
+.tl-name{font-size:13px;font-weight:700;color:var(--cream2);line-height:1.2;flex:1;padding-right:8px;}
+.tl-name.done-t{color:var(--green);}
+.tl-badge{font-size:8px;font-weight:700;border-radius:100px;padding:2px 8px;white-space:nowrap;flex-shrink:0;align-self:flex-start;}
+.bd-red{color:var(--red);background:rgba(192,90,74,0.1);border:1px solid rgba(192,90,74,0.2);}
+.bd-grn{color:var(--green);background:var(--green-dim);border:1px solid rgba(106,171,122,0.2);}
+.bd-gld{color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,146,58,0.2);}
+.bd-dim{color:var(--muted);background:var(--s2);border:1px solid var(--s3);}
+.tl-desc{font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:6px;}
+.tl-meta{display:flex;gap:5px;flex-wrap:wrap;}
+.tl-chip{font-size:8px;font-weight:600;color:var(--muted2);background:var(--s2);border:1px solid var(--s3);border-radius:100px;padding:2px 8px;display:flex;align-items:center;gap:3px;}
+.tl-chip svg{width:8px;height:8px;stroke:currentColor;stroke-width:2;fill:none;}
+.tl-chip.hi{color:var(--gold);background:var(--gold-dim);border-color:rgba(201,146,58,0.2);}
+.tl-chip.gi{color:var(--green);background:var(--green-dim);border-color:rgba(106,171,122,0.2);}
+.tl-mini{margin-top:7px;}
+.tl-mini-lbl{display:flex;justify-content:space-between;font-size:8px;color:var(--muted);margin-bottom:3px;}
+.tl-mini-lbl span{color:var(--gold);font-weight:700;}
+.tl-mini-track{height:3px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.tl-mini-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--gold),var(--gold-lt));width:0;animation:fill 1.3s 1s ease forwards;}
+.tl-spacer{height:8px;}
+
+/* NAV */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(20,16,10,0.97);backdrop-filter:blur(24px);border-top:1px solid var(--s3);padding:10px 8px 22px;display:flex;justify-content:space-around;z-index:100;}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 12px;border-radius:10px;cursor:pointer;}
+.ni.on{background:var(--gold-dim);}
+.ni svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:var(--muted2);}
+.ni.on svg{stroke:var(--gold);}
+.ni span{font-size:8px;font-weight:700;color:var(--muted2);letter-spacing:0.04em;text-transform:uppercase;}
+.ni.on span{color:var(--gold);}
+
+@keyframes fill{from{width:0}to{width:var(--w,0%)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="page-title">Workspace · Promotor · Timeline Feed</div>
+<div class="phone">
+  <div class="island"></div>
+  <div class="sbar"><span class="sbar-t">19:58</span><span class="sbar-r">4G 78%</span></div>
+  <div class="scroll">
+
+    <div class="header">
+      <div>
+        <div class="h-eyebrow">Ruang Kerja</div>
+        <div class="h-title">Promotor</div>
+        <div class="h-sub">King Cell · Kamis, 12 Maret 2026</div>
+      </div>
+      <div class="h-btn">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="h-notif"></div>
+      </div>
+    </div>
+
+    <div class="prog-card">
+      <div class="prog-glow"></div>
+      <div class="prog-top">
+        <div><div class="prog-date">Progress hari ini</div><div class="prog-status"><strong>0</strong> dari 6 selesai</div></div>
+        <div><div class="prog-pct">0%</div><div class="prog-pct-lbl">Selesai</div></div>
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="--w:0%"></div></div>
+    </div>
+
+    <div class="timeline">
+
+      <div class="tl-group-label">Wajib Harian</div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot red-d"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Clock In / Absen Masuk</div><div class="tl-badge bd-red">Belum</div></div>
+          <div class="tl-desc">Foto selfie + validasi lokasi GPS</div>
+          <div class="tl-meta">
+            <div class="tl-chip"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>GPS aktif</div>
+            <div class="tl-chip"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Foto selfie</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot gold"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Input Stok</div><div class="tl-badge bd-red">Belum</div></div>
+          <div class="tl-desc">Update stok masuk & validasi IMEI unit baru</div>
+          <div class="tl-meta"><div class="tl-chip">Fresh · Chip · Display</div></div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot gold"><svg viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Stok Toko</div><div class="tl-badge bd-red">Belum</div></div>
+          <div class="tl-desc">Cek & validasi inventori real-time</div>
+          <div class="tl-meta"><div class="tl-chip hi">16 item perlu dicek</div></div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot gold"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Lapor Jual</div><div class="tl-badge bd-red">Belum</div></div>
+          <div class="tl-desc">Input penjualan · scan IMEI unit terjual</div>
+        </div>
+      </div>
+
+      <div class="tl-spacer"></div>
+      <div class="tl-group-label">Jadwal & Penormalan</div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot done"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name done-t">Jadwal Bulanan</div><div class="tl-badge bd-grn">✓ Disetujui</div></div>
+          <div class="tl-desc">Jadwal Maret 2026 sudah disetujui SATOR</div>
+          <div class="tl-meta"><div class="tl-chip gi">Submit ke SATOR</div><div class="tl-chip gi">Buka Jadwal</div></div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot purple"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Penormalan IMEI</div><div class="tl-badge bd-dim">10 pending</div></div>
+          <div class="tl-desc">Validasi & kirim IMEI unit terjual</div>
+          <div class="tl-meta"><div class="tl-chip hi">10 perlu dikirim</div></div>
+        </div>
+      </div>
+
+      <div class="tl-spacer"></div>
+      <div class="tl-group-label">Laporan Tambahan</div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot gold"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Laporan Aktivitas</div><div class="tl-badge bd-red">0/6</div></div>
+          <div class="tl-desc">Rekap semua aktivitas harian & bulanan</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot done"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Detail Bonus</div><div class="tl-badge bd-gld">34%</div></div>
+          <div class="tl-desc">Target & progres bonus bulan Maret</div>
+          <div class="tl-mini">
+            <div class="tl-mini-lbl"><span>Rp 1.000.000</span><span style="color:var(--muted)">dari Rp 3.000.000</span></div>
+            <div class="tl-mini-track"><div class="tl-mini-fill" style="--w:34%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot red-d"><svg viewBox="0 0 24 24"><path d="M22 4s-2.5 3-5 3-5-3-5-3-2.5 3-5 3-5-3-5-3v14s2.5 3 5 3 5-3 5-3 2.5 3 5 3 5-3 5-3V4z"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Lapor Promosi</div><div class="tl-badge bd-red">Belum</div></div>
+          <div class="tl-desc">Aktivitas konten TikTok / Instagram</div>
+          <div class="tl-meta"><div class="tl-chip">TikTok</div><div class="tl-chip">Instagram</div></div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot blue"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87m-4-12a4 4 0 0 1 0 7.75"/></svg></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Lapor Follower</div><div class="tl-badge bd-red">Belum</div></div>
+          <div class="tl-desc">Update pertumbuhan akun sosial media</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-left"><div class="tl-dot purple"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="tl-line" style="opacity:0"></div></div>
+        <div class="tl-content">
+          <div class="tl-row"><div class="tl-name">Lapor AllBrand</div><div class="tl-badge bd-red">Belum</div></div>
+          <div class="tl-desc">Pantau kompetitor & market share toko</div>
+          <div class="tl-meta"><div class="tl-chip">Samsung · OPPO · Xiaomi</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Aktivitas</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Laporan</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
+  </nav>
+</div>
+</body>
+</html>

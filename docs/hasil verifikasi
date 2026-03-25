@@ -1,0 +1,225 @@
+| table_name                    |
+| ----------------------------- |
+| error_logs                    |
+| idempotency_keys              |
+| job_runs                      |
+| recalc_requests               |
+| rule_snapshots                |
+| sales_bonus_events            |
+| sales_sell_out_status_history |
+| sell_in_order_status_history  |
+| stock_chip_request_history    |
+
+| table_name                    | column_name           | data_type                | is_nullable |
+| ----------------------------- | --------------------- | ------------------------ | ----------- |
+| error_logs                    | id                    | uuid                     | NO          |
+| error_logs                    | error_code            | text                     | YES         |
+| error_logs                    | error_message         | text                     | NO          |
+| error_logs                    | error_context         | jsonb                    | YES         |
+| error_logs                    | endpoint              | text                     | YES         |
+| error_logs                    | user_id               | uuid                     | YES         |
+| error_logs                    | created_at            | timestamp with time zone | NO          |
+| idempotency_keys              | id                    | uuid                     | NO          |
+| idempotency_keys              | idempotency_key       | text                     | NO          |
+| idempotency_keys              | scope                 | text                     | NO          |
+| idempotency_keys              | request_hash          | text                     | YES         |
+| idempotency_keys              | response_payload      | jsonb                    | YES         |
+| idempotency_keys              | created_at            | timestamp with time zone | NO          |
+| idempotency_keys              | expires_at            | timestamp with time zone | YES         |
+| job_runs                      | id                    | uuid                     | NO          |
+| job_runs                      | job_name              | text                     | NO          |
+| job_runs                      | status                | text                     | NO          |
+| job_runs                      | started_at            | timestamp with time zone | NO          |
+| job_runs                      | finished_at           | timestamp with time zone | YES         |
+| job_runs                      | metadata              | jsonb                    | YES         |
+| job_runs                      | error_message         | text                     | YES         |
+| job_runs                      | triggered_by          | uuid                     | YES         |
+| recalc_requests               | id                    | uuid                     | NO          |
+| recalc_requests               | request_type          | text                     | NO          |
+| recalc_requests               | target_scope          | jsonb                    | YES         |
+| recalc_requests               | status                | text                     | NO          |
+| recalc_requests               | requested_by          | uuid                     | YES         |
+| recalc_requests               | requested_at          | timestamp with time zone | NO          |
+| recalc_requests               | processed_at          | timestamp with time zone | YES         |
+| recalc_requests               | notes                 | text                     | YES         |
+| rule_snapshots                | id                    | uuid                     | NO          |
+| rule_snapshots                | rule_domain           | text                     | NO          |
+| rule_snapshots                | source_rule_id        | uuid                     | YES         |
+| rule_snapshots                | snapshot_data         | jsonb                    | NO          |
+| rule_snapshots                | version_label         | text                     | YES         |
+| rule_snapshots                | created_at            | timestamp with time zone | NO          |
+| rule_snapshots                | created_by            | uuid                     | YES         |
+| sales_bonus_events            | id                    | uuid                     | NO          |
+| sales_bonus_events            | sales_sell_out_id     | uuid                     | NO          |
+| sales_bonus_events            | user_id               | uuid                     | NO          |
+| sales_bonus_events            | period_id             | uuid                     | YES         |
+| sales_bonus_events            | bonus_type            | text                     | NO          |
+| sales_bonus_events            | rule_id               | uuid                     | YES         |
+| sales_bonus_events            | rule_snapshot         | jsonb                    | YES         |
+| sales_bonus_events            | bonus_amount          | numeric                  | NO          |
+| sales_bonus_events            | is_projection         | boolean                  | NO          |
+| sales_bonus_events            | calculation_version   | text                     | NO          |
+| sales_bonus_events            | notes                 | text                     | YES         |
+| sales_bonus_events            | created_at            | timestamp with time zone | NO          |
+| sales_bonus_events            | created_by            | uuid                     | YES         |
+| sales_sell_out_status_history | id                    | uuid                     | NO          |
+| sales_sell_out_status_history | sales_sell_out_id     | uuid                     | NO          |
+| sales_sell_out_status_history | old_status            | text                     | YES         |
+| sales_sell_out_status_history | new_status            | text                     | NO          |
+| sales_sell_out_status_history | notes                 | text                     | YES         |
+| sales_sell_out_status_history | changed_at            | timestamp with time zone | NO          |
+| sales_sell_out_status_history | changed_by            | uuid                     | YES         |
+| sell_in_order_status_history  | id                    | uuid                     | NO          |
+| sell_in_order_status_history  | order_id              | uuid                     | NO          |
+| sell_in_order_status_history  | old_status            | text                     | YES         |
+| sell_in_order_status_history  | new_status            | text                     | NO          |
+| sell_in_order_status_history  | notes                 | text                     | YES         |
+| sell_in_order_status_history  | changed_at            | timestamp with time zone | NO          |
+| sell_in_order_status_history  | changed_by            | uuid                     | YES         |
+| stock_chip_request_history    | id                    | uuid                     | NO          |
+| stock_chip_request_history    | stock_chip_request_id | uuid                     | NO          |
+| stock_chip_request_history    | old_status            | text                     | YES         |
+| stock_chip_request_history    | new_status            | text                     | NO          |
+| stock_chip_request_history    | notes                 | text                     | YES         |
+| stock_chip_request_history    | changed_at            | timestamp with time zone | NO          |
+| stock_chip_request_history    | changed_by            | uuid                     | YES         |
+
+| table_name                    | constraint_name                                       | constraint_type |
+| ----------------------------- | ----------------------------------------------------- | --------------- |
+| error_logs                    | 2200_88537_1_not_null                                 | CHECK           |
+| error_logs                    | 2200_88537_3_not_null                                 | CHECK           |
+| error_logs                    | 2200_88537_7_not_null                                 | CHECK           |
+| error_logs                    | error_logs_user_id_fkey                               | FOREIGN KEY     |
+| error_logs                    | error_logs_pkey                                       | PRIMARY KEY     |
+| idempotency_keys              | 2200_88572_1_not_null                                 | CHECK           |
+| idempotency_keys              | 2200_88572_2_not_null                                 | CHECK           |
+| idempotency_keys              | 2200_88572_3_not_null                                 | CHECK           |
+| idempotency_keys              | 2200_88572_6_not_null                                 | CHECK           |
+| idempotency_keys              | idempotency_keys_pkey                                 | PRIMARY KEY     |
+| idempotency_keys              | idempotency_keys_idempotency_key_key                  | UNIQUE          |
+| job_runs                      | 2200_88554_1_not_null                                 | CHECK           |
+| job_runs                      | 2200_88554_2_not_null                                 | CHECK           |
+| job_runs                      | 2200_88554_3_not_null                                 | CHECK           |
+| job_runs                      | 2200_88554_4_not_null                                 | CHECK           |
+| job_runs                      | job_runs_status_check                                 | CHECK           |
+| job_runs                      | job_runs_triggered_by_fkey                            | FOREIGN KEY     |
+| job_runs                      | job_runs_pkey                                         | PRIMARY KEY     |
+| recalc_requests               | 2200_88599_1_not_null                                 | CHECK           |
+| recalc_requests               | 2200_88599_2_not_null                                 | CHECK           |
+| recalc_requests               | 2200_88599_4_not_null                                 | CHECK           |
+| recalc_requests               | 2200_88599_6_not_null                                 | CHECK           |
+| recalc_requests               | recalc_requests_status_check                          | CHECK           |
+| recalc_requests               | recalc_requests_requested_by_fkey                     | FOREIGN KEY     |
+| recalc_requests               | recalc_requests_pkey                                  | PRIMARY KEY     |
+| rule_snapshots                | 2200_88584_1_not_null                                 | CHECK           |
+| rule_snapshots                | 2200_88584_2_not_null                                 | CHECK           |
+| rule_snapshots                | 2200_88584_4_not_null                                 | CHECK           |
+| rule_snapshots                | 2200_88584_6_not_null                                 | CHECK           |
+| rule_snapshots                | rule_snapshots_created_by_fkey                        | FOREIGN KEY     |
+| rule_snapshots                | rule_snapshots_pkey                                   | PRIMARY KEY     |
+| sales_bonus_events            | 2200_88439_10_not_null                                | CHECK           |
+| sales_bonus_events            | 2200_88439_12_not_null                                | CHECK           |
+| sales_bonus_events            | 2200_88439_1_not_null                                 | CHECK           |
+| sales_bonus_events            | 2200_88439_2_not_null                                 | CHECK           |
+| sales_bonus_events            | 2200_88439_3_not_null                                 | CHECK           |
+| sales_bonus_events            | 2200_88439_5_not_null                                 | CHECK           |
+| sales_bonus_events            | 2200_88439_8_not_null                                 | CHECK           |
+| sales_bonus_events            | 2200_88439_9_not_null                                 | CHECK           |
+| sales_bonus_events            | sales_bonus_events_bonus_amount_check                 | CHECK           |
+| sales_bonus_events            | sales_bonus_events_bonus_type_check                   | CHECK           |
+| sales_bonus_events            | sales_bonus_events_created_by_fkey                    | FOREIGN KEY     |
+| sales_bonus_events            | sales_bonus_events_period_id_fkey                     | FOREIGN KEY     |
+| sales_bonus_events            | sales_bonus_events_sales_sell_out_id_fkey             | FOREIGN KEY     |
+| sales_bonus_events            | sales_bonus_events_user_id_fkey                       | FOREIGN KEY     |
+| sales_bonus_events            | sales_bonus_events_pkey                               | PRIMARY KEY     |
+| sales_sell_out_status_history | 2200_88477_1_not_null                                 | CHECK           |
+| sales_sell_out_status_history | 2200_88477_2_not_null                                 | CHECK           |
+| sales_sell_out_status_history | 2200_88477_4_not_null                                 | CHECK           |
+| sales_sell_out_status_history | 2200_88477_6_not_null                                 | CHECK           |
+| sales_sell_out_status_history | sales_sell_out_status_history_changed_by_fkey         | FOREIGN KEY     |
+| sales_sell_out_status_history | sales_sell_out_status_history_sales_sell_out_id_fkey  | FOREIGN KEY     |
+| sales_sell_out_status_history | sales_sell_out_status_history_pkey                    | PRIMARY KEY     |
+| sell_in_order_status_history  | 2200_88497_1_not_null                                 | CHECK           |
+| sell_in_order_status_history  | 2200_88497_2_not_null                                 | CHECK           |
+| sell_in_order_status_history  | 2200_88497_4_not_null                                 | CHECK           |
+| sell_in_order_status_history  | 2200_88497_6_not_null                                 | CHECK           |
+| sell_in_order_status_history  | sell_in_order_status_history_changed_by_fkey          | FOREIGN KEY     |
+| sell_in_order_status_history  | sell_in_order_status_history_order_id_fkey            | FOREIGN KEY     |
+| sell_in_order_status_history  | sell_in_order_status_history_pkey                     | PRIMARY KEY     |
+| stock_chip_request_history    | 2200_88517_1_not_null                                 | CHECK           |
+| stock_chip_request_history    | 2200_88517_2_not_null                                 | CHECK           |
+| stock_chip_request_history    | 2200_88517_4_not_null                                 | CHECK           |
+| stock_chip_request_history    | 2200_88517_6_not_null                                 | CHECK           |
+| stock_chip_request_history    | stock_chip_request_history_changed_by_fkey            | FOREIGN KEY     |
+| stock_chip_request_history    | stock_chip_request_history_stock_chip_request_id_fkey | FOREIGN KEY     |
+| stock_chip_request_history    | stock_chip_request_history_pkey                       | PRIMARY KEY     |
+
+
+| schemaname | tablename                     | indexname                                      |
+| ---------- | ----------------------------- | ---------------------------------------------- |
+| public     | error_logs                    | error_logs_pkey                                |
+| public     | error_logs                    | idx_error_logs_code_created_at                 |
+| public     | error_logs                    | idx_error_logs_created_at                      |
+| public     | error_logs                    | idx_error_logs_user_created_at                 |
+| public     | idempotency_keys              | idempotency_keys_idempotency_key_key           |
+| public     | idempotency_keys              | idempotency_keys_pkey                          |
+| public     | idempotency_keys              | idx_idempotency_keys_created_at                |
+| public     | job_runs                      | idx_job_runs_job_name_started                  |
+| public     | job_runs                      | idx_job_runs_status_started                    |
+| public     | job_runs                      | job_runs_pkey                                  |
+| public     | recalc_requests               | idx_recalc_requests_status_requested           |
+| public     | recalc_requests               | recalc_requests_pkey                           |
+| public     | rule_snapshots                | idx_rule_snapshots_domain_created              |
+| public     | rule_snapshots                | rule_snapshots_pkey                            |
+| public     | sales_bonus_events            | idx_sales_bonus_events_created_at              |
+| public     | sales_bonus_events            | idx_sales_bonus_events_period_user             |
+| public     | sales_bonus_events            | idx_sales_bonus_events_sale                    |
+| public     | sales_bonus_events            | idx_sales_bonus_events_user_period             |
+| public     | sales_bonus_events            | sales_bonus_events_pkey                        |
+| public     | sales_sell_out_status_history | idx_sales_sell_out_status_history_sale_changed |
+| public     | sales_sell_out_status_history | sales_sell_out_status_history_pkey             |
+| public     | sell_in_order_status_history  | idx_sell_in_order_status_history_order_changed |
+| public     | sell_in_order_status_history  | sell_in_order_status_history_pkey              |
+| public     | stock_chip_request_history    | idx_stock_chip_request_history_request_changed |
+| public     | stock_chip_request_history    | stock_chip_request_history_pkey                |
+
+
+
+| schemaname | tablename                     | rowsecurity |
+| ---------- | ----------------------------- | ----------- |
+| public     | error_logs                    | true        |
+| public     | idempotency_keys              | true        |
+| public     | job_runs                      | true        |
+| public     | recalc_requests               | true        |
+| public     | rule_snapshots                | true        |
+| public     | sales_bonus_events            | true        |
+| public     | sales_sell_out_status_history | true        |
+| public     | sell_in_order_status_history  | true        |
+| public     | stock_chip_request_history    | true        |
+
+
+
+| schemaname | tablename                     | policyname                                  | permissive | roles           | cmd    |
+| ---------- | ----------------------------- | ------------------------------------------- | ---------- | --------------- | ------ |
+| public     | error_logs                    | Admins manage error logs                    | PERMISSIVE | {authenticated} | ALL    |
+| public     | idempotency_keys              | Admins manage idempotency keys              | PERMISSIVE | {authenticated} | ALL    |
+| public     | job_runs                      | Admins manage job runs                      | PERMISSIVE | {authenticated} | ALL    |
+| public     | recalc_requests               | Admins manage recalc requests               | PERMISSIVE | {authenticated} | ALL    |
+| public     | rule_snapshots                | Admins manage rule snapshots                | PERMISSIVE | {authenticated} | ALL    |
+| public     | sales_bonus_events            | Admins manage sales bonus events            | PERMISSIVE | {authenticated} | ALL    |
+| public     | sales_bonus_events            | Users read own sales bonus events           | PERMISSIVE | {authenticated} | SELECT |
+| public     | sales_sell_out_status_history | Admins manage sell out status history       | PERMISSIVE | {authenticated} | ALL    |
+| public     | sales_sell_out_status_history | Users read own sell out status history      | PERMISSIVE | {authenticated} | SELECT |
+| public     | sell_in_order_status_history  | Admins manage sell in order status history  | PERMISSIVE | {authenticated} | ALL    |
+| public     | sell_in_order_status_history  | Users read own sell in order status history | PERMISSIVE | {authenticated} | SELECT |
+| public     | stock_chip_request_history    | Admins manage chip request history          | PERMISSIVE | {authenticated} | ALL    |
+| public     | stock_chip_request_history    | Users read own chip request history         | PERMISSIVE | {authenticated} | SELECT |
+
+
+
+| routine_name             |
+| ------------------------ |
+| current_user_role        |
+| is_admin_or_manager_user |
+| is_admin_user            |
+| is_elevated_user         |
