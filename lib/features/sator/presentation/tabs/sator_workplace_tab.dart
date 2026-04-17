@@ -4,6 +4,9 @@ import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vtrack/features/notifications/presentation/widgets/app_notification_bell_button.dart';
+import '../../../../core/utils/avatar_refresh_bus.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../../ui/promotor/promotor.dart';
 
 class SatorWorkplaceTab extends StatefulWidget {
@@ -20,150 +23,113 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
   bool _isLoading = true;
 
   int _attendanceMissing = 0;
-  int _attendanceTotal = 0;
   int _schedulePendingCount = 0;
-  List<Map<String, String>> _schedulePending = [];
+  int _permissionPendingCount = 0;
 
   bool _visitingDone = false;
 
   int _sellInPendingCount = 0;
 
   int _imeiPendingCount = 0;
-  int _imeiPromotorCount = 0;
 
-  final int _chipReviewCount = 0;
+  bool get _isLightMode => Theme.of(context).brightness == Brightness.light;
+  Color get _warmSurface => _isLightMode
+      ? Color.lerp(t.surface1, t.primaryAccentSoft, 0.14) ?? t.surface1
+      : t.surface1;
+  Color get _warmSurfaceAlt => _isLightMode
+      ? Color.lerp(t.background, t.primaryAccentSoft, 0.1) ?? t.background
+      : t.surface2;
+  Color get _warmBorder => _isLightMode
+      ? Color.lerp(t.surface3, t.primaryAccent, 0.12) ?? t.surface3
+      : t.surface3;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+    avatarRefreshTick.addListener(_handleAvatarRefresh);
   }
 
-  Future<List<dynamic>> _safeList(Future<dynamic> Function() loader) async {
-    try {
-      final result = await loader();
-      if (result is List) return result;
-      return [];
-    } catch (_) {
-      return [];
-    }
+  void _handleAvatarRefresh() {
+    if (!mounted) return;
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    avatarRefreshTick.removeListener(_handleAvatarRefresh);
+    super.dispose();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
-      final profile = await _supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
+      final authUser = _supabase.auth.currentUser;
+      Map<String, dynamic> snapshot = <String, dynamic>{};
+      Map<String, dynamic> liveProfile = <String, dynamic>{};
+      Map<String, dynamic> homeProfile = <String, dynamic>{};
 
-      final hierarchyRows = await _safeList(
-        () => _supabase
-            .from('hierarchy_sator_promotor')
-            .select('promotor_id')
-            .eq('sator_id', userId)
-            .eq('active', true),
-      );
-      final promotorIds = hierarchyRows
-          .map((e) => '${e['promotor_id']}')
-          .where((e) => e.isNotEmpty && e != 'null')
-          .toList();
-
-      _attendanceTotal = promotorIds.length;
-      if (promotorIds.isNotEmpty) {
-        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        final attendanceRows = await _safeList(
-          () => _supabase
-              .from('attendance')
-              .select('user_id')
-              .inFilter('user_id', promotorIds)
-              .eq('attendance_date', today),
+      try {
+        final snapshotRaw = await _supabase.rpc(
+          'get_sator_workplace_snapshot',
+          params: {
+            'p_sator_id': userId,
+            'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+          },
         );
-        final presentIds = attendanceRows.map((e) => '${e['user_id']}').toSet();
-        final missingIds = promotorIds
-            .where((id) => !presentIds.contains(id))
-            .toList();
-        _attendanceMissing = missingIds.length;
-      }
-
-      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
-      if (promotorIds.isNotEmpty) {
-        final scheduleRows = await _safeList(
-          () => _supabase
-              .from('schedules')
-              .select(
-                'promotor_id, status, created_at, month_year, users(full_name)',
-              )
-              .inFilter('promotor_id', promotorIds)
-              .eq('status', 'submitted')
-              .eq('month_year', DateFormat('yyyy-MM').format(monthStart))
-              .order('created_at', ascending: false),
-        );
-        final latestByPromotor = <String, Map<String, dynamic>>{};
-        for (final row in List<Map<String, dynamic>>.from(scheduleRows)) {
-          final promotorId = row['promotor_id']?.toString() ?? '';
-          if (promotorId.isEmpty || latestByPromotor.containsKey(promotorId)) {
-            continue;
-          }
-          latestByPromotor[promotorId] = row;
+        if (snapshotRaw is Map) {
+          snapshot = Map<String, dynamic>.from(snapshotRaw);
         }
-        final latestRows = latestByPromotor.values.toList();
-        _schedulePendingCount = latestRows.length;
-        _schedulePending = latestRows.take(3).map((row) {
-          final name = row['users']?['full_name']?.toString() ?? 'Promotor';
-          final created = DateTime.tryParse('${row['created_at'] ?? ''}');
-          final label = _relativeDay(created);
-          final monthYear = row['month_year']?.toString() ?? '';
-          final monthLabel = monthYear.isEmpty
-              ? DateFormat('MMM yyyy', 'id_ID').format(DateTime.now())
-              : DateFormat(
-                  'MMM yyyy',
-                  'id_ID',
-                ).format(DateTime.parse('$monthYear-01'));
-          return {'name': '$name — $monthLabel', 'meta': label};
-        }).toList();
-      }
+      } catch (_) {}
 
-      final visitRows = await _safeList(
-        () => _supabase
-            .from('store_visits')
-            .select('id, store_id, stores(store_name), visit_date')
-            .eq('sator_id', userId)
-            .eq('visit_date', DateFormat('yyyy-MM-dd').format(DateTime.now()))
-            .order('created_at', ascending: false)
-            .limit(1),
-      );
-      if (visitRows.isNotEmpty) {
-        _visitingDone = true;
-      } else {
-        _visitingDone = false;
-      }
+      try {
+        final profileRaw = await _supabase.rpc('get_my_profile_snapshot');
+        if (profileRaw is Map) {
+          liveProfile = Map<String, dynamic>.from(profileRaw);
+        }
+      } catch (_) {}
 
-      final pendingSellIn = await _supabase.rpc(
-        'get_pending_orders',
-        params: {'p_sator_id': userId},
-      );
-      _sellInPendingCount = pendingSellIn is List ? pendingSellIn.length : 0;
-
-      if (promotorIds.isNotEmpty) {
-        final imeiRows = await _safeList(
-          () => _supabase
-              .from('imei_normalizations')
-              .select('id, promotor_id')
-              .inFilter('promotor_id', promotorIds)
-              .neq('status', 'scanned'),
+      try {
+        final homeRaw = await _supabase.rpc(
+          'get_sator_home_snapshot',
+          params: <String, dynamic>{'p_sator_id': userId},
         );
-        _imeiPendingCount = imeiRows.length;
-        _imeiPromotorCount = imeiRows
-            .map((e) => '${e['promotor_id']}')
-            .toSet()
-            .length;
-      }
+        if (homeRaw is Map) {
+          final homeMap = Map<String, dynamic>.from(homeRaw);
+          homeProfile = Map<String, dynamic>.from(
+            homeMap['profile'] as Map? ?? const <String, dynamic>{},
+          );
+        }
+      } catch (_) {}
+
+      final authMetadata = Map<String, dynamic>.from(
+        authUser?.userMetadata ?? const <String, dynamic>{},
+      );
+      final authProfile = <String, dynamic>{
+        'full_name': authMetadata['full_name'] ?? authMetadata['name'],
+        'nickname': authMetadata['nickname'] ?? authMetadata['display_name'],
+        'area': authMetadata['area'],
+        'avatar_url': authUser?.userMetadata?['avatar_url'],
+      };
+      final mergedProfile = <String, dynamic>{
+        ...authProfile,
+        ...homeProfile,
+        ...Map<String, dynamic>.from(snapshot['profile'] as Map? ?? const {}),
+        ...liveProfile,
+      };
 
       if (mounted) {
         setState(() {
-          _profile = profile;
+          _profile = mergedProfile;
+          _attendanceMissing = _toInt(snapshot['attendance_missing']);
+          _schedulePendingCount = _toInt(snapshot['schedule_pending_count']);
+          _permissionPendingCount = _toInt(
+            snapshot['permission_pending_count'],
+          );
+          _visitingDone = snapshot['visiting_done'] == true;
+          _sellInPendingCount = _toInt(snapshot['sell_in_pending_count']);
+          _imeiPendingCount = _toInt(snapshot['imei_pending_count']);
           _isLoading = false;
         });
       }
@@ -172,219 +138,271 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
     }
   }
 
-  String _relativeDay(DateTime? date) {
-    if (date == null) return 'Submit hari ini';
-    final now = DateTime.now();
-    final diff = now.difference(date).inDays;
-    if (diff <= 0) return 'Submit hari ini';
-    if (diff == 1) return 'Submit kemarin';
-    return 'Submit $diff hari lalu';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final t = context.fieldTokens;
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final completedTasks = _calculateCompletedTasks();
-    final totalTasks = _calculateTotalTasks();
-    final pct = totalTasks > 0 ? (completedTasks * 100 / totalTasks) : 0.0;
-
     return RefreshIndicator(
       onRefresh: _loadData,
       color: t.primaryAccent,
       child: Container(
-        color: t.textOnAccent,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(0, 16, 0, 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              _buildProgressCard(completedTasks, totalTasks, pct),
-              _buildTimeline(),
-            ],
-          ),
+        color: t.background,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(0, 10, 0, 120),
+          children: [
+            _buildHeader(),
+            _buildHeaderControls(),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  color: t.primaryAccent,
+                  backgroundColor: t.surface3,
+                ),
+              ),
+            _buildTimeline(),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    final fullNameRaw = '${_profile?['full_name'] ?? ''}'.trim();
-    final fullName = fullNameRaw.isEmpty ? 'Sator' : fullNameRaw;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rawFullName = '${_profile?['full_name'] ?? ''}'.trim();
+    final rawNickname = '${_profile?['nickname'] ?? ''}'.trim();
+    final fullName = rawFullName.isNotEmpty
+        ? rawFullName
+        : (rawNickname.isNotEmpty ? rawNickname : 'SATOR');
+    final area = '${_profile?['area'] ?? '-'}';
+    final avatarUrl = '${_profile?['avatar_url'] ?? ''}'.trim();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 8, 14, 6),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [t.surface1, t.surface2]
+              : [_warmSurface, _warmSurfaceAlt],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _warmBorder),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? t.background.withValues(alpha: 0.16)
+                : const Color(0xFF000000).withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Workplace',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PromotorText.display(
+                    size: 20,
+                    weight: FontWeight.w800,
+                    color: t.textPrimary,
+                  ),
+                ),
+              ),
+              _buildHeaderIconButton(),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: t.primaryAccent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Ruang Kerja',
-                    style: PromotorText.outfit(
-                      size: 11,
-                      weight: FontWeight.w700,
-                      color: t.primaryAccent,
-                      letterSpacing: 1.4,
-                    ),
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: t.primaryAccentGlow),
+                ),
+                child: UserAvatar(
+                  key: ValueKey(avatarUrl),
+                  avatarUrl: avatarUrl.isEmpty ? null : avatarUrl,
+                  fullName: fullName,
+                  radius: 22,
+                  showBorder: false,
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                fullName,
-                style: PromotorText.display(size: 24, color: t.textPrimary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: PromotorText.display(
+                        size: 24,
+                        weight: FontWeight.w800,
+                        color: t.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          area.isNotEmpty && area != '-' ? area : 'Area: -',
+                          style: PromotorText.outfit(
+                            size: 12,
+                            weight: FontWeight.w700,
+                            color: t.primaryAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          _buildHeaderIconButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderControls() {
+    final dateLabel = DateFormat(
+      'EEEE, d MMM yyyy',
+      'id_ID',
+    ).format(DateTime.now());
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: _buildDateBadge(dateLabel),
+      ),
+    );
+  }
+
+  Widget _buildDateBadge(String label, {double fontSize = 11}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: _warmSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _warmBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.calendar_today_rounded, size: 11, color: t.primaryAccent),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: PromotorText.outfit(
+                size: fontSize,
+                weight: FontWeight.w700,
+                color: t.textMuted,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildHeaderIconButton() {
-    return Stack(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: t.surface1,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: t.surface3),
-          ),
-          child: Icon(
-            Icons.notifications_none_rounded,
-            color: t.textMuted,
-            size: 16,
-          ),
-        ),
-        Positioned(
-          top: 7,
-          right: 7,
-          child: Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: t.danger, shape: BoxShape.circle),
-          ),
-        ),
-      ],
+    return AppNotificationBellButton(
+      backgroundColor: _warmSurface,
+      borderColor: _warmBorder,
+      iconColor: t.textMuted,
+      badgeColor: t.danger,
+      badgeTextColor: t.textOnAccent,
+      routePath: '/sator/notifications',
     );
   }
 
-  Widget _buildProgressCard(int done, int total, double pct) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(16, 14, 16, 0),
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(
+  BoxDecoration _menuCardDecoration() {
+    final tone = t.primaryAccent;
+    if (_isLightMode) {
+      return BoxDecoration(
         gradient: LinearGradient(
-          colors: [t.surface2, t.background],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+          colors: [
+            _warmSurface,
+            Color.lerp(_warmSurface, tone, 0.045) ?? _warmSurface,
+            _warmSurfaceAlt,
+          ],
+          stops: const [0, 0.6, 1],
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: t.primaryAccentGlow),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Progress tugas hari ini',
-                    style: PromotorText.outfit(
-                      size: 11,
-                      weight: FontWeight.w700,
-                      color: t.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '$done dari $total selesai',
-                    style: PromotorText.outfit(
-                      size: 13,
-                      weight: FontWeight.w700,
-                      color: t.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${pct.toStringAsFixed(0)}%',
-                    style: PromotorText.display(
-                      size: 30,
-                      color: t.textMutedStrong,
-                    ),
-                  ),
-                  Text(
-                    'Selesai',
-                    style: PromotorText.outfit(
-                      size: 8,
-                      weight: FontWeight.w700,
-                      color: t.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        borderRadius: BorderRadius.circular(t.radiusMd),
+        border: Border.all(color: _warmBorder),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
-          const SizedBox(height: 10),
-          _buildThinProgress(pct / 100, t.primaryAccent),
+          BoxShadow(
+            color: tone.withValues(alpha: 0.05),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
         ],
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildThinProgress(double value, Color color) {
-    return Container(
-      height: 4,
-      decoration: BoxDecoration(
-        color: t.surface3,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          width: 280 * value.clamp(0.0, 1.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            gradient: LinearGradient(colors: [color, t.primaryAccentLight]),
-          ),
-        ),
-      ),
+    return BoxDecoration(
+      color: _warmSurface,
+      borderRadius: BorderRadius.circular(t.radiusMd),
+      border: Border.all(color: _warmBorder),
     );
   }
 
   Widget _buildTimeline() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildGroupTitle('Pengawasan Tim'),
+          _buildGroupTitle('Prioritas Utama'),
+          _buildTimelineItem(
+            title: 'Sell Out Insight',
+            badge: 'Monitor tim',
+            badgeColor: t.info,
+            dotColor: t.info,
+            icon: Icons.insights_rounded,
+            onTap: () => context.push('/sator/sell-out-insight'),
+          ),
+          _buildTimelineItem(
+            title: 'Sell In',
+            badge: _sellInPendingCount > 0
+                ? '$_sellInPendingCount pending'
+                : '✓ Aman',
+            badgeColor: _sellInPendingCount > 0 ? t.primaryAccent : t.success,
+            dotColor: _sellInPendingCount > 0 ? t.primaryAccent : t.success,
+            icon: Icons.inventory_2_outlined,
+            onTap: () => context.push('/sator/sell-in'),
+          ),
+          _buildTimelineItem(
+            title: 'VAST Finance',
+            badge: 'Monitor tim',
+            badgeColor: t.primaryAccent,
+            dotColor: t.primaryAccent,
+            icon: Icons.account_balance_wallet_outlined,
+            onTap: () => context.pushNamed('sator-vast'),
+          ),
           _buildTimelineItem(
             title: 'Aktivitas Tim',
             badge: _attendanceMissing > 0
@@ -395,60 +413,15 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
             icon: Icons.people_outline,
             onTap: () => context.push('/sator/aktivitas-tim'),
           ),
-          _buildTimelineItem(
-            title: 'Approve Jadwal',
-            badge: _schedulePendingCount > 0
-                ? '$_schedulePendingCount pending'
-                : '✓ Aman',
-            badgeColor: _schedulePendingCount > 0 ? t.primaryAccent : t.success,
-            dotColor: _schedulePendingCount > 0 ? t.primaryAccent : t.success,
-            icon: Icons.calendar_month,
-            pendingList: _schedulePending,
-            onTap: () => context.push('/sator/jadwal'),
-          ),
+          const SizedBox(height: 8),
+          _buildGroupTitle('Operasional Harian'),
           _buildTimelineItem(
             title: 'Visiting',
             badge: _visitingDone ? '✓ Selesai' : 'Pending',
             badgeColor: _visitingDone ? t.success : t.danger,
             dotColor: _visitingDone ? t.success : t.danger,
             icon: _visitingDone ? Icons.check : Icons.location_on_outlined,
-            chips: _visitingDone
-                ? ['Cek stok ✓', 'Coaching ✓']
-                : ['Belum dilakukan'],
             onTap: () => context.push('/sator/visiting'),
-          ),
-          const SizedBox(height: 8),
-          _buildGroupTitle('Stok & Order'),
-          _buildTimelineItem(
-            title: 'Sell In',
-            badge: _sellInPendingCount > 0
-                ? '$_sellInPendingCount pending'
-                : '✓ Aman',
-            badgeColor: _sellInPendingCount > 0 ? t.primaryAccent : t.success,
-            dotColor: _sellInPendingCount > 0 ? t.primaryAccent : t.success,
-            icon: Icons.inventory_2_outlined,
-            chips: ['Stok Gudang · Stok Toko · Finalisasi'],
-            onTap: () => context.push('/sator/sell-in'),
-          ),
-          const SizedBox(height: 8),
-          _buildGroupTitle('Laporan & Data'),
-          _buildTimelineItem(
-            title: 'AllBrand',
-            badge: 'Rekap tim',
-            badgeColor: t.textMuted,
-            dotColor: Color.lerp(t.info, t.primaryAccentLight, 0.55)!,
-            icon: Icons.bar_chart,
-            chips: ['Samsung · OPPO · Xiaomi'],
-            onTap: () => context.push('/sator/allbrand'),
-          ),
-          _buildTimelineItem(
-            title: 'VAST Finance',
-            badge: 'Monitor tim',
-            badgeColor: t.primaryAccent,
-            dotColor: t.primaryAccent,
-            icon: Icons.account_balance_wallet_outlined,
-            chips: ['Harian', 'Alert', 'Export'],
-            onTap: () => context.pushNamed('sator-vast'),
           ),
           _buildTimelineItem(
             title: 'Penormalan IMEI',
@@ -458,27 +431,42 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
             badgeColor: _imeiPendingCount > 0 ? t.warning : t.success,
             dotColor: Color.lerp(t.info, t.primaryAccentLight, 0.55)!,
             icon: Icons.qr_code_2,
-            chips: [
-              _imeiPendingCount > 0
-                  ? '$_imeiPromotorCount promotor · $_imeiPendingCount unit'
-                  : 'Tidak ada pending',
-            ],
             onTap: () => context.push('/sator/imei-normalisasi'),
           ),
+          const SizedBox(height: 8),
           _buildTimelineItem(
-            title: 'Stock Management',
-            badge: 'Terpadu',
-            badgeColor: t.textMuted,
+            title: 'Import Stok Excel',
+            badge: 'Operasional',
+            badgeColor: t.primaryAccent,
             dotColor: t.primaryAccent,
-            icon: Icons.memory,
-            chips: [
-              _chipReviewCount > 0
-                  ? '$_chipReviewCount request chip pending'
-                  : 'Tidak ada chip pending',
-              'Validasi harian',
-              'Pindah stok',
-            ],
-            onTap: () => context.push('/sator/stock-management'),
+            icon: Icons.upload_file_rounded,
+            onTap: () => context.push('/sator/import-stok'),
+          ),
+          const SizedBox(height: 8),
+          _buildGroupTitle('Laporan & Approval'),
+          _buildTimelineItem(
+            title: 'AllBrand',
+            badge: 'Rekap tim',
+            badgeColor: t.textMuted,
+            dotColor: Color.lerp(t.info, t.primaryAccentLight, 0.55)!,
+            icon: Icons.bar_chart,
+            onTap: () => context.push('/sator/allbrand'),
+          ),
+          _buildTimelineItem(
+            title: 'Data Konsumen',
+            badge: 'Riwayat tim',
+            badgeColor: t.info,
+            dotColor: t.info,
+            icon: Icons.people_alt_outlined,
+            onTap: () => context.push('/sator/data-konsumen'),
+          ),
+          _buildTimelineItem(
+            title: 'KPI Monitoring',
+            badge: 'Bulanan',
+            badgeColor: t.info,
+            dotColor: t.info,
+            icon: Icons.query_stats_rounded,
+            onTap: () => context.pushNamed('sator-kpi-bonus'),
           ),
           _buildTimelineItem(
             title: 'Export',
@@ -486,8 +474,27 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
             badgeColor: t.textMuted,
             dotColor: t.info,
             icon: Icons.file_download,
-            chips: ['PDF', 'Excel'],
             onTap: () => context.push('/sator/export'),
+          ),
+          _buildTimelineItem(
+            title: 'Approve Jadwal',
+            badge: _schedulePendingCount > 0
+                ? '$_schedulePendingCount pending'
+                : '✓ Aman',
+            badgeColor: _schedulePendingCount > 0 ? t.primaryAccent : t.success,
+            dotColor: _schedulePendingCount > 0 ? t.primaryAccent : t.success,
+            icon: Icons.calendar_month,
+            onTap: () => context.push('/sator/jadwal'),
+          ),
+          _buildTimelineItem(
+            title: 'Approval Perijinan',
+            badge: _permissionPendingCount > 0
+                ? '$_permissionPendingCount pending'
+                : '✓ Aman',
+            badgeColor: _permissionPendingCount > 0 ? t.warning : t.success,
+            dotColor: _permissionPendingCount > 0 ? t.warning : t.success,
+            icon: Icons.assignment_turned_in_outlined,
+            onTap: () => context.push('/sator/permission-approval'),
             showLine: false,
           ),
         ],
@@ -501,12 +508,11 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
       child: Row(
         children: [
           Text(
-            title.toUpperCase(),
+            title,
             style: PromotorText.outfit(
-              size: 8,
+              size: 14,
               weight: FontWeight.w800,
-              color: t.textMutedStrong,
-              letterSpacing: 1.6,
+              color: t.textPrimary,
             ),
           ),
           const SizedBox(width: 8),
@@ -522,91 +528,49 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
     required Color badgeColor,
     required Color dotColor,
     required IconData icon,
-    List<String>? chips,
-    List<Map<String, String>>? pendingList,
     VoidCallback? onTap,
     bool showLine = true,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        splashColor: dotColor.withValues(alpha: 0.08),
-        highlightColor: dotColor.withValues(alpha: 0.04),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: dotColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: dotColor.withValues(alpha: 0.35),
-                        width: 1.5,
-                      ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      decoration: _menuCardDecoration(),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(t.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: dotColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: dotColor.withValues(alpha: 0.28),
+                      width: 1.2,
                     ),
-                    child: Icon(icon, color: dotColor, size: 15),
                   ),
-                  if (showLine)
-                    Container(
-                      width: 1,
-                      height: 16,
-                      margin: const EdgeInsets.symmetric(vertical: 3),
-                      color: t.surface3.withValues(alpha: 0.6),
+                  child: Icon(icon, color: dotColor, size: 16),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: PromotorText.outfit(
+                      size: 14,
+                      weight: FontWeight.w700,
+                      color: t.textPrimary,
                     ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: PromotorText.outfit(
-                                size: 13,
-                                weight: FontWeight.w700,
-                                color: badgeColor == t.success
-                                    ? t.success
-                                    : t.textSecondary,
-                              ),
-                            ),
-                          ),
-                          _buildBadge(badge, badgeColor),
-                        ],
-                      ),
-                      if (chips != null && chips.isNotEmpty) ...[
-                        const SizedBox(height: 5),
-                        Wrap(
-                          spacing: 5,
-                          runSpacing: 4,
-                          children: chips
-                              .map((chip) => _buildChip(chip))
-                              .toList(),
-                        ),
-                      ],
-                      if (pendingList != null && pendingList.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        _buildPendingList(pendingList),
-                      ],
-                    ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                _buildBadge(badge, badgeColor),
+              ],
+            ),
           ),
         ),
       ),
@@ -631,94 +595,9 @@ class _SatorWorkplaceTabState extends State<SatorWorkplaceTab> {
       ),
     );
   }
-
-  Widget _buildChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: t.surface2,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: t.surface3),
-      ),
-      child: Text(
-        label,
-        style: PromotorText.outfit(
-          size: 8,
-          weight: FontWeight.w600,
-          color: t.textMutedStrong,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPendingList(List<Map<String, String>> rows) {
-    return Container(
-      decoration: BoxDecoration(
-        color: t.surface2,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: t.surface3),
-      ),
-      child: Column(
-        children: rows.map((row) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: t.surface3.withValues(alpha: 0.2)),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row['name'] ?? '-',
-                      style: PromotorText.outfit(
-                        size: 15,
-                        weight: FontWeight.w600,
-                        color: t.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      row['meta'] ?? '-',
-                      style: PromotorText.outfit(
-                        size: 8,
-                        weight: FontWeight.w700,
-                        color: t.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  row['action'] ?? 'Lihat →',
-                  style: PromotorText.outfit(
-                    size: 8,
-                    weight: FontWeight.w700,
-                    color: t.primaryAccent,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  int _calculateCompletedTasks() {
-    int done = 0;
-    if (_attendanceMissing == 0 && _attendanceTotal > 0) done += 1;
-    if (_schedulePendingCount == 0) done += 1;
-    if (_visitingDone) done += 1;
-    if (_sellInPendingCount == 0) done += 1;
-    if (_imeiPendingCount == 0) done += 1;
-    if (_chipReviewCount == 0) done += 1;
-    return done;
-  }
-
-  int _calculateTotalTasks() {
-    return 6;
+  int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('${value ?? ''}') ?? 0;
   }
 }
