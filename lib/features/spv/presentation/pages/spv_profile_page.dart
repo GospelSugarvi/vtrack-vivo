@@ -1,35 +1,37 @@
-// ignore_for_file: deprecated_member_use
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:vtrack/ui/foundation/foundation.dart';
+import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
+
+import '../../../../core/theme/app_font_preference_provider.dart';
+import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../core/utils/avatar_refresh_bus.dart';
 import '../../../../core/utils/app_download_qr_dialog.dart';
 import '../../../../core/utils/cloudinary_upload_helper.dart';
-import '../../../../core/theme/app_font_preference_provider.dart';
-import '../../../../core/theme/theme_mode_provider.dart';
+import '../../../../ui/foundation/app_font_tokens.dart';
 import '../../../../ui/promotor/promotor.dart';
 
-class SatorProfilTab extends StatefulWidget {
-  const SatorProfilTab({super.key});
+class SpvProfilePage extends StatefulWidget {
+  const SpvProfilePage({super.key});
 
   @override
-  State<SatorProfilTab> createState() => _SatorProfilTabState();
+  State<SpvProfilePage> createState() => _SpvProfilePageState();
 }
 
-class _SatorProfilTabState extends State<SatorProfilTab> {
+class _SpvProfilePageState extends State<SpvProfilePage> {
   static final Uri _latestReleaseUri = Uri.parse(
     'https://github.com/GospelSugarvi/vtrack-vivo/releases/latest',
   );
   FieldThemeTokens get t => context.fieldTokens;
   final _supabase = Supabase.instance.client;
-  Map<String, dynamic>? _userProfile;
+
+  Map<String, dynamic>? _profile;
   bool _isLoading = true;
   bool _isUploading = false;
 
@@ -40,20 +42,19 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
   }
 
   Future<void> _loadProfile() async {
+    setState(() => _isLoading = true);
     try {
       final profile = await _supabase.rpc('get_my_profile_snapshot');
-
-      if (mounted) {
-        setState(() {
-          _userProfile = Map<String, dynamic>.from(
-            (profile as Map?) ?? const <String, dynamic>{},
-          );
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading profile: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() {
+        _profile = Map<String, dynamic>.from(
+          (profile as Map?) ?? const <String, dynamic>{},
+        );
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
   }
 
@@ -66,13 +67,12 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
       imageQuality: 78,
     );
     if (image == null || !mounted) return;
-
     setState(() => _isUploading = true);
     try {
       final upload = await CloudinaryUploadHelper.uploadXFile(
         image,
         folder: 'vtrack/profiles',
-        fileName: 'sator_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        fileName: 'spv_${DateTime.now().millisecondsSinceEpoch}.jpg',
         maxWidth: 1280,
         quality: 80,
       );
@@ -101,20 +101,19 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
       final userId = _supabase.auth.currentUser?.id;
       if (userId != null) {
         final prefs = await SharedPreferences.getInstance();
-        final raw = prefs.getString('sator_home.profile.$userId');
+        final raw = prefs.getString('spv_home.profile.$userId');
         final cached = raw == null || raw.trim().isEmpty
             ? <String, dynamic>{}
             : Map<String, dynamic>.from(jsonDecode(raw) as Map);
         cached['avatar_url'] = imageUrl;
-        await prefs.setString('sator_home.profile.$userId', jsonEncode(cached));
+        await prefs.setString('spv_home.profile.$userId', jsonEncode(cached));
       }
-
       await _loadProfile();
       notifyAvatarRefresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Foto profil berhasil diperbarui'),
+          content: const Text('Avatar berhasil diperbarui'),
           backgroundColor: t.success,
         ),
       );
@@ -122,7 +121,7 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal upload foto: $e'),
+          content: Text('Gagal upload avatar: $e'),
           backgroundColor: t.danger,
         ),
       );
@@ -131,288 +130,166 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
     }
   }
 
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: t.danger),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await _supabase.auth.signOut();
+      if (!mounted) return;
+      context.go('/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    final fullName = '${_profile?['full_name'] ?? 'SPV'}';
+    final area = '${_profile?['area'] ?? '-'}';
+    final avatarUrl = '${_profile?['avatar_url'] ?? ''}'.trim();
 
-    return SingleChildScrollView(
-      child: Column(children: [_buildHeader(), _buildMenuList()]),
-    );
-  }
-
-  Widget _buildHeader() {
-    final areaName = '${_userProfile?['area'] ?? 'Area'}';
-    final fullName = '${_userProfile?['full_name'] ?? 'SATOR'}';
-    final role = '${_userProfile?['role'] ?? 'sator'}'.toUpperCase();
-    final avatarUrl = ('${_userProfile?['avatar_url'] ?? ''}').trim();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 40, 18, 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [t.primaryAccent, t.info],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: t.surface1,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: t.textOnAccent, width: 3),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: avatarUrl.isNotEmpty
-                    ? Image.network(
-                        avatarUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, error, stackTrace) => Center(
-                          child: Text(
-                            fullName.isNotEmpty
-                                ? fullName[0].toUpperCase()
-                                : 'S',
-                            style: PromotorText.display(
-                              size: 30,
-                              color: t.primaryAccent,
-                            ),
-                          ),
-                        ),
-                      )
-                    : Center(
-                        child: Text(
-                          fullName.isNotEmpty ? fullName[0].toUpperCase() : 'S',
-                          style: PromotorText.display(
-                            size: 30,
-                            color: t.primaryAccent,
-                          ),
-                        ),
-                      ),
-              ),
-              Positioned(
-                right: -4,
-                bottom: -4,
-                child: InkWell(
-                  onTap: _isUploading ? null : _pickAndUploadPhoto,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    width: 30,
-                    height: 30,
+    return Scaffold(
+      backgroundColor: t.background,
+      appBar: AppBar(title: const Text('Profil SPV')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadProfile,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: t.textOnAccent,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: t.primaryAccent, width: 2.2),
+                      gradient: LinearGradient(
+                        colors: [t.primaryAccent, t.info],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: _isUploading
-                        ? Padding(
-                            padding: const EdgeInsets.all(7),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: t.primaryAccent,
+                    child: Column(
+                      children: [
+                        Stack(
+                          children: [
+                            Container(
+                              width: 96,
+                              height: 96,
+                              decoration: BoxDecoration(
+                                color: t.surface1,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: t.textOnAccent,
+                                  width: 3,
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: avatarUrl.isNotEmpty
+                                  ? Image.network(
+                                      avatarUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, error, stackTrace) =>
+                                          _avatarFallback(fullName),
+                                    )
+                                  : _avatarFallback(fullName),
                             ),
-                          )
-                        : Icon(
-                            Icons.camera_alt_rounded,
-                            size: 16,
-                            color: t.primaryAccent,
+                            Positioned(
+                              right: -4,
+                              bottom: -4,
+                              child: InkWell(
+                                onTap: _isUploading
+                                    ? null
+                                    : _pickAndUploadPhoto,
+                                borderRadius: BorderRadius.circular(999),
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: t.textOnAccent,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: t.primaryAccent,
+                                      width: 2.2,
+                                    ),
+                                  ),
+                                  child: _isUploading
+                                      ? Padding(
+                                          padding: const EdgeInsets.all(7),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: t.primaryAccent,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.camera_alt_rounded,
+                                          size: 16,
+                                          color: t.primaryAccent,
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          fullName,
+                          style: PromotorText.display(
+                            size: 22,
+                            color: t.textOnAccent,
                           ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            fullName,
-            style: PromotorText.display(size: 22, color: t.textOnAccent),
-          ),
-          const SizedBox(height: 5),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: t.textOnAccent.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: t.textOnAccent.withValues(alpha: 0.25)),
-            ),
-            child: Text(
-              role,
-              style: PromotorText.outfit(
-                size: 10,
-                weight: FontWeight.w800,
-                color: t.textOnAccent,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: t.textOnAccent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.location_on_rounded,
-                  color: t.textOnAccent,
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    areaName,
-                    style: PromotorText.outfit(
-                      size: 11,
-                      weight: FontWeight.w700,
-                      color: t.textOnAccent,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          area,
+                          style: PromotorText.outfit(
+                            size: 11,
+                            weight: FontWeight.w700,
+                            color: t.textOnAccent.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                _actionChip(
-                  label: 'Ubah Foto',
-                  onTap: _isUploading ? null : _pickAndUploadPhoto,
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  _buildAccountSummaryCard(),
+                  const SizedBox(height: 12),
+                  _buildMenuCard(),
+                  const SizedBox(height: 12),
+                  _menuTile(
+                    icon: Icons.logout_rounded,
+                    title: 'Logout',
+                    subtitle: 'Keluar dari akun',
+                    color: t.danger,
+                    onTap: _logout,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionChip({required String label, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: t.textOnAccent.withValues(alpha: 0.22),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: t.textOnAccent.withValues(alpha: 0.3)),
-        ),
-        child: Text(
-          label,
-          style: PromotorText.outfit(
-            size: 9.5,
-            weight: FontWeight.w800,
-            color: t.textOnAccent,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuList() {
-    final menuItems = [
-      _MenuItem(
-        icon: Icons.palette_outlined,
-        label: 'Tema & Tampilan',
-        subtitle: 'Tema aplikasi dan pilihan font',
-        onTap: () => _showThemeSelector(),
-      ),
-      _MenuItem(
-        icon: Icons.system_update_alt_rounded,
-        label: 'Cek Update',
-        subtitle: 'Download versi terbaru',
-        onTap: _openLatestRelease,
-      ),
-      _MenuItem(
-        icon: Icons.info_outline,
-        label: 'Tentang Aplikasi',
-        subtitle: 'Versi 1.0.0',
-        onTap: _showAboutApp,
-      ),
-      _MenuItem(
-        icon: Icons.logout,
-        label: 'Logout',
-        subtitle: 'Keluar dari akun',
-        color: t.danger,
-        onTap: () => _handleLogout(),
-      ),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          _buildAccountSummaryCard(),
-          const SizedBox(height: 12),
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: menuItems.asMap().entries.map((entry) {
-                final index = entry.key;
-                final item = entry.value;
-                return Column(
-                  children: [
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: (item.color ?? t.primaryAccent).withValues(
-                            alpha: 0.1,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          color: item.color ?? t.primaryAccent,
-                          size: 22,
-                        ),
-                      ),
-                      title: Text(
-                        item.label,
-                        style: PromotorText.outfit(
-                          size: 12.5,
-                          weight: FontWeight.w800,
-                          color: item.color ?? t.textPrimary,
-                        ),
-                      ),
-                      subtitle: Text(
-                        item.subtitle,
-                        style: PromotorText.outfit(
-                          size: 9.5,
-                          weight: FontWeight.w700,
-                          color: t.textMutedStrong,
-                        ),
-                      ),
-                      trailing: Icon(Icons.chevron_right, color: t.surface4),
-                      onTap: item.onTap,
-                    ),
-                    if (index < menuItems.length - 1)
-                      Divider(height: 1, indent: 70, color: t.surface3),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildAccountSummaryCard() {
-    final joinRaw =
-        '${_userProfile?['hire_date'] ?? _userProfile?['created_at'] ?? ''}'
-            .trim();
+    final joinRaw = '${_profile?['hire_date'] ?? _profile?['created_at'] ?? ''}'
+        .trim();
     final joinDate = DateTime.tryParse(joinRaw);
     final joinLabel = joinDate == null
         ? '-'
         : DateFormat('d MMMM yyyy', 'id_ID').format(joinDate);
-    final statusLabel = '${_userProfile?['status'] ?? 'Aktif'}';
+    final statusLabel = '${_profile?['status'] ?? 'Aktif'}';
 
     Widget tile({
       required IconData icon,
@@ -492,6 +369,136 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
     );
   }
 
+  Widget _buildMenuCard() {
+    final menuItems = [
+      (
+        icon: Icons.palette_outlined,
+        title: 'Tema & Tampilan',
+        subtitle: 'Tema aplikasi dan pilihan font',
+        color: t.primaryAccent,
+        onTap: _showThemeSelector,
+      ),
+      (
+        icon: Icons.system_update_alt_rounded,
+        title: 'Cek Update',
+        subtitle: 'Download versi terbaru',
+        color: t.info,
+        onTap: _openLatestRelease,
+      ),
+      (
+        icon: Icons.info_outline,
+        title: 'Tentang Aplikasi',
+        subtitle: 'Info versi aplikasi',
+        color: t.primaryAccent,
+        onTap: _showAboutApp,
+      ),
+    ];
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: menuItems.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          return Column(
+            children: [
+              ListTile(
+                onTap: item.onTap,
+                leading: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: item.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(item.icon, size: 18, color: item.color),
+                ),
+                title: Text(
+                  item.title,
+                  style: PromotorText.outfit(
+                    size: 12,
+                    weight: FontWeight.w800,
+                    color: t.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  item.subtitle,
+                  style: PromotorText.outfit(
+                    size: 9.5,
+                    weight: FontWeight.w700,
+                    color: t.textMutedStrong,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  color: t.textMutedStrong,
+                ),
+              ),
+              if (index < menuItems.length - 1)
+                Divider(height: 1, indent: 70, color: t.surface3),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _avatarFallback(String fullName) {
+    return Center(
+      child: Text(
+        fullName.isNotEmpty ? fullName[0].toUpperCase() : 'S',
+        style: PromotorText.display(size: 30, color: t.primaryAccent),
+      ),
+    );
+  }
+
+  Widget _menuTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    final tone = color ?? t.primaryAccent;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.surface3),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: tone.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: tone),
+        ),
+        title: Text(
+          title,
+          style: PromotorText.outfit(
+            size: 12,
+            weight: FontWeight.w800,
+            color: color ?? t.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: PromotorText.outfit(
+            size: 9.5,
+            weight: FontWeight.w700,
+            color: t.textMutedStrong,
+          ),
+        ),
+        trailing: Icon(Icons.chevron_right_rounded, color: t.textMutedStrong),
+      ),
+    );
+  }
+
   void _showThemeSelector() {
     showModalBottomSheet(
       context: context,
@@ -566,33 +573,21 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
                         ),
                         const SizedBox(height: 4),
                         _themeTile(
-                          context,
                           ref,
                           title: 'Gelap',
                           subtitle: 'Tampilan dominan hitam',
                           value: ThemeMode.dark,
                           group: mode,
-                          textColor: colors.onSurface,
-                          subtitleColor: colors.onSurfaceVariant,
-                          activeColor: colors.primary,
-                          surfaceColor: colors.surfaceContainerLow,
-                          borderColor: colors.outlineVariant,
-                          mutedColor: colors.onSurfaceVariant,
+                          activeColor: t.primaryAccent,
                         ),
                         const SizedBox(height: 4),
                         _themeTile(
-                          context,
                           ref,
                           title: 'Terang',
                           subtitle: 'Tampilan dominan putih',
                           value: ThemeMode.light,
                           group: mode,
-                          textColor: colors.onSurface,
-                          subtitleColor: colors.onSurfaceVariant,
-                          activeColor: colors.primary,
-                          surfaceColor: colors.surfaceContainerLow,
-                          borderColor: colors.outlineVariant,
-                          mutedColor: colors.onSurfaceVariant,
+                          activeColor: t.primaryAccent,
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -608,16 +603,10 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
                           (preference) => Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: _fontTile(
-                              context,
                               ref,
                               value: preference,
                               group: fontPreference,
-                              textColor: colors.onSurface,
-                              subtitleColor: colors.onSurfaceVariant,
-                              activeColor: colors.primary,
-                              surfaceColor: colors.surfaceContainerLow,
-                              borderColor: colors.outlineVariant,
-                              mutedColor: colors.onSurfaceVariant,
+                              activeColor: t.primaryAccent,
                             ),
                           ),
                         ),
@@ -634,25 +623,19 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
   }
 
   Widget _themeTile(
-    BuildContext context,
     WidgetRef ref, {
     required String title,
     required String subtitle,
     required ThemeMode value,
     required ThemeMode group,
-    required Color textColor,
-    required Color subtitleColor,
     required Color activeColor,
-    required Color surfaceColor,
-    required Color borderColor,
-    required Color mutedColor,
   }) {
     final active = group == value;
     return Container(
       decoration: BoxDecoration(
-        color: active ? activeColor.withValues(alpha: 0.10) : surfaceColor,
+        color: active ? activeColor.withValues(alpha: 0.10) : t.surface2,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: active ? activeColor : borderColor),
+        border: Border.all(color: active ? activeColor : t.surface3),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -669,17 +652,16 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
                   style: PromotorText.outfit(
                     size: 10,
                     weight: FontWeight.w800,
-                    color: textColor,
+                    color: t.textPrimary,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               Text(
                 subtitle,
                 style: PromotorText.outfit(
                   size: 8.5,
                   weight: FontWeight.w700,
-                  color: subtitleColor,
+                  color: t.textMutedStrong,
                 ),
               ),
               const SizedBox(width: 8),
@@ -688,7 +670,7 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_unchecked_rounded,
                 size: 16,
-                color: active ? activeColor : mutedColor,
+                color: active ? activeColor : t.textMutedStrong,
               ),
             ],
           ),
@@ -698,23 +680,17 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
   }
 
   Widget _fontTile(
-    BuildContext context,
     WidgetRef ref, {
     required AppFontPreference value,
     required AppFontPreference group,
-    required Color textColor,
-    required Color subtitleColor,
     required Color activeColor,
-    required Color surfaceColor,
-    required Color borderColor,
-    required Color mutedColor,
   }) {
     final active = group == value;
     return Container(
       decoration: BoxDecoration(
-        color: active ? activeColor.withValues(alpha: 0.10) : surfaceColor,
+        color: active ? activeColor.withValues(alpha: 0.10) : t.surface2,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: active ? activeColor : borderColor),
+        border: Border.all(color: active ? activeColor : t.surface3),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -734,17 +710,16 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
                     value,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: textColor,
+                    color: t.textPrimary,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               Text(
                 AppFontTokens.preferenceDescriptionOf(value),
                 style: PromotorText.outfit(
                   size: 8.5,
                   weight: FontWeight.w700,
-                  color: subtitleColor,
+                  color: t.textMutedStrong,
                 ),
               ),
               const SizedBox(width: 8),
@@ -753,39 +728,13 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_unchecked_rounded,
                 size: 16,
-                color: active ? activeColor : mutedColor,
+                color: active ? activeColor : t.textMutedStrong,
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Apakah Anda yakin ingin keluar?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: t.danger),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await _supabase.auth.signOut();
-      if (mounted) context.go('/login');
-    }
   }
 
   void _showAboutApp() {
@@ -802,20 +751,4 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
       const SnackBar(content: Text('Link update tidak bisa dibuka')),
     );
   }
-}
-
-class _MenuItem {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color? color;
-  final VoidCallback onTap;
-
-  _MenuItem({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    this.color,
-    required this.onTap,
-  });
 }
