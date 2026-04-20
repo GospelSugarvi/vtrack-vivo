@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -42,10 +43,7 @@ class DevRoleSwitcher extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -53,6 +51,7 @@ class DevRoleSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) return const SizedBox.shrink();
     return Positioned(
       right: 16,
       bottom: 80,
@@ -74,16 +73,35 @@ class DevRoleSwitcher extends StatelessWidget {
                       children: [
                         Icon(Icons.swap_horiz, color: Colors.purple),
                         SizedBox(width: 8),
-                        Text('DEV Tools', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(
+                          'DEV Tools',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text('Development & Testing Tools', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text(
+                      'Development & Testing Tools',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                     const Divider(height: 24),
-                    const Text('SWITCH ROLE (same user)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(
+                      'SWITCH ROLE (same user)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     ListTile(
-                      leading: const Icon(Icons.admin_panel_settings, color: Colors.blue),
+                      leading: const Icon(
+                        Icons.admin_panel_settings,
+                        color: Colors.blue,
+                      ),
                       title: const Text('Admin'),
                       subtitle: const Text('Full system access'),
                       onTap: () {
@@ -101,7 +119,10 @@ class DevRoleSwitcher extends StatelessWidget {
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.supervisor_account, color: Colors.orange),
+                      leading: const Icon(
+                        Icons.supervisor_account,
+                        color: Colors.orange,
+                      ),
                       title: const Text('Sator'),
                       subtitle: const Text('Area supervisor'),
                       onTap: () {
@@ -110,7 +131,10 @@ class DevRoleSwitcher extends StatelessWidget {
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.manage_accounts, color: Colors.red),
+                      leading: const Icon(
+                        Icons.manage_accounts,
+                        color: Colors.red,
+                      ),
                       title: const Text('SPV'),
                       subtitle: const Text('Regional manager'),
                       onTap: () {
@@ -119,10 +143,20 @@ class DevRoleSwitcher extends StatelessWidget {
                       },
                     ),
                     const Divider(height: 24),
-                    const Text('LOGIN AS USER (different user)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(
+                      'LOGIN AS USER (different user)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     ListTile(
-                      leading: const Icon(Icons.person_search, color: Colors.orange),
+                      leading: const Icon(
+                        Icons.person_search,
+                        color: Colors.orange,
+                      ),
                       title: const Text('Login As...'),
                       subtitle: const Text('Test as a different user'),
                       trailing: const Icon(Icons.arrow_forward),

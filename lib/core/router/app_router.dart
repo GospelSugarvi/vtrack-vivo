@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/reset_password_otp_screen.dart';
+import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/promotor/presentation/promotor_dashboard.dart';
 import '../../features/sator/presentation/sator_dashboard.dart';
@@ -25,6 +27,10 @@ import '../../features/promotor/presentation/pages/stock_validation_page.dart';
 import '../../features/promotor/presentation/pages/rekomendasi_order_page.dart';
 import '../../features/promotor/presentation/pages/leaderboard_page.dart';
 import '../../features/promotor/presentation/pages/target_detail_page.dart';
+import '../../features/promotor/presentation/pages/sellout_insight_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
+import '../../features/notifications/presentation/pages/notification_preferences_page.dart';
+import '../../features/chat/presentation/pages/chat_room_entry_page.dart';
 import '../../features/spv/presentation/spv_dashboard.dart';
 import '../../features/spv/presentation/pages/spv_allbrand_page.dart';
 import '../../features/spv/presentation/pages/spv_attendance_monitor_page.dart';
@@ -33,17 +39,22 @@ import '../../features/spv/presentation/pages/spv_schedule_monitor_page.dart';
 import '../../features/spv/presentation/pages/spv_sellin_monitor_page.dart';
 import '../../features/spv/presentation/pages/spv_sellout_monitor_page.dart';
 import '../../features/spv/presentation/pages/spv_stock_management_page.dart';
+import '../../features/spv/presentation/pages/spv_kpi_monitor_page.dart';
+import '../../features/spv/presentation/pages/spv_aktivitas_tim_page.dart';
+import '../../features/spv/presentation/pages/spv_visiting_monitor_page.dart';
+import '../../features/spv/presentation/pages/spv_profile_page.dart';
 import '../../features/admin/presentation/admin_dashboard.dart';
 import '../../features/admin/presentation/pages/stock_rules_page.dart';
 import '../../features/design/presentation/storytelling_mobile_page.dart';
 import '../../features/design/presentation/ui_catalog_page.dart';
 import '../../features/shared/presentation/pages/team_stock_flow_page.dart';
+import '../../features/shared/presentation/pages/visiting_quick_search_page.dart';
+import '../../features/shared/presentation/pages/customer_data_page.dart';
 import '../../features/vast_finance/presentation/pages/promotor_vast_page.dart';
 import '../../features/vast_finance/presentation/pages/sator_vast_page.dart';
 import '../../features/vast_finance/presentation/pages/spv_vast_page.dart';
 
 // SATOR Page Imports
-import '../../features/sator/presentation/pages/sell_out/sell_out_summary_page.dart';
 import '../../features/sator/presentation/pages/sell_in/sell_in_dashboard_page.dart';
 import '../../features/sator/presentation/pages/sell_in/stok_gudang_page.dart';
 import '../../features/sator/presentation/pages/sell_in/list_toko_page.dart';
@@ -55,8 +66,7 @@ import '../../features/sator/presentation/pages/leaderboard/sator_leaderboard_pa
 import '../../features/sator/presentation/pages/kpi_bonus_page.dart';
 import '../../features/sator/presentation/pages/imei_normalisasi_page.dart';
 import '../../features/sator/presentation/pages/visiting/visiting_dashboard_page.dart';
-import '../../features/sator/presentation/pages/visiting/visit_form_page.dart';
-import '../../features/sator/presentation/pages/visiting/visit_success_page.dart';
+import '../../features/sator/presentation/pages/visiting/pre_visit_page.dart';
 import '../../features/sator/presentation/pages/jadwal/jadwal_dashboard_page.dart';
 import '../../features/sator/presentation/pages/export_page.dart';
 import '../../features/sator/presentation/pages/sator_stock_management_page.dart';
@@ -66,14 +76,18 @@ import '../../features/sator/presentation/pages/laporan_kinerja_page.dart';
 import '../../features/sator/presentation/pages/riwayat_reward_page.dart';
 import '../../features/sator/presentation/pages/sell_in/scan_stok_gudang_page.dart';
 import '../../features/sator/presentation/pages/chip_approval_page.dart';
+import '../../features/sator/presentation/pages/permission_approval_page.dart';
+import '../../features/sator/presentation/pages/sell_out/sell_out_summary_page.dart';
+import '../../features/sator/presentation/pages/sator_stock_import_page.dart';
 import '../../features/sator/presentation/tabs/sator_profil_tab.dart';
 import '../../features/sator/presentation/tabs/sator_sales_tab.dart';
+import '../../features/spv/presentation/pages/spv_permission_approval_page.dart';
 
 // Router Provider
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: false,
     routes: [
       // Splash Screen
       GoRoute(
@@ -88,6 +102,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'login',
         builder: (context, state) => const LoginScreen(),
       ),
+      GoRoute(
+        path: '/reset-password',
+        name: 'reset-password',
+        builder: (context, state) => const ResetPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password-otp',
+        name: 'reset-password-otp',
+        builder: (context, state) => ResetPasswordOtpScreen(
+          initialEmail: state.uri.queryParameters['email'] ?? '',
+        ),
+      ),
 
       // UI Storytelling Preview
       GoRoute(
@@ -100,12 +126,29 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'ui-catalog',
         builder: (context, state) => const UiCatalogPage(),
       ),
+      GoRoute(
+        path: '/chat-room/:roomId',
+        name: 'chat-room-entry',
+        builder: (context, state) => ChatRoomEntryPage(
+          roomId: state.pathParameters['roomId'] ?? '',
+        ),
+      ),
 
       // Promotor Routes
       GoRoute(
         path: '/promotor',
         name: 'promotor',
-        builder: (context, state) => const PromotorDashboard(),
+        builder: (context, state) {
+          final tab = state.uri.queryParameters['tab']?.trim().toLowerCase();
+          final initialIndex = switch (tab) {
+            'workplace' => 1,
+            'ranking' => 2,
+            'chat' => 3,
+            'profil' => 4,
+            _ => 0,
+          };
+          return PromotorDashboard(initialIndex: initialIndex);
+        },
         routes: [
           GoRoute(
             path: 'clock-in',
@@ -130,7 +173,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'imei-normalization',
             name: 'imei-normalization',
-            builder: (context, state) => const ImeiNormalizationPage(),
+            builder: (context, state) {
+              final extra = state.extra is Map<String, dynamic>
+                  ? state.extra as Map<String, dynamic>
+                  : null;
+              return ImeiNormalizationPage(
+                initialNormalizationId: extra?['normalization_id']?.toString(),
+                initialNotificationType: extra?['__notification_type']
+                    ?.toString(),
+              );
+            },
           ),
           GoRoute(
             path: 'laporan-promosi',
@@ -182,11 +234,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const StokHariIniPage(),
           ),
           GoRoute(
-            path: 'stok-validasi',
-            name: 'stok-validasi',
-            builder: (context, state) => const StockValidationPage(),
-          ),
-          GoRoute(
             path: 'stok-aksi',
             name: 'stok-aksi',
             builder: (context, state) => const StokTokoPage(mode: 'actions'),
@@ -212,9 +259,31 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const TargetDetailPage(),
           ),
           GoRoute(
+            path: 'sellout-insight',
+            name: 'promotor-sellout-insight',
+            builder: (context, state) => const SelloutInsightPage(),
+          ),
+          GoRoute(
+            path: 'data-konsumen',
+            name: 'promotor-customer-data',
+            builder: (context, state) => const CustomerDataPage(
+              scope: 'promotor',
+            ),
+          ),
+          GoRoute(
             path: 'aktivitas-harian',
             name: 'aktivitas-harian',
             builder: (context, state) => const AktivitasHarianPage(),
+          ),
+          GoRoute(
+            path: 'notifications',
+            name: 'promotor-notifications',
+            builder: (context, state) => const NotificationsPage(),
+          ),
+          GoRoute(
+            path: 'notifications/settings',
+            name: 'promotor-notification-settings',
+            builder: (context, state) => const NotificationPreferencesPage(),
           ),
           GoRoute(
             path: 'vast',
@@ -239,14 +308,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SatorDashboard(),
         routes: [
           GoRoute(
-            path: 'sell-out',
-            name: 'sator-sell-out',
-            builder: (context, state) => const SellOutSummaryPage(),
-          ),
-          GoRoute(
             path: 'sell-in',
             name: 'sator-sell-in',
             builder: (context, state) => const SellInDashboardPage(),
+          ),
+          GoRoute(
+            path: 'permission-approval',
+            name: 'sator-permission-approval',
+            builder: (context, state) => const PermissionApprovalPage(),
           ),
           GoRoute(
             path: 'aktivitas-tim',
@@ -266,12 +335,28 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'imei-normalisasi',
             name: 'sator-imei-normalisasi',
-            builder: (context, state) => const ImeiNormalisasiPage(),
+            builder: (context, state) {
+              final extra = state.extra is Map<String, dynamic>
+                  ? state.extra as Map<String, dynamic>
+                  : null;
+              return ImeiNormalisasiPage(
+                initialNormalizationId: extra?['normalization_id']?.toString(),
+              );
+            },
           ),
           GoRoute(
             path: 'visiting',
             name: 'sator-visiting',
-            builder: (context, state) => const VisitingDashboardPage(),
+            builder: (context, state) => VisitingDashboardPage(
+              initialTab: state.uri.queryParameters['tab'] ?? 'scope',
+              highlightedStoreId: state.uri.queryParameters['storeId'],
+              initialVisitedMonth: DateTime.tryParse(
+                state.uri.queryParameters['month'] ?? '',
+              ),
+              initialVisitedDate: DateTime.tryParse(
+                state.uri.queryParameters['date'] ?? '',
+              ),
+            ),
           ),
           GoRoute(
             path: 'jadwal',
@@ -287,6 +372,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'allbrand',
             name: 'sator-allbrand',
             builder: (context, state) => const AllbrandMonitorPage(),
+          ),
+          GoRoute(
+            path: 'sell-out-insight',
+            name: 'sator-sell-out-insight',
+            builder: (context, state) => const SellOutSummaryPage(),
+          ),
+          GoRoute(
+            path: 'data-konsumen',
+            name: 'sator-customer-data',
+            builder: (context, state) => const CustomerDataPage(
+              scope: 'sator',
+            ),
           ),
           // Sell In Detail Routes
           GoRoute(
@@ -310,6 +407,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'sell-in/toko',
             name: 'sator-list-toko',
             builder: (context, state) => const ListTokoPage(),
+          ),
+          GoRoute(
+            path: 'notifications',
+            name: 'sator-notifications',
+            builder: (context, state) => const NotificationsPage(),
+          ),
+          GoRoute(
+            path: 'notifications/settings',
+            name: 'sator-notification-settings',
+            builder: (context, state) => const NotificationPreferencesPage(),
           ),
           GoRoute(
             path: 'sell-in/rekomendasi/:storeId',
@@ -349,22 +456,29 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SatorStockManagementPage(),
           ),
           GoRoute(
+            path: 'import-stok',
+            name: 'sator-import-stok',
+            builder: (context, state) => const SatorStockImportPage(),
+          ),
+          GoRoute(
             path: 'stock-flow',
             name: 'sator-stock-flow',
             builder: (context, state) =>
                 const TeamStockFlowPage(scope: 'sator'),
+          ),
+          GoRoute(
+            path: 'home-search',
+            name: 'sator-home-search',
+            builder: (context, state) => const VisitingQuickSearchPage(
+              scope: VisitingQuickSearchScope.sator,
+            ),
           ),
           // Visiting Routes
           GoRoute(
             path: 'visiting/form/:storeId',
             name: 'sator-visit-form',
             builder: (context, state) =>
-                VisitFormPage(storeId: state.pathParameters['storeId']!),
-          ),
-          GoRoute(
-            path: 'visiting/success',
-            name: 'sator-visit-success',
-            builder: (context, state) => const VisitSuccessPage(),
+                PreVisitPage(storeId: state.pathParameters['storeId']!),
           ),
           // Toko Detail
           GoRoute(
@@ -420,6 +534,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SpvDashboard(),
         routes: [
           GoRoute(
+            path: 'notifications',
+            name: 'spv-notifications',
+            builder: (context, state) => const NotificationsPage(),
+          ),
+          GoRoute(
+            path: 'notifications/settings',
+            name: 'spv-notification-settings',
+            builder: (context, state) => const NotificationPreferencesPage(),
+          ),
+          GoRoute(
             path: 'vast',
             name: 'spv-vast',
             builder: (context, state) => const SpvVastPage(),
@@ -445,6 +569,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SpvAttendanceMonitorPage(),
           ),
           GoRoute(
+            path: 'permission-approval',
+            name: 'spv-permission-approval',
+            builder: (context, state) => const SpvPermissionApprovalPage(),
+          ),
+          GoRoute(
             path: 'sellin-monitor',
             name: 'spv-sellin-monitor',
             builder: (context, state) => const SpvSellInMonitorPage(),
@@ -455,14 +584,67 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SpvSellOutMonitorPage(),
           ),
           GoRoute(
+            path: 'data-konsumen',
+            name: 'spv-customer-data',
+            builder: (context, state) => const CustomerDataPage(
+              scope: 'spv',
+            ),
+          ),
+          GoRoute(
             path: 'allbrand',
             name: 'spv-allbrand',
             builder: (context, state) => const SpvAllbrandPage(),
           ),
           GoRoute(
+            path: 'kpi-monitor',
+            name: 'spv-kpi-monitor',
+            builder: (context, state) => const SpvKpiMonitorPage(),
+          ),
+          GoRoute(
+            path: 'visiting-monitor',
+            name: 'spv-visiting-monitor',
+            builder: (context, state) => SpvVisitingMonitorPage(
+              initialTab: state.uri.queryParameters['tab'] ?? 'scope',
+              initialSatorId: state.uri.queryParameters['satorId'],
+              highlightedStoreId: state.uri.queryParameters['storeId'],
+              initialMonth: DateTime.tryParse(
+                state.uri.queryParameters['month'] ?? '',
+              ),
+              initialDay: DateTime.tryParse(
+                state.uri.queryParameters['date'] ?? '',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'aktivitas-tim',
+            name: 'spv-aktivitas-tim',
+            builder: (context, state) => const SpvAktivitasTimPage(),
+          ),
+          GoRoute(
+            path: 'visiting/form/:storeId',
+            name: 'spv-visit-form',
+            builder: (context, state) => PreVisitPage(
+              storeId: state.pathParameters['storeId']!,
+              scopeSatorId: state.uri.queryParameters['satorId'],
+              scopeDate: state.uri.queryParameters['date'],
+            ),
+          ),
+          GoRoute(
+            path: 'profil',
+            name: 'spv-profil',
+            builder: (context, state) => const SpvProfilePage(),
+          ),
+          GoRoute(
             path: 'stock-flow',
             name: 'spv-stock-flow',
             builder: (context, state) => const TeamStockFlowPage(scope: 'spv'),
+          ),
+          GoRoute(
+            path: 'home-search',
+            name: 'spv-home-search',
+            builder: (context, state) => const VisitingQuickSearchPage(
+              scope: VisitingQuickSearchScope.spv,
+            ),
           ),
         ],
       ),

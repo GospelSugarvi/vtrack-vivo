@@ -1,13 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vtrack/core/utils/device_image_saver.dart';
 import 'package:vtrack/core/utils/success_dialog.dart';
 import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
+
+import 'sell_in_order_export_widget.dart';
 
 class FinalisasiSellInPage extends StatefulWidget {
   const FinalisasiSellInPage({super.key});
@@ -24,7 +25,6 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
     symbol: 'Rp ',
     decimalDigits: 0,
   );
-  final _amount = NumberFormat.decimalPattern('id_ID');
   final _dateFormat = DateFormat('d MMM yyyy', 'id_ID');
   final _previewCaptureController = ScreenshotController();
 
@@ -54,71 +54,29 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('Sesi login tidak ditemukan');
-
-      final pendingResponse = await _supabase.rpc(
-        'get_pending_orders',
-        params: {'p_sator_id': userId},
-      );
-      final pendingOrders = List<Map<String, dynamic>>.from(
-        pendingResponse ?? [],
-      ).where(_matchesDateFilter).toList();
-
-      final summaryResponse = await _supabase.rpc(
-        'get_sell_in_finalization_summary',
+      final dateRange = _selectedRange;
+      final snapshotRaw = await _supabase.rpc(
+        'get_sell_in_finalization_page_snapshot',
         params: {
-          'p_sator_id': userId,
-          'p_start_date': DateFormat('yyyy-MM-dd').format(
-            _selectedDate ??
-                DateTime(_selectedMonth.year, _selectedMonth.month, 1),
-          ),
-          'p_end_date': DateFormat('yyyy-MM-dd').format(
-            _selectedDate ??
-                DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0),
-          ),
+          'p_start_date': DateFormat('yyyy-MM-dd').format(dateRange.$1),
+          'p_end_date': DateFormat('yyyy-MM-dd').format(dateRange.$2),
         },
       );
-
-      var finalizedQuery = _supabase
-          .from('sell_in_orders')
-          .select(
-            'id, order_date, source, status, total_items, total_qty, total_value, finalized_at, notes, stores(store_name), store_groups(group_name)',
-          )
-          .eq('sator_id', userId)
-          .eq('status', 'finalized');
-      finalizedQuery = _applyDateRangeToQuery(finalizedQuery);
-      final finalizedResponse = await finalizedQuery.order(
-        'finalized_at',
-        ascending: false,
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
       );
-
-      var cancelledQuery = _supabase
-          .from('sell_in_orders')
-          .select(
-            'id, order_date, source, status, total_items, total_qty, total_value, cancelled_at, cancellation_reason, notes, stores(store_name), store_groups(group_name)',
-          )
-          .eq('sator_id', userId)
-          .eq('status', 'cancelled');
-      cancelledQuery = _applyDateRangeToQuery(cancelledQuery);
-      final cancelledResponse = await cancelledQuery.order(
-        'cancelled_at',
-        ascending: false,
-      );
-
-      final finalizedOrders = List<Map<String, dynamic>>.from(
-        finalizedResponse,
-      );
-      final cancelledOrders = List<Map<String, dynamic>>.from(
-        cancelledResponse,
-      );
+      final pendingOrders = _parseMapList(snapshot['pending_orders']);
+      final finalizedOrders = _parseMapList(snapshot['finalized_orders']);
+      final cancelledOrders = _parseMapList(snapshot['cancelled_orders']);
 
       if (!mounted) return;
       setState(() {
         _pendingOrders = pendingOrders;
         _finalizedOrders = finalizedOrders;
         _cancelledOrders = cancelledOrders;
-        _summary = Map<String, dynamic>.from(summaryResponse ?? const {});
+        _summary = Map<String, dynamic>.from(
+          (snapshot['summary'] as Map?) ?? const <String, dynamic>{},
+        );
         _isLoading = false;
       });
     } catch (e) {
@@ -138,38 +96,31 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
     }
   }
 
-  bool _matchesDateFilter(Map<String, dynamic> row) {
-    final date = _toDate(row['order_date']);
-    if (date == null) return false;
-    if (_selectedDate != null) {
-      return _isSameDate(date, _selectedDate!);
-    }
-    return date.year == _selectedMonth.year &&
-        date.month == _selectedMonth.month;
-  }
-
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  dynamic _applyDateRangeToQuery(dynamic query) {
+  (DateTime, DateTime) get _selectedRange {
     if (_selectedDate != null) {
       final start = DateTime(
         _selectedDate!.year,
         _selectedDate!.month,
         _selectedDate!.day,
       );
-      final end = start.add(const Duration(days: 1));
-      return query
-          .gte('order_date', DateFormat('yyyy-MM-dd').format(start))
-          .lt('order_date', DateFormat('yyyy-MM-dd').format(end));
+      return (start, start);
     }
 
     final monthStart = DateTime(_selectedMonth.year, _selectedMonth.month);
-    final monthEnd = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
-    return query
-        .gte('order_date', DateFormat('yyyy-MM-dd').format(monthStart))
-        .lt('order_date', DateFormat('yyyy-MM-dd').format(monthEnd));
+    final monthEnd = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+    return (monthStart, monthEnd);
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   String _normalizedGroupName(dynamic value) {
@@ -657,29 +608,14 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
         content: SizedBox(
           width: 920,
           height: 620,
-          child: Column(
-            children: [
-              Text(
-                'Preview bisa dibuka ulang dan di-download sebelum finalisasi.',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: t.textMutedStrong,
-                ),
+          child: InteractiveViewer(
+            minScale: 0.4,
+            maxScale: 5,
+            child: Center(
+              child: SingleChildScrollView(
+                child: Image.memory(imageBytes, fit: BoxFit.contain),
               ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: InteractiveViewer(
-                  minScale: 0.4,
-                  maxScale: 5,
-                  child: Center(
-                    child: SingleChildScrollView(
-                      child: Image.memory(imageBytes, fit: BoxFit.contain),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         actions: [
@@ -714,13 +650,8 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
       final fileName =
           'pending_order_${sanitizedStore.isEmpty ? 'toko' : sanitizedStore}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}';
 
-      final result = await ImageGallerySaverPlus.saveImage(
-        bytes,
-        quality: 100,
-        name: fileName,
-      );
+      final success = await DeviceImageSaver.saveImage(bytes, name: fileName);
       if (!mounted) return;
-      final success = result['isSuccess'] == true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -745,490 +676,18 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
     Map<String, dynamic> order,
     List<Map<String, dynamic>> items,
   ) {
-    final storeName = '${order['store_name'] ?? 'Toko'}';
-    final groupName = _normalizedGroupName(order['group_name']);
-    final orderDate = _toDate(order['order_date']) ?? DateTime.now();
-    final source = '${order['source'] ?? '-'}'.toUpperCase();
-    final yearText = DateTime.now().year.toString();
-
-    return Container(
-      width: 860,
-      color: const Color(0xFFFAF8F3),
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF8F3),
-              border: Border.all(color: const Color(0xFFD8D2C4)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(26, 20, 26, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ORDER SELL IN',
-                    style: GoogleFonts.spaceMono(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF9A9080),
-                      letterSpacing: 1.8,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    storeName,
-                    softWrap: true,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1C1A16),
-                      height: 1,
-                    ),
-                  ),
-                  if (groupName.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      groupName,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7A7060),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          DateFormat('dd MMMM yyyy', 'id_ID').format(orderDate),
-                          textAlign: TextAlign.left,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF7A7060),
-                            height: 1.6,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        color: const Color(0xFF1C1A16),
-                        child: Text(
-                          source,
-                          style: GoogleFonts.spaceMono(
-                            fontSize: 7.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFAF8F3),
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(height: 2, color: const Color(0xFF1C1A16)),
-          Container(height: 1, color: const Color(0xFF1C1A16)),
-          _buildTransferAccountCard(),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF8F3),
-              border: Border.all(color: const Color(0xFFD8D2C4)),
-            ),
-            child: Column(
-              children: [
-                _buildPreviewTableHeader(),
-                ...items.asMap().entries.map(
-                  (entry) => _buildPreviewTableRow(entry.key + 1, entry.value),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFAF8F3),
-              border: Border(
-                left: BorderSide(color: Color(0xFFD8D2C4)),
-                right: BorderSide(color: Color(0xFFD8D2C4)),
-                bottom: BorderSide(color: Color(0xFFD8D2C4)),
-                top: BorderSide(color: Color(0xFF1C1A16), width: 2),
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildPreviewTotalLine(
-                  'Total Qty',
-                  '${_toInt(order['total_qty'])} unit',
-                ),
-                _buildPreviewTotalLine(
-                  'Total Nominal',
-                  _currency.format(_toNum(order['total_value'])),
-                  emphasize: true,
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF7F3EB),
-              border: Border(
-                top: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-                left: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-                right: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-                bottom: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  '${storeName.toUpperCase()} © $yearText',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF8E836F),
-                    letterSpacing: 0.9,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'VIVO INDONESIA',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF8E836F),
-                    letterSpacing: 0.9,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransferAccountCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0ECE3),
-        border: Border.all(color: const Color(0xFFD8D2C4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'REKENING TUJUAN TRANSFER',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 7.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF9A9080),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Bank BNI',
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'PT. Long Yin Teknologi Informasi',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF5A5040),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'NO. REKENING',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 7.5,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF9A9080),
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '804 879 804',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1C1A16),
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreviewTableHeader() {
-    return Container(
-      color: const Color(0xFFF0ECE3),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      child: Row(
-        children: [
-          _previewHeaderCell('Item', flex: 9, align: TextAlign.left),
-          _previewHeaderCell('Qty', flex: 2, align: TextAlign.center),
-          _previewHeaderCell('Modal', flex: 4, align: TextAlign.right),
-          _previewHeaderCell('SRP', flex: 4, align: TextAlign.right),
-          _previewHeaderCell('Subtotal', flex: 4, align: TextAlign.right),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreviewTableRow(int index, Map<String, dynamic> row) {
-    final qty = _toInt(row['qty']);
-    final modal = _toNum(row['price']);
-    final subtotal = _toNum(row['subtotal']);
-    final specs = [
-      '${row['network_type'] ?? ''}'.trim(),
-      '${row['variant'] ?? ''}'.trim(),
-    ].where((part) => part.isNotEmpty).join(' • ');
-    final color = '${row['color'] ?? ''}'.trim();
-    final productTitle = color.isEmpty
-        ? '${row['product_name'] ?? 'Produk'}'
-        : '${row['product_name'] ?? 'Produk'} ($color)';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: index.isEven ? const Color(0xFFF5F1EA) : const Color(0xFFFAF8F3),
-        border: const Border(
-          top: BorderSide(color: Color(0xFFDDD8CE), width: 0.5),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 9,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    productTitle,
-                    softWrap: true,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1C1A16),
-                      height: 1.2,
-                    ),
-                  ),
-                  if (specs.isNotEmpty) ...[
-                    const SizedBox(height: 1),
-                    Text(
-                      specs,
-                      softWrap: true,
-                      style: GoogleFonts.outfit(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF6E6253),
-                        height: 1.1,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          _previewValueCell(
-            '$qty',
-            flex: 2,
-            align: TextAlign.center,
-            weight: FontWeight.w700,
-            fontFamily: GoogleFonts.spaceMono().fontFamily,
-            fontSize: 14.5,
-          ),
-          _previewValueCell(
-            modal > 0 ? _amount.format(modal) : '-',
-            flex: 4,
-            align: TextAlign.right,
-            scaleDown: true,
-            fontSize: 14.5,
-            color: const Color(0xFF7A7060),
-          ),
-          _previewValueCell(
-            '-',
-            flex: 4,
-            align: TextAlign.right,
-            fontSize: 14.5,
-            color: const Color(0xFF7A7060),
-          ),
-          _previewValueCell(
-            _amount.format(subtotal),
-            flex: 4,
-            align: TextAlign.right,
-            scaleDown: true,
-            weight: FontWeight.w600,
-            fontSize: 14.5,
-            color: const Color(0xFF1C1A16),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _previewHeaderCell(
-    String text, {
-    required int flex,
-    TextAlign align = TextAlign.left,
-  }) {
-    return Expanded(
-      flex: flex,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Text(
-          text,
-          textAlign: align,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.spaceMono(
-            fontSize: 8.5,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF9A9080),
-            letterSpacing: 0.8,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _previewValueCell(
-    String text, {
-    required int flex,
-    TextAlign align = TextAlign.left,
-    FontWeight weight = FontWeight.w600,
-    bool scaleDown = false,
-    double fontSize = 10,
-    String? fontFamily,
-    Color? color,
-  }) {
-    return Expanded(
-      flex: flex,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: scaleDown
-            ? FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: align == TextAlign.right
-                    ? Alignment.centerRight
-                    : align == TextAlign.center
-                    ? Alignment.center
-                    : Alignment.centerLeft,
-                child: Text(
-                  text,
-                  textAlign: align,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: weight,
-                    fontFamily: fontFamily,
-                    color: color ?? const Color(0xFF2A2620),
-                    height: 1.2,
-                  ),
-                ),
-              )
-            : Text(
-                text,
-                textAlign: align,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: weight,
-                  fontFamily: fontFamily,
-                  color: color ?? const Color(0xFF2A2620),
-                  height: 1.2,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildPreviewTotalLine(
-    String label,
-    String value, {
-    bool emphasize = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: emphasize ? Colors.transparent : const Color(0xFFDDD8CE),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: GoogleFonts.spaceMono(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF9A9080),
-              letterSpacing: 0.8,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: emphasize
-                ? GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                    height: 1.05,
-                  )
-                : GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                  ),
-          ),
-        ],
-      ),
+    final detail = _detailByOrderId['${order['id'] ?? ''}'];
+    final savedOrder = detail == null
+        ? const <String, dynamic>{}
+        : Map<String, dynamic>.from(detail['order'] ?? const {});
+    return buildSellInOrderExportWidget(
+      storeName: '${order['store_name'] ?? 'Toko'}',
+      orderDate: _toDate(order['order_date']) ?? DateTime.now(),
+      items: items,
+      totalQty: _toInt(order['total_qty']),
+      totalValue: _toNum(order['total_value']),
+      notes: '${savedOrder['notes'] ?? order['notes'] ?? ''}'.trim(),
+      badgeText: '${order['source'] ?? 'sell in'}'.toUpperCase(),
     );
   }
 
@@ -1731,12 +1190,8 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
   Widget _buildFinalizedOrderCard(Map<String, dynamic> order) {
     final orderDate = _toDate(order['order_date']);
     final finalizedAt = _toDate(order['finalized_at']);
-    final storeName = order['stores'] is Map
-        ? order['stores']['store_name']
-        : 'Order';
-    final groupName = _normalizedGroupName(
-      order['store_groups'] is Map ? order['store_groups']['group_name'] : null,
-    );
+    final storeName = order['store_name']?.toString() ?? 'Order';
+    final groupName = _normalizedGroupName(order['group_name']);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1748,7 +1203,7 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
           child: const Icon(Icons.check_circle),
         ),
         title: Text(
-          '$storeName',
+          storeName,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w800,
@@ -1794,12 +1249,8 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
   Widget _buildCancelledOrderCard(Map<String, dynamic> order) {
     final orderDate = _toDate(order['order_date']);
     final cancelledAt = _toDate(order['cancelled_at']);
-    final storeName = order['stores'] is Map
-        ? order['stores']['store_name']
-        : 'Order';
-    final groupName = _normalizedGroupName(
-      order['store_groups'] is Map ? order['store_groups']['group_name'] : null,
-    );
+    final storeName = order['store_name']?.toString() ?? 'Order';
+    final groupName = _normalizedGroupName(order['group_name']);
     final cancellationReason = '${order['cancellation_reason'] ?? ''}'.trim();
 
     return Card(
@@ -1812,7 +1263,7 @@ class _FinalisasiSellInPageState extends State<FinalisasiSellInPage> {
           child: const Icon(Icons.close_rounded),
         ),
         title: Text(
-          '$storeName',
+          storeName,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w800,

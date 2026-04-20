@@ -32,7 +32,9 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
   );
   final DateFormat _dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
 
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>(
+    debugLabel: 'promotor_vast_main_form',
+  );
   final TextEditingController _customerNameCtrl = TextEditingController();
   final TextEditingController _customerPhoneCtrl = TextEditingController();
   final TextEditingController _incomeCtrl = TextEditingController();
@@ -51,24 +53,27 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
 
   Map<String, dynamic>? _store;
   String _promotorName = 'Promotor';
-  int _monthlyTargetVast = 0;
-  Map<String, dynamic>? _monthlySummary;
   _VastPeriodStats? _dailyPeriodStats;
   _VastPeriodStats? _weeklyPeriodStats;
   _VastPeriodStats? _monthlyPeriodStats;
   List<_VastWeekSplit> _weeklyBreakdown = <_VastWeekSplit>[];
+  int _activeWeekNumber = 1;
   List<Map<String, dynamic>> _pendingItems = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _historyItems = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _reminders = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _products = <Map<String, dynamic>>[];
   List<XFile> _initialImages = <XFile>[];
+  Future<Map<String, dynamic>>? _snapshotFuture;
+  DateTime _snapshotDate = DateTime.now();
 
-  String _selectedPekerjaan = VastFinanceUtils.pekerjaanOptions.first;
-  String _selectedOutcome = 'pending';
-  String _selectedTenor = '12';
+  String? _selectedPekerjaan;
+  String? _selectedOutcome;
+  String? _selectedTenor;
   String? _selectedProductId;
   String? _selectedProductLabel;
   DateTime _selectedDate = DateTime.now();
+
+  bool get _isRejectOutcome => _selectedOutcome == 'reject';
 
   @override
   void initState() {
@@ -116,13 +121,48 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
     super.dispose();
   }
 
+  Future<Map<String, dynamic>> _fetchSnapshot() {
+    final existing = _snapshotFuture;
+    if (existing != null) return existing;
+    final future = () async {
+      final raw = await _supabase.rpc(
+        'get_promotor_vast_page_snapshot',
+        params: {'p_date': DateFormat('yyyy-MM-dd').format(_snapshotDate)},
+      );
+      if (raw is Map<String, dynamic>) return raw;
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+      return <String, dynamic>{};
+    }();
+    _snapshotFuture = future;
+    return future;
+  }
+
+  _VastPeriodStats? _periodStatsFromSnapshot(dynamic raw) {
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    final start = DateTime.tryParse('${map['start'] ?? ''}');
+    final end = DateTime.tryParse('${map['end'] ?? ''}');
+    if (start == null || end == null) return null;
+    return _VastPeriodStats(
+      start: start,
+      end: end,
+      target: _toInt(map['target']),
+      submissions: _toInt(map['submissions']),
+      acc: _toInt(map['acc']),
+      pending: _toInt(map['pending']),
+      reject: _toInt(map['reject']),
+      closingOmzet: _toNum(map['closing_omzet']).toDouble(),
+    );
+  }
+
   Future<void> _refresh() async {
     if (mounted) {
       setState(() => _isLoading = true);
     }
+    _snapshotFuture = null;
     try {
-      await _loadSummaries();
       await Future.wait([
+        _loadSummaries(),
         _loadStore(),
         _loadUserProfile(),
         _loadProducts(),
@@ -139,260 +179,81 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
   }
 
   Future<void> _loadStore() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    final rows = await _supabase
-        .from('assignments_promotor_store')
-        .select('store_id, stores(store_name, area)')
-        .eq('promotor_id', userId)
-        .eq('active', true)
-        .order('created_at', ascending: false)
-        .limit(1);
-    final list = List<Map<String, dynamic>>.from(rows);
-    _store = list.isEmpty ? null : list.first;
+    final snapshot = await _fetchSnapshot();
+    final store = snapshot['store'];
+    if (store is Map) {
+      _store = Map<String, dynamic>.from(store);
+      return;
+    }
+    _store = null;
   }
 
   Future<void> _loadUserProfile() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    final row = await _supabase
-        .from('users')
-        .select('full_name, nickname')
-        .eq('id', userId)
-        .maybeSingle();
-    final nickname = '${row?['nickname'] ?? ''}'.trim();
-    final fullName = '${row?['full_name'] ?? ''}'.trim();
-    _promotorName = nickname.isNotEmpty
-        ? nickname
-        : (fullName.isNotEmpty ? fullName : 'Promotor');
+    final snapshot = await _fetchSnapshot();
+    final profile = Map<String, dynamic>.from(
+      (snapshot['profile'] as Map?) ?? const <String, dynamic>{},
+    );
+    final name = '${profile['name'] ?? ''}'.trim();
+    _promotorName = name.isNotEmpty ? name : 'Promotor';
   }
 
   Future<void> _loadProducts() async {
-    final rows = await _supabase
-        .from('products')
-        .select('id, model_name')
-        .order('model_name');
+    final snapshot = await _fetchSnapshot();
+    final rows = snapshot['products'] as List? ?? const [];
     _products = List<Map<String, dynamic>>.from(
-      rows,
+      rows.whereType<Map>().map((item) => Map<String, dynamic>.from(item)),
     ).where((row) => '${row['model_name'] ?? ''}'.trim().isNotEmpty).toList();
   }
 
-  Future<int> _fetchCurrentMonthlyTarget(String userId) async {
-    final activePeriods = List<Map<String, dynamic>>.from(
-      await _supabase
-          .from('target_periods')
-          .select('id')
-          .eq('status', 'active')
-          .isFilter('deleted_at', null)
-          .order('target_year', ascending: false)
-          .order('target_month', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(1),
-    );
-    final activePeriodId = activePeriods.isEmpty
-        ? null
-        : activePeriods.first['id']?.toString();
-    if (activePeriodId == null || activePeriodId.isEmpty) {
-      return 0;
-    }
-    final targetRow = await _supabase
-        .from('user_targets')
-        .select('target_vast')
-        .eq('user_id', userId)
-        .eq('period_id', activePeriodId)
-        .maybeSingle();
-    return _toInt(targetRow?['target_vast']);
-  }
-
   Future<void> _loadSummaries() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    final now = DateTime.now();
-    final monthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
-    final monthly = await _supabase
-        .from('vast_agg_monthly_promotor')
-        .select()
-        .eq('promotor_id', userId)
-        .eq('month_key', monthKey)
-        .maybeSingle();
-
-    _monthlySummary = monthly == null
-        ? null
-        : Map<String, dynamic>.from(monthly);
-    _monthlyTargetVast = await _fetchCurrentMonthlyTarget(userId);
+    await _fetchSnapshot();
   }
 
   Future<void> _loadPeriodStats() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    if (_monthlyTargetVast <= 0) {
-      _monthlyTargetVast = await _fetchCurrentMonthlyTarget(userId);
-    }
-
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final todayEnd = todayStart;
-    final weekStart = todayStart.subtract(
-      Duration(days: todayStart.weekday - 1),
+    final snapshot = await _fetchSnapshot();
+    _dailyPeriodStats = _periodStatsFromSnapshot(
+      snapshot['daily_period_stats'],
     );
-    final weekEnd = weekStart.add(const Duration(days: 6));
-    final monthStart = DateTime(now.year, now.month, 1);
-    final monthEnd = DateTime(now.year, now.month + 1, 0);
-
-    final results = await Future.wait([
-      _fetchPeriodStats(
-        userId: userId,
-        start: todayStart,
-        end: todayEnd,
-        target: _resolveDailyTarget(now),
-      ),
-      _fetchPeriodStats(
-        userId: userId,
-        start: weekStart,
-        end: weekEnd,
-        target: _resolveWeeklyTarget(now, weekStart, weekEnd),
-      ),
-      _fetchPeriodStats(
-        userId: userId,
-        start: monthStart,
-        end: monthEnd,
-        target: _resolveMonthlyTarget(),
-      ),
-      _loadWeeklyBreakdown(userId: userId, now: now),
-    ]);
-
-    _dailyPeriodStats = results[0] as _VastPeriodStats;
-    _weeklyPeriodStats = results[1] as _VastPeriodStats;
-    _monthlyPeriodStats = results[2] as _VastPeriodStats;
-    _weeklyBreakdown = results[3] as List<_VastWeekSplit>;
-  }
-
-  Future<_VastPeriodStats> _fetchPeriodStats({
-    required String userId,
-    required DateTime start,
-    required DateTime end,
-    required int target,
-  }) async {
-    final rows = await _supabase
-        .from('vast_applications')
-        .select('id, outcome_status, lifecycle_status, application_date')
-        .eq('promotor_id', userId)
-        .isFilter('deleted_at', null)
-        .gte('application_date', DateFormat('yyyy-MM-dd').format(start))
-        .lte('application_date', DateFormat('yyyy-MM-dd').format(end));
-
-    final items = List<Map<String, dynamic>>.from(rows);
-    var acc = 0;
-    var reject = 0;
-
-    for (final item in items) {
-      final outcome = '${item['outcome_status'] ?? ''}'.toLowerCase();
-      final lifecycle = '${item['lifecycle_status'] ?? ''}'.toLowerCase();
-      if (outcome == 'acc' ||
-          lifecycle == 'closed_direct' ||
-          lifecycle == 'closed_follow_up') {
-        acc++;
-      } else if (outcome == 'reject' || lifecycle == 'rejected') {
-        reject++;
-      }
-    }
-
-    return _VastPeriodStats(
-      start: start,
-      end: end,
-      target: target,
-      submissions: items.length,
-      acc: acc,
-      reject: reject,
+    _weeklyPeriodStats = _periodStatsFromSnapshot(
+      snapshot['weekly_period_stats'],
     );
-  }
-
-  Future<List<_VastWeekSplit>> _loadWeeklyBreakdown({
-    required String userId,
-    required DateTime now,
-  }) async {
-    final monthStart = DateTime(now.year, now.month, 1);
-    final monthEnd = DateTime(now.year, now.month + 1, 0);
-    final rows = await _supabase
-        .from('vast_applications')
-        .select('outcome_status, lifecycle_status, application_date')
-        .eq('promotor_id', userId)
-        .isFilter('deleted_at', null)
-        .gte('application_date', DateFormat('yyyy-MM-dd').format(monthStart))
-        .lte('application_date', DateFormat('yyyy-MM-dd').format(monthEnd));
-
-    final items = List<Map<String, dynamic>>.from(rows);
-    final targets = _buildWeeklyTargets(_resolveMonthlyTarget());
-    final splits = List<_VastWeekSplit>.generate(4, (index) {
-      return _VastWeekSplit(
-        label: 'Week ${index + 1}',
-        target: targets[index],
-        submissions: 0,
-        acc: 0,
-        reject: 0,
-      );
-    });
-
-    for (final item in items) {
-      final date = DateTime.tryParse('${item['application_date']}');
-      if (date == null) continue;
-      final weekIndex = _weekIndexForDay(date.day);
-      final current = splits[weekIndex];
-      final outcome = '${item['outcome_status'] ?? ''}'.toLowerCase();
-      final lifecycle = '${item['lifecycle_status'] ?? ''}'.toLowerCase();
-      splits[weekIndex] = _VastWeekSplit(
-        label: current.label,
-        target: current.target,
-        submissions: current.submissions + 1,
-        acc:
-            current.acc +
-            ((outcome == 'acc' ||
-                    lifecycle == 'closed_direct' ||
-                    lifecycle == 'closed_follow_up')
-                ? 1
-                : 0),
-        reject:
-            current.reject +
-            ((outcome == 'reject' || lifecycle == 'rejected') ? 1 : 0),
-      );
+    _monthlyPeriodStats = _periodStatsFromSnapshot(
+      snapshot['monthly_period_stats'],
+    );
+    _weeklyBreakdown = List<_VastWeekSplit>.from(
+      (snapshot['weekly_breakdown'] as List? ?? const []).whereType<Map>().map(
+        (item) => _VastWeekSplit(
+          label: '${item['label'] ?? '-'}',
+          target: _toInt(item['target']),
+          submissions: _toInt(item['submissions']),
+          acc: _toInt(item['acc']),
+          reject: _toInt(item['reject']),
+        ),
+      ),
+    );
+    final weeklyStart = _weeklyPeriodStats?.start;
+    if (weeklyStart != null) {
+      _activeWeekNumber = ((weeklyStart.day - 1) ~/ 7) + 1;
     }
-
-    return splits;
   }
 
-  int _resolveMonthlyTarget() {
-    if (_monthlyTargetVast > 0) return _monthlyTargetVast;
-    return _toInt(_monthlySummary?['target_submissions']);
+  Future<void> _pickSnapshotDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _snapshotDate,
+      firstDate: DateTime(2024, 1, 1),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('id', 'ID'),
+    );
+    if (picked == null || !mounted) return;
+    final normalized = DateTime(picked.year, picked.month, picked.day);
+    if (normalized ==
+        DateTime(_snapshotDate.year, _snapshotDate.month, _snapshotDate.day)) {
+      return;
+    }
+    setState(() => _snapshotDate = normalized);
+    await _refresh();
   }
-
-  int _resolveDailyTarget(DateTime now) {
-    final monthTarget = _resolveMonthlyTarget();
-    if (monthTarget <= 0) return 0;
-    final daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
-    return (monthTarget / daysInMonth).ceil();
-  }
-
-  int _resolveWeeklyTarget(DateTime now, DateTime weekStart, DateTime weekEnd) {
-    final monthTarget = _resolveMonthlyTarget();
-    if (monthTarget <= 0) return 0;
-    return _buildWeeklyTargets(monthTarget)[_weekIndexForDay(now.day)];
-  }
-
-  List<int> _buildWeeklyTargets(int monthlyTarget) {
-    if (monthlyTarget <= 0) return const <int>[0, 0, 0, 0];
-    final base = monthlyTarget ~/ 4;
-    final remainder = monthlyTarget % 4;
-    return List<int>.generate(4, (index) => base + (index < remainder ? 1 : 0));
-  }
-
-  int _weekIndexForDay(int day) {
-    if (day <= 7) return 0;
-    if (day <= 14) return 1;
-    if (day <= 21) return 2;
-    return 3;
-  }
-
-  int _currentWeekIndex() => _weekIndexForDay(DateTime.now().day);
 
   int _currentPeriodPercent(_VastPeriodStats? stats) {
     if (stats == null || stats.target <= 0) return 0;
@@ -412,62 +273,31 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
     }
   }
 
-  String _periodSubtitle(_VastPeriodStats? stats) {
-    if (stats == null) return 'Periode berjalan';
-    if (_selectedPeriodTab == 'harian') {
-      return _dateFormat.format(stats.start);
-    }
-    if (_selectedPeriodTab == 'mingguan') {
-      return '${_dateFormat.format(stats.start)} - ${_dateFormat.format(stats.end)}';
-    }
-    return DateFormat('MMMM yyyy', 'id_ID').format(stats.start);
-  }
-
   Future<void> _loadPending() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    final rows = await _supabase
-        .from('vast_applications')
-        .select(
-          'id, customer_name, customer_phone, product_label, limit_amount, '
-          'dp_amount, tenor_months, application_date, notes',
-        )
-        .eq('promotor_id', userId)
-        .eq('lifecycle_status', 'approved_pending')
-        .isFilter('deleted_at', null)
-        .order('application_date', ascending: false);
-    _pendingItems = List<Map<String, dynamic>>.from(rows);
+    final snapshot = await _fetchSnapshot();
+    _pendingItems = List<Map<String, dynamic>>.from(
+      (snapshot['pending_items'] as List? ?? const []).whereType<Map>().map(
+        (item) => Map<String, dynamic>.from(item),
+      ),
+    );
   }
 
   Future<void> _loadHistory() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    final rows = await _supabase
-        .from('vast_applications')
-        .select(
-          'id, customer_name, customer_phone, pekerjaan, monthly_income, '
-          'product_label, outcome_status, lifecycle_status, '
-          'application_date, created_at, '
-          'limit_amount, dp_amount, tenor_months, notes',
-        )
-        .eq('promotor_id', userId)
-        .isFilter('deleted_at', null)
-        .order('created_at', ascending: false)
-        .limit(100);
-    _historyItems = List<Map<String, dynamic>>.from(rows);
+    final snapshot = await _fetchSnapshot();
+    _historyItems = List<Map<String, dynamic>>.from(
+      (snapshot['history_items'] as List? ?? const []).whereType<Map>().map(
+        (item) => Map<String, dynamic>.from(item),
+      ),
+    );
   }
 
   Future<void> _loadReminders() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    final rows = await _supabase
-        .from('vast_reminders')
-        .select(
-          'id, reminder_type, scheduled_date, reminder_title, reminder_body, status',
-        )
-        .eq('promotor_id', userId)
-        .order('scheduled_date');
-    _reminders = List<Map<String, dynamic>>.from(rows);
+    final snapshot = await _fetchSnapshot();
+    _reminders = List<Map<String, dynamic>>.from(
+      (snapshot['reminders'] as List? ?? const []).whereType<Map>().map(
+        (item) => Map<String, dynamic>.from(item),
+      ),
+    );
   }
 
   int _toInt(dynamic value) {
@@ -620,8 +450,22 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
       _showSnack('Toko promotor belum terpasang.');
       return;
     }
-    if (_selectedProductId == null || _selectedProductLabel == null) {
+    if (_selectedOutcome == null || _selectedOutcome!.isEmpty) {
+      _showSnack('Status hasil wajib dipilih.');
+      return;
+    }
+    if (_selectedPekerjaan == null || _selectedPekerjaan!.isEmpty) {
+      _showSnack('Pekerjaan wajib dipilih.');
+      return;
+    }
+    if (!_isRejectOutcome &&
+        (_selectedProductId == null || _selectedProductLabel == null)) {
       _showSnack('Model HP wajib dipilih.');
+      return;
+    }
+    if (!_isRejectOutcome &&
+        (_selectedTenor == null || _selectedTenor!.isEmpty)) {
+      _showSnack('Tenor wajib dipilih.');
       return;
     }
     if (_initialImages.isEmpty) {
@@ -635,51 +479,53 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
       if (userId == null) {
         throw Exception('Sesi login tidak ditemukan.');
       }
-
-      final productVariant = await _supabase
-          .from('product_variants')
-          .select('id')
-          .eq('product_id', _selectedProductId as Object)
-          .limit(1)
-          .maybeSingle();
-      final productVariantId = productVariant?['id']?.toString();
-      if (productVariantId == null || productVariantId.isEmpty) {
-        throw Exception('Varian produk untuk model ini belum tersedia.');
+      String? productVariantId;
+      if (!_isRejectOutcome) {
+        final productVariant = await _supabase
+            .from('product_variants')
+            .select('id')
+            .eq('product_id', _selectedProductId as Object)
+            .isFilter('deleted_at', null)
+            .limit(1)
+            .maybeSingle();
+        productVariantId = productVariant?['id']?.toString();
+        if (productVariantId == null || productVariantId.isEmpty) {
+          throw Exception('Varian produk untuk model ini belum tersedia.');
+        }
       }
 
-      final lifecycleStatus = switch (_selectedOutcome) {
-        'acc' => 'closed_direct',
-        'reject' => 'rejected',
-        _ => 'approved_pending',
-      };
-
-      final payload = <String, dynamic>{
-        'created_by_user_id': userId,
-        'promotor_id': userId,
-        'store_id': _store!['store_id'],
-        'application_date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-        'customer_name': _customerNameCtrl.text.trim(),
-        'customer_phone': _normalizePhone(_customerPhoneCtrl.text),
-        'pekerjaan': _selectedPekerjaan,
-        'monthly_income': _digitsToInt(_incomeCtrl.text),
-        'has_npwp': false,
-        'product_variant_id': productVariantId,
-        'product_label': _selectedProductLabel,
-        'limit_amount': _digitsToInt(_limitCtrl.text),
-        'dp_amount': _digitsToInt(_dpCtrl.text),
-        'tenor_months': _toInt(_selectedTenor),
-        'outcome_status': _selectedOutcome,
-        'lifecycle_status': lifecycleStatus,
-        'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
-      };
-
-      final inserted = await _supabase
-          .from('vast_applications')
-          .insert(payload)
-          .select('id')
-          .single();
-
-      final applicationId = inserted['id'] as String;
+      final rpcResult = await _supabase.rpc(
+        'submit_promotor_vast_application',
+        params: {
+          'p_application_date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+          'p_customer_name': _customerNameCtrl.text.trim(),
+          'p_customer_phone': _normalizePhone(_customerPhoneCtrl.text),
+          'p_pekerjaan': _selectedPekerjaan,
+          'p_monthly_income': _isRejectOutcome
+              ? 0
+              : _digitsToInt(_incomeCtrl.text),
+          'p_product_variant_id': productVariantId,
+          'p_product_label': _isRejectOutcome
+              ? 'REJECT'
+              : _selectedProductLabel,
+          'p_limit_amount': _isRejectOutcome
+              ? 0
+              : _digitsToInt(_limitCtrl.text),
+          'p_dp_amount': _isRejectOutcome ? 0 : _digitsToInt(_dpCtrl.text),
+          'p_tenor_months': _isRejectOutcome ? 1 : _toInt(_selectedTenor),
+          'p_outcome_status': _selectedOutcome,
+          'p_notes': _notesCtrl.text.trim().isEmpty
+              ? null
+              : _notesCtrl.text.trim(),
+        },
+      );
+      final payload = rpcResult is Map<String, dynamic>
+          ? rpcResult
+          : Map<String, dynamic>.from(rpcResult as Map);
+      final applicationId = '${payload['application_id'] ?? ''}'.trim();
+      if (applicationId.isEmpty) {
+        throw Exception('Pengajuan VAST gagal dibuat.');
+      }
       for (final image in _initialImages) {
         await _uploadEvidence(
           applicationId: applicationId,
@@ -692,6 +538,7 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
       _clearForm();
       await _refresh();
       if (!mounted) return;
+      setState(() => _activeSection = 'history');
       await showSuccessDialog(
         context,
         title: 'Berhasil',
@@ -742,18 +589,20 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
       throw Exception('Upload gambar gagal.');
     }
 
-    await _supabase.from('vast_application_evidences').insert({
-      'application_id': applicationId,
-      'source_stage': stage,
-      'evidence_type': evidenceType,
-      'file_url': uploadedUrl,
-      'file_name': image.name,
-      'mime_type': image.mimeType,
-      'file_size_bytes': compressed.length,
-      'sha256_hex': VastFinanceUtils.exactHashHex(compressed),
-      'perceptual_hash': VastFinanceUtils.perceptualHash(compressed),
-      'created_by_user_id': userId,
-    });
+    await _supabase.rpc(
+      'attach_vast_application_evidence',
+      params: {
+        'p_application_id': applicationId,
+        'p_source_stage': stage,
+        'p_evidence_type': evidenceType,
+        'p_file_url': uploadedUrl,
+        'p_file_name': image.name,
+        'p_mime_type': image.mimeType,
+        'p_file_size_bytes': compressed.length,
+        'p_sha256_hex': VastFinanceUtils.exactHashHex(compressed),
+        'p_perceptual_hash': VastFinanceUtils.perceptualHash(compressed),
+      },
+    );
   }
 
   void _clearForm() {
@@ -763,9 +612,9 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
     _limitCtrl.text = _currency.format(0);
     _dpCtrl.text = _currency.format(0);
     _notesCtrl.clear();
-    _selectedPekerjaan = VastFinanceUtils.pekerjaanOptions.first;
-    _selectedOutcome = 'pending';
-    _selectedTenor = '12';
+    _selectedPekerjaan = null;
+    _selectedOutcome = null;
+    _selectedTenor = null;
     _selectedProductId = null;
     _selectedProductLabel = null;
     _selectedDate = DateTime.now();
@@ -790,7 +639,9 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
     final notesCtrl = TextEditingController();
     var selectedFinalTenor = '${_toInt(item['tenor_months'])}';
     var closingProofs = <XFile>[];
-    final formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>(
+      debugLabel: 'promotor_vast_bottom_sheet_form',
+    );
     var formattingMonthly = false;
     var formattingDp = false;
     var formattingLimit = false;
@@ -1488,7 +1339,7 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
       selectedValue: _selectedOutcome,
       searchHint: 'Cari status',
       labelBuilder: (value) => switch (value) {
-        'acc' => 'ACC',
+        'acc' => 'CLOSING',
         'pending' => 'PENDING',
         'reject' => 'REJECT',
         _ => value.toUpperCase(),
@@ -1721,6 +1572,7 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
   }
 
   Widget _buildInputTab() {
+    final isReject = _isRejectOutcome;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Form(
@@ -1734,6 +1586,16 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
               onChanged: (value) => setState(() => _selectedDate = value),
             ),
             const SizedBox(height: 12),
+            _buildPickerField(
+              label: 'Status Hasil',
+              value: switch (_selectedOutcome) {
+                'acc' => 'Closing',
+                'pending' => 'Pending',
+                'reject' => 'Reject',
+                _ => 'Tap untuk memilih',
+              },
+              onTap: _pickOutcome,
+            ),
             _buildInputField(
               controller: _customerNameCtrl,
               label: 'Nama Customer',
@@ -1755,51 +1617,46 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
             const SizedBox(height: 12),
             _buildPickerField(
               label: 'Pekerjaan',
-              value: _selectedPekerjaan,
+              value: _selectedPekerjaan ?? 'Tap untuk memilih',
               onTap: _pickPekerjaan,
+              hasError: _selectedPekerjaan == null,
             ),
-            const SizedBox(height: 12),
-            _buildInputField(
-              controller: _incomeCtrl,
-              label: 'Penghasilan',
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            _buildPickerField(
-              label: 'Model HP',
-              value: _selectedProductLabel ?? 'Tap untuk pilih model',
-              onTap: _pickProduct,
-              hasError: _selectedProductId == null,
-            ),
-            const SizedBox(height: 12),
-            _buildInputField(
-              controller: _limitCtrl,
-              label: 'Limit Kredit',
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            _buildInputField(
-              controller: _dpCtrl,
-              label: 'DP',
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            _buildPickerField(
-              label: 'Tenor',
-              value: '$_selectedTenor bulan',
-              onTap: _pickTenor,
-            ),
-            const SizedBox(height: 12),
-            _buildPickerField(
-              label: 'Status Hasil',
-              value: switch (_selectedOutcome) {
-                'acc' => 'ACC',
-                'pending' => 'PENDING',
-                'reject' => 'REJECT',
-                _ => _selectedOutcome.toUpperCase(),
-              },
-              onTap: _pickOutcome,
-            ),
+            if (!isReject) ...[
+              const SizedBox(height: 12),
+              _buildInputField(
+                controller: _incomeCtrl,
+                label: 'Penghasilan',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              _buildPickerField(
+                label: 'Model HP',
+                value: _selectedProductLabel ?? 'Tap untuk pilih model',
+                onTap: _pickProduct,
+                hasError: _selectedProductId == null,
+              ),
+              const SizedBox(height: 12),
+              _buildInputField(
+                controller: _limitCtrl,
+                label: 'Limit Kredit',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              _buildInputField(
+                controller: _dpCtrl,
+                label: 'DP',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              _buildPickerField(
+                label: 'Tenor',
+                value: _selectedTenor == null
+                    ? 'Tap untuk memilih'
+                    : '$_selectedTenor bulan',
+                onTap: _pickTenor,
+                hasError: _selectedTenor == null,
+              ),
+            ],
             const SizedBox(height: 12),
             _buildInputField(
               controller: _notesCtrl,
@@ -1830,7 +1687,7 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 onPressed: _isSubmitting ? null : _submitApplication,
-                child: Text(_isSubmitting ? 'Mengirim...' : 'Kirim'),
+                child: Text(_isSubmitting ? 'Sedang mengirim' : 'Kirim'),
               ),
             ),
           ],
@@ -1981,7 +1838,9 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
 
   Widget _buildReminderTab() {
     if (_reminders.isEmpty) {
-      return _buildEmptyState('Belum ada reminder follow-up.');
+      return _buildEmptyState(
+        'Belum ada reminder jatuh tempo dalam 3 hari ke depan.',
+      );
     }
     return ListView.separated(
       shrinkWrap: true,
@@ -1992,6 +1851,9 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
       itemBuilder: (context, index) {
         final item = _reminders[index];
         final isDone = item['status'] == 'done';
+        final customerName = item['customer_name']?.toString().trim();
+        final customerPhone = item['customer_phone']?.toString().trim();
+        final productLabel = item['product_label']?.toString().trim();
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -2006,13 +1868,29 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['reminder_title']?.toString() ?? '-',
+                      customerName?.isNotEmpty == true
+                          ? customerName!
+                          : item['reminder_title']?.toString() ?? '-',
                       style: PromotorText.outfit(
                         size: 14,
                         weight: FontWeight.w700,
                         color: t.textPrimary,
                       ),
                     ),
+                    if ((productLabel?.isNotEmpty == true) ||
+                        (customerPhone?.isNotEmpty == true)) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        [
+                          if (productLabel?.isNotEmpty == true) productLabel,
+                          if (customerPhone?.isNotEmpty == true) customerPhone,
+                        ].join(' · '),
+                        style: PromotorText.outfit(
+                          size: 12,
+                          color: t.textMuted,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Text(
                       item['reminder_body']?.toString() ?? '-',
@@ -2213,7 +2091,7 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
                               DateFormat(
                                 'MMMM yyyy',
                                 'id_ID',
-                              ).format(DateTime.now())),
+                              ).format(_snapshotDate)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: PromotorText.outfit(
@@ -2232,19 +2110,52 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    _periodSubtitle(_currentPeriodStats()),
-                    style: PromotorText.outfit(
-                      size: 12,
-                      weight: FontWeight.w700,
-                      color: t.textSecondary,
-                    ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: _buildPeriodTabs(compact: true),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.48,
-                  child: _buildPeriodTabs(compact: true),
+                  width: 118,
+                  child: InkWell(
+                    onTap: _pickSnapshotDate,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: t.surface1,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: t.surface3),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.calendar_month_rounded,
+                            size: 14,
+                            color: t.primaryAccent,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _dateFormat.format(_snapshotDate),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: PromotorText.outfit(
+                                size: 10,
+                                weight: FontWeight.w800,
+                                color: t.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -2254,24 +2165,110 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
     );
   }
 
-  Widget _buildHeroCard() {
-    final stats = _currentPeriodStats();
-    final percent = _currentPeriodPercent(stats);
-    return PromotorCard(
-      padding: const EdgeInsets.all(12),
+  Widget _buildHeroMiniInfoCard({
+    required String label,
+    required String value,
+    Color? valueColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: t.surface2,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.surface3),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Ringkasan Pengajuan',
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: PromotorText.outfit(
-              size: 11,
+              size: 8.5,
               weight: FontWeight.w700,
-              color: t.primaryAccent,
-              letterSpacing: 1.2,
+              color: t.textMutedStrong,
             ),
           ),
           const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: PromotorText.display(
+              size: 15,
+              color: valueColor ?? t.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroCard() {
+    final stats = _currentPeriodStats();
+    final percent = _currentPeriodPercent(stats);
+    final summaryItems = <({String label, String value})>[
+      (label: 'Input', value: '${stats?.submissions ?? 0}'),
+      (label: 'Closing', value: '${stats?.acc ?? 0}'),
+      (label: 'Pending', value: '${stats?.pending ?? 0}'),
+      (label: 'Reject', value: '${stats?.reject ?? 0}'),
+    ];
+    return PromotorCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nominal Closing',
+                      style: PromotorText.outfit(
+                        size: 10,
+                        weight: FontWeight.w800,
+                        color: t.textMutedStrong,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _currency.format(stats?.closingOmzet ?? 0),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: PromotorText.display(
+                        size: 24,
+                        color: t.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildHeroMiniInfoCard(
+                  label: 'Target',
+                  value: '${stats?.target ?? 0}',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildHeroMiniInfoCard(
+                  label: 'Achievement',
+                  value: '$percent%',
+                  valueColor: t.primaryAccent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
             'Status kerja ${_selectedPeriodTab == 'harian'
                 ? 'hari ini'
@@ -2280,35 +2277,18 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
                 : 'bulan ini'}',
             style: PromotorText.outfit(size: 11, color: t.textSecondary),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Pencapaian $percent%',
-            style: PromotorText.outfit(
-              size: 12,
-              weight: FontWeight.w700,
-              color: t.primaryAccent,
-            ),
-          ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _summaryMetric('Target', '${stats?.target ?? 0}'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _summaryMetric(
-                  'Pengajuan',
-                  '${stats?.submissions ?? 0}',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _summaryMetric('Reject', '${stats?.reject ?? 0}'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: _summaryMetric('ACC', '${stats?.acc ?? 0}')),
-            ],
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: summaryItems
+                .map(
+                  (item) => SizedBox(
+                    width: (MediaQuery.of(context).size.width - 76) / 2,
+                    child: _summaryMetric(item.label, item.value),
+                  ),
+                )
+                .toList(),
           ),
           if (_selectedPeriodTab == 'mingguan' &&
               _weeklyBreakdown.isNotEmpty) ...[
@@ -2320,7 +2300,7 @@ class _PromotorVastPageState extends State<PromotorVastPage> {
                   index,
                 ) {
                   final week = _weeklyBreakdown[index];
-                  final active = index == _currentWeekIndex();
+                  final active = index == (_activeWeekNumber - 1);
                   return Padding(
                     padding: EdgeInsets.only(
                       right: index == _weeklyBreakdown.length - 1 ? 0 : 8,
@@ -2627,7 +2607,9 @@ class _VastPeriodStats {
     required this.target,
     required this.submissions,
     required this.acc,
+    required this.pending,
     required this.reject,
+    required this.closingOmzet,
   });
 
   final DateTime start;
@@ -2635,7 +2617,9 @@ class _VastPeriodStats {
   final int target;
   final int submissions;
   final int acc;
+  final int pending;
   final int reject;
+  final double closingOmzet;
 }
 
 class _VastWeekSplit {

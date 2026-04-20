@@ -64,195 +64,29 @@ class _SpvAttendanceMonitorPageState extends State<SpvAttendanceMonitorPage> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final spvId = _supabase.auth.currentUser?.id;
-      if (spvId == null) return;
-      final now = DateTime.now();
-      final today = DateFormat('yyyy-MM-dd').format(now);
-
-      final satorLinks = await _supabase
-          .from('hierarchy_spv_sator')
-          .select('sator_id')
-          .eq('spv_id', spvId)
-          .eq('active', true);
-      final satorIds = List<Map<String, dynamic>>.from(satorLinks)
-          .map((row) => '${row['sator_id'] ?? ''}')
-          .where((id) => id.isNotEmpty)
-          .toList();
-      final satorUsers = satorIds.isEmpty
-          ? const []
-          : await _supabase
-                .from('users')
-                .select('id, full_name')
-                .inFilter('id', satorIds);
-      final satorNameById = {
-        for (final row in List<Map<String, dynamic>>.from(satorUsers))
-          '${row['id'] ?? ''}': '${row['full_name'] ?? 'SATOR'}'.trim().isEmpty
-              ? 'SATOR'
-              : '${row['full_name'] ?? 'SATOR'}',
-      };
-      final sators = satorIds
-          .map((id) => {'id': id, 'name': satorNameById[id] ?? 'SATOR'})
-          .toList();
-
-      if (satorIds.isEmpty) {
-        _setTabsAndRows([], []);
-        return;
-      }
-
-      final promotorLinks = await _supabase
-          .from('hierarchy_sator_promotor')
-          .select('sator_id, promotor_id')
-          .inFilter('sator_id', satorIds)
-          .eq('active', true);
-      final promotorLinkRows = List<Map<String, dynamic>>.from(promotorLinks);
-      final promotorIds = promotorLinkRows
-          .map((row) => '${row['promotor_id'] ?? ''}')
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-
-      if (promotorIds.isEmpty) {
-        _setTabsAndRows(sators, []);
-        return;
-      }
-
-      final userRows = await _supabase
-          .from('users')
-          .select('id, full_name, area, deleted_at')
-          .inFilter('id', promotorIds);
-      final users = {
-        for (final row in List<Map<String, dynamic>>.from(userRows))
-          '${row['id'] ?? ''}': Map<String, dynamic>.from(row),
-      };
-
-      final assignmentRows = await _supabase
-          .from('assignments_promotor_store')
-          .select('promotor_id, created_at, stores(store_name)')
-          .inFilter('promotor_id', promotorIds)
-          .eq('active', true)
-          .order('created_at', ascending: false);
-      final latestStoreByPromotor = <String, String>{};
-      for (final row in List<Map<String, dynamic>>.from(assignmentRows)) {
-        final promotorId = '${row['promotor_id'] ?? ''}';
-        if (promotorId.isEmpty ||
-            latestStoreByPromotor.containsKey(promotorId)) {
-          continue;
-        }
-        latestStoreByPromotor[promotorId] =
-            '${row['stores']?['store_name'] ?? '-'}';
-      }
-
-      final scheduleRows = await _supabase
-          .from('schedules')
-          .select('promotor_id, shift_type, status, updated_at, created_at')
-          .inFilter('promotor_id', promotorIds)
-          .eq('schedule_date', today)
-          .order('updated_at', ascending: false);
-      final latestScheduleByPromotor = <String, Map<String, dynamic>>{};
-      for (final row in List<Map<String, dynamic>>.from(scheduleRows)) {
-        final promotorId = '${row['promotor_id'] ?? ''}';
-        if (promotorId.isEmpty ||
-            latestScheduleByPromotor.containsKey(promotorId)) {
-          continue;
-        }
-        latestScheduleByPromotor[promotorId] = row;
-      }
-
-      final attendanceRows = await _supabase
-          .from('attendance')
-          .select('*')
-          .inFilter('user_id', promotorIds)
-          .eq('attendance_date', today)
-          .order('created_at', ascending: false);
-      final latestAttendanceByPromotor = <String, Map<String, dynamic>>{};
-      for (final row in List<Map<String, dynamic>>.from(attendanceRows)) {
-        final promotorId = '${row['user_id'] ?? ''}';
-        if (promotorId.isEmpty ||
-            latestAttendanceByPromotor.containsKey(promotorId)) {
-          continue;
-        }
-        latestAttendanceByPromotor[promotorId] = row;
-      }
-
-      final shiftRows = await _supabase
-          .from('shift_settings')
-          .select('shift_type, start_time, end_time, area')
-          .eq('active', true);
-      final shiftSettings = List<Map<String, dynamic>>.from(shiftRows);
-
-      final builtRows = <Map<String, dynamic>>[];
-      for (final link in promotorLinkRows) {
-        final satorId = '${link['sator_id'] ?? ''}';
-        final promotorId = '${link['promotor_id'] ?? ''}';
-        final user = users[promotorId];
-        if (satorId.isEmpty || promotorId.isEmpty || user == null) continue;
-        if (user['deleted_at'] != null) continue;
-
-        final area = '${user['area'] ?? 'default'}';
-        final schedule = latestScheduleByPromotor[promotorId];
-        final attendance = latestAttendanceByPromotor[promotorId];
-        final shiftType = '${schedule?['shift_type'] ?? ''}';
-        final scheduleStatus = '${schedule?['status'] ?? ''}';
-        final shift = _resolveShiftSetting(
-          shiftSettings: shiftSettings,
-          shiftType: shiftType,
-          area: area,
-        );
-        final shiftStart = _parseTime(shift?['start_time']);
-        final clockIn = DateTime.tryParse('${attendance?['clock_in'] ?? ''}');
-        final mainAttendanceStatus =
-            '${attendance?['main_attendance_status'] ?? ''}';
-        final reportCategory = '${attendance?['report_category'] ?? ''}';
-        final attendanceCategory = reportCategory.isNotEmpty
-            ? reportCategory
-            : (mainAttendanceStatus == 'late'
-                  ? 'late'
-                  : (clockIn != null ? 'normal' : ''));
-        final statusKey = _statusKey(
-          clockIn: clockIn,
-          attendanceCategory: attendanceCategory,
-          shiftType: shiftType,
-          scheduleExists: schedule != null,
-          scheduleStatus: scheduleStatus,
-          shiftStart: shiftStart,
-          now: now,
-        );
-
-        builtRows.add({
-          'sator_id': satorId,
-          'sator_name': satorNameById[satorId] ?? 'SATOR',
-          'promotor_id': promotorId,
-          'promotor_name': '${user['full_name'] ?? 'Promotor'}',
-          'store_name': latestStoreByPromotor[promotorId] ?? '-',
-          'shift_label': _shiftLabel(shiftType, shift, schedule != null),
-          'status_key': statusKey,
-          'status_reason': _statusReason(
-            statusKey: statusKey,
-            attendanceCategory: attendanceCategory,
-            shiftStart: shiftStart,
-          ),
-          'attendance_category': attendanceCategory,
-          'clock_in_time': clockIn == null
-              ? ''
-              : DateFormat('HH:mm').format(clockIn.toLocal()),
-          'schedule_status': scheduleStatus,
-          'sort_order': _statusOrder(statusKey, attendanceCategory),
-        });
-      }
-
-      builtRows.sort((a, b) {
-        final orderCompare = (a['sort_order'] as int).compareTo(
-          b['sort_order'] as int,
-        );
-        if (orderCompare != 0) return orderCompare;
-        return '${a['promotor_name']}'.compareTo('${b['promotor_name']}');
-      });
-
-      _setTabsAndRows(sators, builtRows);
+      final snapshotRaw = await _supabase.rpc(
+        'get_spv_attendance_monitor_snapshot',
+        params: {'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now())},
+      );
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      _setTabsAndRows(
+        _parseMapList(snapshot['tabs']),
+        _parseMapList(snapshot['rows']),
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   void _setTabsAndRows(
@@ -268,138 +102,6 @@ class _SpvAttendanceMonitorPageState extends State<SpvAttendanceMonitorPage> {
           : _selectedTabIndex.clamp(0, tabs.length - 1);
       _isLoading = false;
     });
-  }
-
-  Map<String, dynamic>? _resolveShiftSetting({
-    required List<Map<String, dynamic>> shiftSettings,
-    required String shiftType,
-    required String area,
-  }) {
-    if (shiftType.isEmpty || shiftType == 'libur') return null;
-    for (final row in shiftSettings) {
-      if ('${row['shift_type']}' == shiftType && '${row['area']}' == area) {
-        return row;
-      }
-    }
-    for (final row in shiftSettings) {
-      if ('${row['shift_type']}' == shiftType &&
-          '${row['area']}' == 'default') {
-        return row;
-      }
-    }
-    return null;
-  }
-
-  TimeOfDay? _parseTime(dynamic value) {
-    final raw = '${value ?? ''}';
-    if (raw.isEmpty) return null;
-    final parts = raw.split(':');
-    if (parts.length < 2) return null;
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return null;
-    return TimeOfDay(hour: hour, minute: minute);
-  }
-
-  String _statusKey({
-    required DateTime? clockIn,
-    required String attendanceCategory,
-    required String shiftType,
-    required bool scheduleExists,
-    required String scheduleStatus,
-    required TimeOfDay? shiftStart,
-    required DateTime now,
-  }) {
-    if (clockIn != null) return 'checked_in';
-    if ({
-      'travel',
-      'special_permission',
-      'system_issue',
-      'sick',
-      'leave',
-      'management_holiday',
-    }.contains(attendanceCategory)) {
-      return 'exception';
-    }
-    if (shiftType == 'libur') return 'off';
-    if (!scheduleExists) return 'no_schedule';
-    if (scheduleStatus != 'approved') return 'schedule_pending';
-    if (shiftStart != null) {
-      final shiftDateTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        shiftStart.hour,
-        shiftStart.minute,
-      );
-      if (now.isBefore(shiftDateTime)) return 'waiting_shift';
-    }
-    return 'no_report';
-  }
-
-  String _shiftLabel(
-    String shiftType,
-    Map<String, dynamic>? shift,
-    bool hasSchedule,
-  ) {
-    if (!hasSchedule) return 'Belum ada jadwal';
-    if (shiftType == 'libur') return 'Libur';
-    if (shift == null) {
-      return shiftType.isEmpty ? 'Belum ada jadwal' : shiftType;
-    }
-    final start = _formatTime('${shift['start_time'] ?? ''}');
-    final end = _formatTime('${shift['end_time'] ?? ''}');
-    return '${_cap(shiftType)} $start-$end';
-  }
-
-  String _statusReason({
-    required String statusKey,
-    required String attendanceCategory,
-    required TimeOfDay? shiftStart,
-  }) {
-    switch (statusKey) {
-      case 'checked_in':
-        return attendanceCategory == 'late'
-            ? 'Sudah masuk · terlambat'
-            : 'Sudah masuk kerja';
-      case 'exception':
-        return _attendanceCategoryLabel(attendanceCategory);
-      case 'off':
-        return 'Libur hari ini';
-      case 'no_schedule':
-        return 'Jadwal hari ini belum ada';
-      case 'schedule_pending':
-        return 'Jadwal belum approved';
-      case 'waiting_shift':
-        if (shiftStart == null) return 'Menunggu shift';
-        return 'Masuk ${shiftStart.hour.toString().padLeft(2, '0')}:${shiftStart.minute.toString().padLeft(2, '0')}';
-      case 'no_report':
-      default:
-        return 'Belum ada laporan masuk kerja';
-    }
-  }
-
-  int _statusOrder(String statusKey, String attendanceCategory) {
-    if (statusKey == 'checked_in' && attendanceCategory != 'late') return 0;
-    if (statusKey == 'checked_in' && attendanceCategory == 'late') return 1;
-    if (statusKey == 'waiting_shift') return 2;
-    if (statusKey == 'exception') return 3;
-    if (statusKey == 'off') return 4;
-    if (statusKey == 'no_report') return 5;
-    if (statusKey == 'schedule_pending') return 6;
-    if (statusKey == 'no_schedule') return 7;
-    return 8;
-  }
-
-  String _formatTime(String raw) {
-    final parts = raw.split(':');
-    if (parts.length < 2) return '--:--';
-    return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
-  }
-
-  String _cap(String raw) {
-    if (raw.isEmpty) return raw;
-    return raw[0].toUpperCase() + raw.substring(1);
   }
 
   List<Map<String, dynamic>> _rowsForActiveTab() {

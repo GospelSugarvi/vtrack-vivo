@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../repository/chat_repository.dart';
-import 'dart:convert';
-import '../../../allbrand/presentation/pages/allbrand_store_detail_page.dart';
+import '../../../allbrand/presentation/widgets/allbrand_report_detail_panel.dart';
 import '../theme/chat_theme.dart';
 
 class StorePerformancePanel extends StatefulWidget {
@@ -78,18 +77,6 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
     return int.tryParse('${value ?? ''}') ?? 0;
   }
 
-  Map<String, dynamic> _safeMap(dynamic raw) {
-    if (raw is Map<String, dynamic>) return raw;
-    if (raw is Map) return Map<String, dynamic>.from(raw);
-    if (raw is String) {
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map) return Map<String, dynamic>.from(decoded);
-      } catch (_) {}
-    }
-    return <String, dynamic>{};
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -99,129 +86,53 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
 
   Widget _buildQuickStatsBar() {
     final tokens = _tokens;
-    final c = _palette;
-    final targetData = _performanceData?['target'] as Map<String, dynamic>?;
-    final allbrandData = _performanceData?['allbrand'] as Map<String, dynamic>?;
-    final activityData = _performanceData?['activity'] as List?;
-    final selloutRows =
-        List<Map<String, dynamic>>.from(
-          (targetData?['sellout_by_promotor'] as List?) ?? const [],
-        );
-    final dailyAchievement = targetData?['daily_achievement'] ?? 0;
-    final dailyTarget = targetData?['daily_target'] ?? 0;
-    final achievementPercent = dailyTarget > 0
-        ? ((dailyAchievement / dailyTarget) * 100).round()
-        : 0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        border: Border(bottom: BorderSide(color: tokens.border)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.store, size: 18, color: tokens.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  widget.storeName,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: InkWell(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: tokens.surfaceAlt,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: tokens.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Detail toko',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
                     color: tokens.textPrimary,
                   ),
                 ),
-              ),
-              IconButton(
-                icon: Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: tokens.textMuted,
-                ),
-                onPressed: () => setState(() => _isExpanded = !_isExpanded),
-              ),
-              IconButton(
-                icon: Icon(Icons.refresh, size: 20, color: tokens.textMuted),
-                onPressed: _isLoading ? null : _loadData,
-              ),
-            ],
-          ),
-          if (!_isExpanded) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildQuickStat(
-                  'Sellout',
-                  '$achievementPercent%',
-                  '${_formatCurrency(dailyAchievement)}/${_formatCurrency(dailyTarget)}',
-                  _getAchievementColor(achievementPercent.toDouble()),
-                ),
-                const SizedBox(width: 12),
-                _buildQuickStat(
-                  'AllBrand',
-                  '${allbrandData?['total_store_units'] ?? allbrandData?['total_units'] ?? 0}',
-                  'MS ${((allbrandData?['vivo_market_share'] as num?) ?? 0).toStringAsFixed(1)}%',
-                  c.amber,
-                ),
-                const SizedBox(width: 12),
-                _buildQuickStat(
-                  'Promotor',
-                  '${selloutRows.length}',
-                  '${activityData?.length ?? 0} aktivitas',
-                  c.purple,
-                ),
+                const SizedBox(width: 6),
+                if (_isLoading)
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.8,
+                      valueColor: AlwaysStoppedAnimation<Color>(tokens.primary),
+                    ),
+                  )
+                else
+                  Icon(
+                    _isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: tokens.textMuted,
+                  ),
               ],
             ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickStat(
-    String label,
-    String value,
-    String subtitle,
-    Color color,
-  ) {
-    final tokens = _tokens;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: tokens.surfaceAlt,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: tokens.textMuted),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 11, color: tokens.textMuted),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -237,20 +148,45 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
       child: Column(
         children: [
           Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
             decoration: BoxDecoration(
-              color: tokens.surfaceAlt,
+              color: tokens.surface,
               border: Border(bottom: BorderSide(color: tokens.border)),
             ),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: tokens.primary,
-              unselectedLabelColor: tokens.textMuted,
-              indicatorColor: tokens.primary,
-              tabs: const [
-                Tab(text: 'AllBrand'),
-                Tab(text: 'Sellout'),
-                Tab(text: 'Aktivitas'),
-              ],
+            child: Container(
+              height: 38,
+              decoration: BoxDecoration(
+                color: tokens.surfaceAlt,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: tokens.border),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: tokens.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tokens.border),
+                ),
+                labelColor: tokens.primary,
+                unselectedLabelColor: tokens.textMuted,
+                labelStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+                splashBorderRadius: BorderRadius.circular(10),
+                padding: const EdgeInsets.all(3),
+                tabs: const [
+                  Tab(height: 30, text: 'AllBrand'),
+                  Tab(height: 30, text: 'VAST'),
+                  Tab(height: 30, text: 'Aktivitas'),
+                ],
+              ),
             ),
           ),
           SizedBox(
@@ -265,7 +201,7 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
                     controller: _tabController,
                     children: [
                       _buildAllbrandTab(),
-                      _buildSelloutTab(),
+                      _buildVastFinanceTab(),
                       _buildActivityTab(),
                     ],
                   ),
@@ -275,293 +211,8 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
     );
   }
 
-  Widget _buildSelloutTab() {
-    final tokens = _tokens;
-    final c = _palette;
-    final targetData = _performanceData?['target'] as Map<String, dynamic>?;
-    if (targetData == null) {
-      return Center(
-        child: Text(
-          'Belum ada data sellout',
-          style: TextStyle(color: tokens.textMuted),
-        ),
-      );
-    }
-
-    final selloutRows = List<Map<String, dynamic>>.from(
-      (targetData['sellout_by_promotor'] as List?) ?? const [],
-    );
-    final dailyAchievement = targetData['daily_achievement'] ?? 0;
-    final dailyTarget = targetData['daily_target'] ?? 0;
-    final promotorCount = targetData['promotor_count'] ?? 0;
-    final dailyPercent = dailyTarget > 0
-        ? (dailyAchievement / dailyTarget * 100)
-        : 0.0;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.people, size: 16, color: tokens.primary),
-              const SizedBox(width: 6),
-              Text(
-                '$promotorCount Promotor Aktif',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: tokens.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTargetCard(
-            'Sellout Toko Hari Ini',
-            dailyAchievement,
-            dailyTarget,
-            dailyPercent,
-            c.green,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Sellout Per Promotor',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: tokens.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (selloutRows.isEmpty)
-            Text(
-              'Belum ada sellout promotor hari ini',
-              style: TextStyle(fontSize: 12, color: tokens.textMuted),
-            )
-          else
-            Column(
-              children: selloutRows
-                  .map((row) => _buildSelloutPromotorRow(row))
-                  .toList(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSelloutPromotorRow(Map<String, dynamic> row) {
-    final tokens = _tokens;
-    final c = _palette;
-    final name = '${row['promotor_name'] ?? 'Promotor'}';
-    final units = _toInt(row['units']);
-    final omzet = _toInt(row['omzet']);
-    final focusUnits = _toInt(row['focus_units']);
-    final variants = List<String>.from((row['variants'] as List?) ?? const []);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: tokens.surfaceAlt,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tokens.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: tokens.textPrimary,
-                  ),
-                ),
-              ),
-              Text(
-                '$units unit',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: c.green,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _formatCurrency(omzet),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: c.gold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Produk Fokus $focusUnits',
-            style: TextStyle(fontSize: 11, color: c.purple),
-          ),
-          if (variants.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              variants.take(3).join(' • '),
-              style: TextStyle(fontSize: 11, color: tokens.textMuted),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTargetCard(
-    String title,
-    int achievement,
-    int target,
-    double percent,
-    Color color,
-  ) {
-    final tokens = _tokens;
-    return InkWell(
-      onTap: () =>
-          _showTargetDetail(title, achievement, target, percent, color),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.textPrimary,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.info_outline,
-                  size: 16,
-                  color: color.withValues(alpha: 0.7),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: percent / 100,
-                minHeight: 8,
-                backgroundColor: tokens.border,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${percent.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  '${_formatCurrency(achievement)} / ${_formatCurrency(target)}',
-                  style: TextStyle(fontSize: 12, color: tokens.textSecondary),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTargetDetail(
-    String title,
-    int achievement,
-    int target,
-    double percent,
-    Color color,
-  ) {
-    final tokens = _tokens;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        backgroundColor: tokens.surface,
-        title: Text(
-          title,
-          style: TextStyle(fontSize: 16, color: tokens.textPrimary),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailRow(
-                'Achievement',
-                _formatCurrencyFull(achievement),
-                color,
-              ),
-              const SizedBox(height: 8),
-              _buildDetailRow(
-                'Target',
-                _formatCurrencyFull(target),
-                tokens.textSecondary,
-              ),
-              const SizedBox(height: 8),
-              _buildDetailRow(
-                'Persentase',
-                '${percent.toStringAsFixed(1)}%',
-                color,
-              ),
-              const SizedBox(height: 16),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: percent / 100,
-                  minHeight: 12,
-                  backgroundColor: tokens.border,
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Tutup', style: TextStyle(color: tokens.primary)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAllbrandTab() {
     final tokens = _tokens;
-    final c = _palette;
     final allbrandData = _performanceData?['allbrand'] as Map<String, dynamic>?;
     if (allbrandData == null || allbrandData['has_data'] != true) {
       return Center(
@@ -572,31 +223,10 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
       );
     }
 
-    final totalUnits = _toInt(allbrandData['total_units']);
-    final totalStoreUnits = _toInt(allbrandData['total_store_units']);
-    final vivoUnits = _toInt(allbrandData['vivo_units']);
-    final marketShare = ((allbrandData['vivo_market_share'] as num?) ?? 0)
-        .toDouble();
-    final leasingTotalUnits = _toInt(allbrandData['leasing_total_units']);
-    final promotorTotal = _toInt(allbrandData['promotor_total']);
-    final focusStoreDaily = _toInt(allbrandData['focus_store_daily']);
-    final focusStoreCumulative = _toInt(allbrandData['focus_store_cumulative']);
     final reportDate = '${allbrandData['report_date'] ?? '-'}';
     final isToday = allbrandData['is_today'] == true;
-    final history = List<Map<String, dynamic>>.from(
-      (allbrandData['history'] as List?) ?? const [],
-    );
-    final brandsRaw = allbrandData['brands'];
-    final leasingRaw = allbrandData['leasing_sales'];
-    final vivoAuto = allbrandData['vivo_auto'];
-    final focusByPromotor = List<Map<String, dynamic>>.from(
-      (allbrandData['focus_by_promotor'] as List?) ?? const [],
-    );
-    final brandShare = List<Map<String, dynamic>>.from(
-      (allbrandData['brand_share'] as List?) ?? const [],
-    );
-    final brands = _safeMap(brandsRaw);
-    final leasing = _safeMap(leasingRaw);
+    final reportLabel = isToday ? 'Laporan hari ini' : 'Laporan terakhir';
+    final summaryRows = _buildAllbrandSummaryRows(allbrandData);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -607,420 +237,233 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: tokens.surfaceAlt,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: tokens.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Snapshot AllBrand',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: tokens.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      isToday ? 'Hari ini' : 'Terakhir: $reportDate',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isToday ? c.green : tokens.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _buildMetricChip(
-                      'Total Toko',
-                      '$totalStoreUnits unit',
-                      c.amber,
-                    ),
-                    _buildMetricChip(
-                      'Competitor',
-                      '$totalUnits unit',
-                      tokens.textSecondary,
-                    ),
-                    _buildMetricChip('VIVO', '$vivoUnits unit', c.blue),
-                    _buildMetricChip(
-                      'MS VIVO',
-                      '${marketShare.toStringAsFixed(1)}%',
-                      c.green,
-                    ),
-                    _buildMetricChip(
-                      'Leasing',
-                      '$leasingTotalUnits unit',
-                      c.gold,
-                    ),
-                    _buildMetricChip(
-                      'Promotor',
-                      '$promotorTotal org',
-                      c.purpleDeep,
-                    ),
-                    _buildMetricChip(
-                      'Fokus',
-                      '$focusStoreDaily / $focusStoreCumulative',
-                      c.purple,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
                 Align(
-                  alignment: Alignment.centerRight,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => AllbrandStoreDetailPage(
-                            storeId: widget.storeId,
-                            storeName: widget.storeName,
+                  alignment: Alignment.topRight,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tokens.surface,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: tokens.border),
+                    ),
+                    child: Text(
+                      '$reportLabel: $reportDate',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: tokens.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+                if (summaryRows.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: summaryRows.map((row) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: _buildAllbrandBrandTile(
+                            label: '${row['label']}',
+                            value: _toInt(row['units']),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => DraggableScrollableSheet(
+                        expand: false,
+                        initialChildSize: 0.9,
+                        maxChildSize: 0.96,
+                        minChildSize: 0.6,
+                        builder: (context, controller) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: tokens.surface,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(28),
+                              ),
+                              border: Border.all(color: tokens.border),
+                            ),
+                            child: ListView(
+                              controller: controller,
+                              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Center(
+                                        child: Container(
+                                          width: 44,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: tokens.border,
+                                            borderRadius: BorderRadius.circular(999),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => Navigator.of(context).pop(),
+                                      icon: Icon(
+                                        Icons.close_rounded,
+                                        size: 20,
+                                        color: tokens.textMuted,
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                      tooltip: 'Tutup',
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                AllbrandReportDetailPanel(
+                                  storeId: widget.storeId,
+                                  initialStoreName: widget.storeName,
+                                  showCopyAction: false,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                    ),
+                  );
+                },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tokens.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: tokens.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.receipt_long_rounded, size: 16, color: tokens.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Lihat detail AllBrand',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: tokens.textPrimary,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: tokens.primary,
-                      side: BorderSide(
-                        color: tokens.primary.withValues(alpha: 0.4),
-                      ),
+                        Icon(Icons.chevron_right_rounded, color: tokens.textMuted),
+                      ],
                     ),
-                    child: const Text('Lihat detail lengkap'),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          if (focusByPromotor.isNotEmpty) ...[
-            Text(
-              'Produk Fokus per Promotor',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: tokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...focusByPromotor.map(
-              (item) => _buildLeasingRow(
-                '${item['name']}',
-                _toInt(item['today']),
-                c.purple,
-                trailing:
-                    '${_toInt(item['today'])} / ${_toInt(item['cumulative'])}',
-              ),
-            ),
-            const Divider(height: 24),
-          ],
-          if (brandShare.isNotEmpty) ...[
-            Text(
-              'Market Share Brand',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: tokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...brandShare.map(
-              (item) => _buildLeasingRow(
-                '${item['label']}',
-                _toInt(item['units']),
-                c.amber,
-                trailing:
-                    '${_toInt(item['units'])} unit • ${((item['share'] as num?) ?? 0).toStringAsFixed(1)}%',
-              ),
-            ),
-            const Divider(height: 24),
-          ],
-          if (vivoAuto != null) ...[
-            Text(
-              'VIVO (Auto)',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: tokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildBrandRow(
-              'VIVO',
-              _toInt(_safeMap(vivoAuto)['total']),
-              c.blue,
-              _safeMap(vivoAuto),
-            ),
-            const Divider(height: 24),
-          ],
-          if (brands.isNotEmpty) ...[
-            Text(
-              'Brand Lain',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: tokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...brands.entries.map((entry) {
-              final brandData = _safeMap(entry.value);
-              final total =
-                  _toInt(brandData['under_2m']) +
-                  _toInt(brandData['2m_4m']) +
-                  _toInt(brandData['4m_6m']) +
-                  _toInt(brandData['above_6m']);
-              return _buildBrandRow(
-                entry.key,
-                total,
-                tokens.textSecondary,
-                brandData,
-              );
-            }),
-          ],
-          if (leasing.isNotEmpty) ...[
-            const Divider(height: 24),
-            Text(
-              'Penjualan per Leasing',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: tokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...leasing.entries.map(
-              (entry) => _buildLeasingRow(
-                entry.key,
-                _toInt(entry.value),
-                c.green,
-              ),
-            ),
-          ],
-          if (history.isNotEmpty) ...[
-            const Divider(height: 24),
-            Text(
-              'Riwayat 7 Hari',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: tokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...history.take(7).map((row) {
-              final dateText = '${row['report_date'] ?? '-'}';
-              final rowTotalStore = _toInt(row['total_store_units']);
-              final rowVivo = _toInt(row['vivo_units']);
-              final rowMs = ((row['vivo_market_share'] as num?) ?? 0)
-                  .toDouble();
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: tokens.surfaceAlt,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: tokens.border),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        dateText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: tokens.textPrimary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Toko $rowTotalStore | VIVO $rowVivo | MS ${rowMs.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: tokens.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildMetricChip(String label, String value, Color color) {
-    final tokens = _tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: tokens.chipBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tokens.chipBorder),
-      ),
-      child: Text(
-        '$label: $value',
-        style: TextStyle(
-          fontSize: 13,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBrandRow(
-    String name,
-    int units,
-    Color color,
-    Map<String, dynamic>? detailData,
+  List<Map<String, dynamic>> _buildAllbrandSummaryRows(
+    Map<String, dynamic> allbrandData,
   ) {
-    final tokens = _tokens;
-    return InkWell(
-      onTap: detailData != null
-          ? () => _showBrandDetail(name, detailData)
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: tokens.surfaceAlt,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: tokens.border),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                name,
-                style: TextStyle(fontSize: 13, color: tokens.textSecondary),
-              ),
-              Row(
-                children: [
-                  Text(
-                    '$units unit',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                  ),
-                  if (detailData != null) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.chevron_right,
-                      size: 16,
-                      color: tokens.textMuted,
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final brands = _mapFromValue(allbrandData['brands']);
+    final rows = <Map<String, dynamic>>[];
+    const orderedBrands = <String>[
+      'VIVO',
+      'OPPO',
+      'Samsung',
+      'Realme',
+      'Xiaomi',
+      'Tecno',
+      'Infinix',
+    ];
+
+    for (final brand in orderedBrands) {
+      final units = brand == 'VIVO'
+          ? _toInt(allbrandData['vivo_units'])
+          : _sumBrandUnits(brands[brand] ?? brands[brand.toUpperCase()]);
+      rows.add({
+        'label': brand,
+        'units': units,
+      });
+    }
+
+    return rows;
   }
 
-  Widget _buildLeasingRow(
-    String name,
-    int units,
-    Color color, {
-    String? trailing,
+  Widget _buildAllbrandBrandTile({
+    required String label,
+    required int value,
   }) {
     final tokens = _tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: tokens.surfaceAlt,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: tokens.border),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              name,
-              style: TextStyle(fontSize: 13, color: tokens.textSecondary),
-            ),
-            Text(
-              trailing ?? '$units unit',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: tokens.border),
       ),
-    );
-  }
-
-  void _showBrandDetail(String brandName, Map<String, dynamic> data) {
-    final tokens = _tokens;
-    final c = _palette;
-    final under2m = _toInt(data['under_2m']);
-    final m2to4 = _toInt(data['2m_4m']);
-    final m4to6 = _toInt(data['4m_6m']);
-    final above6m = _toInt(data['above_6m']);
-    final total = _toInt(data['total']) > 0
-        ? _toInt(data['total'])
-        : (under2m + m2to4 + m4to6 + above6m);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        backgroundColor: tokens.surface,
-        title: Text(
-          'Detail $brandName',
-          style: TextStyle(fontSize: 16, color: tokens.textPrimary),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailRow('Total', '$total unit', c.amber),
-              const Divider(height: 20),
-              Text(
-                'Breakdown per Harga:',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildDetailRow('< 2 Juta', '$under2m unit', tokens.textSecondary),
-              const SizedBox(height: 6),
-              _buildDetailRow('2-4 Juta', '$m2to4 unit', tokens.textSecondary),
-              const SizedBox(height: 6),
-              _buildDetailRow('4-6 Juta', '$m4to6 unit', tokens.textSecondary),
-              const SizedBox(height: 6),
-              _buildDetailRow('> 6 Juta', '$above6m unit', tokens.textSecondary),
-            ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: tokens.textMuted,
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Tutup', style: TextStyle(color: tokens.primary)),
+          const SizedBox(width: 6),
+          Text(
+            '$value',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: tokens.textPrimary,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Map<String, dynamic> _mapFromValue(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return const <String, dynamic>{};
+  }
+
+  int _sumBrandUnits(dynamic raw) {
+    final row = _mapFromValue(raw);
+    return _toInt(row['under_2m']) +
+        _toInt(row['2m_4m']) +
+        _toInt(row['4m_6m']) +
+        _toInt(row['above_6m']);
   }
 
   Widget _buildActivityTab() {
@@ -1128,29 +571,28 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
               ],
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 14,
+              runSpacing: 8,
               children: [
                 _buildActivityStat(
                   Icons.schedule,
-                  hasClockIn ? _formatTime(clockIn) : '-',
+                  'Masuk ${hasClockIn ? _formatTime(clockIn) : '-'}',
                   c.blue,
                 ),
-                const SizedBox(width: 16),
                 _buildActivityStat(
                   Icons.schedule_outlined,
-                  hasClockOut ? _formatTime(clockOut) : '-',
+                  'Keluar ${hasClockOut ? _formatTime(clockOut) : '-'}',
                   c.amber,
                 ),
-                const SizedBox(width: 16),
                 _buildActivityStat(
                   Icons.shopping_cart,
-                  '$salesCount',
+                  'Jual $salesCount',
                   c.green,
                 ),
-                const SizedBox(width: 16),
                 _buildActivityStat(
                   Icons.inventory,
-                  '$stockCount',
+                  'Stok $stockCount',
                   c.purple,
                 ),
               ],
@@ -1176,6 +618,305 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
         ),
       ],
     );
+  }
+
+  Widget _buildVastFinanceTab() {
+    final tokens = _tokens;
+    final c = _palette;
+    final vastData = _performanceData?['vast'] as Map<String, dynamic>?;
+    if (vastData == null) {
+      return Center(
+        child: Text(
+          'Belum ada data VAST Finance',
+          style: TextStyle(color: tokens.textMuted),
+        ),
+      );
+    }
+
+    final rows = List<Map<String, dynamic>>.from(
+      (vastData['rows'] as List?) ?? const [],
+    );
+    final targetTotal = _toInt(vastData['target_total']);
+    final inputTotal = _toInt(vastData['input_total']);
+    final closingTotal = _toInt(vastData['closing_total']);
+    final pendingTotal = _toInt(vastData['pending_total']);
+    final rejectTotal = _toInt(vastData['reject_total']);
+    final achievement = targetTotal > 0
+        ? ((inputTotal * 100) / targetTotal).clamp(0, 999).toDouble()
+        : 0.0;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: tokens.surfaceAlt,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: tokens.border),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet_rounded,
+                      size: 16,
+                      color: c.gold,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'VAST Finance',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${achievement.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: achievement >= 100
+                            ? c.green
+                            : (achievement > 0 ? c.amber : tokens.textMuted),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildVastHighlightTile(
+                        'Target',
+                        '$targetTotal',
+                        c.gold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildVastHighlightTile(
+                        'Input',
+                        '$inputTotal',
+                        c.blue,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildVastMiniStat(
+                        'Closing',
+                        '$closingTotal',
+                        c.green,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildVastMiniStat(
+                        'Pending',
+                        '$pendingTotal',
+                        c.amber,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildVastMiniStat(
+                        'Reject',
+                        '$rejectTotal',
+                        c.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Rekap per Promotor',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: tokens.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (rows.isEmpty)
+            Text(
+              'Belum ada input VAST dari promotor toko ini.',
+              style: TextStyle(fontSize: 12, color: tokens.textMuted),
+            )
+          else
+            ...rows.map((row) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: tokens.surfaceAlt,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: tokens.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        '${row['promotor_name'] ?? 'Promotor'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        '${_toInt(row['target_total'])}/${_toInt(row['input_total'])}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: c.blue,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        '${_toInt(row['pending_total'])}/${_toInt(row['closing_total'])}/${_toInt(row['reject_total'])}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: tokens.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        _buildVastAchievementLabel(
+                          target: _toInt(row['target_total']),
+                          input: _toInt(row['input_total']),
+                        ),
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: _toInt(row['input_total']) >= _toInt(row['target_total']) &&
+                                  _toInt(row['target_total']) > 0
+                              ? c.green
+                              : (_toInt(row['input_total']) > 0
+                                    ? c.amber
+                                    : tokens.textMuted),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          if (rows.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Format: target/input • pending/closing/reject',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: tokens.textMuted,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVastHighlightTile(String label, String value, Color color) {
+    final tokens = _tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: tokens.textMuted,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVastMiniStat(String label, String value, Color color) {
+    final tokens = _tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tokens.border),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: tokens.textMuted,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _buildVastAchievementLabel({
+    required int target,
+    required int input,
+  }) {
+    if (target <= 0) return input > 0 ? 'ON' : '0%';
+    return '${((input * 100) / target).round()}%';
   }
 
   void _showActivityDetail(Map<String, dynamic> activity) {
@@ -1246,13 +987,13 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
               ),
               const SizedBox(height: 8),
               _buildDetailRow(
-                'Clock In',
+                'Jam Masuk',
                 hasClockIn ? _formatTime(clockIn) : 'Belum masuk',
                 hasClockIn ? c.green : c.red,
               ),
               const SizedBox(height: 6),
               _buildDetailRow(
-                'Clock Out',
+                'Jam Keluar',
                 hasClockOut ? _formatTime(clockOut) : 'Belum keluar',
                 hasClockOut ? c.amber : tokens.textMuted,
               ),
@@ -1260,7 +1001,7 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
               _buildDetailRow('Durasi Kerja', workDuration, c.blue),
               const Divider(height: 20),
               Text(
-                'Aktivitas',
+                'Rekap Aktivitas Hari Ini',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -1269,14 +1010,14 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
               ),
               const SizedBox(height: 8),
               _buildDetailRow(
-                'Penjualan',
-                '$salesCount transaksi',
+                'Lapor Jual',
+                '$salesCount transaksi sellout',
                 c.green,
               ),
               const SizedBox(height: 6),
               _buildDetailRow(
-                'Stock Movement',
-                '$stockCount pergerakan',
+                'Aktivitas Stok',
+                '$stockCount pergerakan stok',
                 c.purpleDeep,
               ),
             ],
@@ -1319,16 +1060,6 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
     );
   }
 
-  String _formatCurrency(int value) {
-    final formatter = NumberFormat('#,###', 'id_ID');
-    return formatter.format(value);
-  }
-
-  String _formatCurrencyFull(int value) {
-    final formatter = NumberFormat('#,###', 'id_ID');
-    return 'Rp ${formatter.format(value)}';
-  }
-
   String _formatTime(String? timestamp) {
     if (timestamp == null) return '-';
     try {
@@ -1339,10 +1070,4 @@ class _StorePerformancePanelState extends State<StorePerformancePanel>
     }
   }
 
-  Color _getAchievementColor(double percent) {
-    final c = _palette;
-    if (percent >= 100) return c.green;
-    if (percent >= 75) return c.amber;
-    return c.red;
-  }
 }

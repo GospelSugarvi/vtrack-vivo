@@ -16,13 +16,15 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
   List<Map<String, dynamic>> _sators = [];
   List<Map<String, dynamic>> _promotors = [];
   List<Map<String, dynamic>> _stores = [];
-  
+
   // Hierarchy mappings
   Map<String, List<String>> _managerSpvMap = {}; // manager_id -> [spv_ids]
   Map<String, List<String>> _spvSatorMap = {}; // spv_id -> [sator_ids]
-  Map<String, List<String>> _satorPromotorMap = {}; // sator_id -> [promotor_ids]
-  Map<String, List<String>> _promotorStoreMap = {}; // promotor_id -> [store_ids]
-  
+  Map<String, List<String>> _satorPromotorMap =
+      {}; // sator_id -> [promotor_ids]
+  Map<String, List<String>> _promotorStoreMap =
+      {}; // promotor_id -> [store_ids]
+
   bool _isLoading = true;
 
   static const Map<String, String> _assignmentTitles = <String, String>{
@@ -43,29 +45,42 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
       setState(() => _isLoading = true);
     }
     try {
-      // Load users
-      final users = await supabase
-          .from('users')
-          .select('*')
-          .isFilter('deleted_at', null)
-          .order('full_name');
+      final results = await Future.wait<dynamic>([
+        supabase
+            .from('users')
+            .select('id, full_name, area, role')
+            .isFilter('deleted_at', null)
+            .order('full_name'),
+        supabase
+            .from('stores')
+            .select('id, store_name')
+            .isFilter('deleted_at', null)
+            .order('store_name'),
+        supabase
+            .from('hierarchy_manager_spv')
+            .select('manager_id, spv_id')
+            .eq('active', true),
+        supabase
+            .from('hierarchy_spv_sator')
+            .select('spv_id, sator_id')
+            .eq('active', true),
+        supabase
+            .from('hierarchy_sator_promotor')
+            .select('sator_id, promotor_id')
+            .eq('active', true),
+        supabase
+            .from('assignments_promotor_store')
+            .select('promotor_id, store_id')
+            .eq('active', true),
+      ]);
 
-      final usersList = List<Map<String, dynamic>>.from(users);
-      
-      // Load stores
-      final storesRes = await supabase
-          .from('stores')
-          .select('*')
-          .isFilter('deleted_at', null)
-          .order('store_name');
-      _stores = List<Map<String, dynamic>>.from(storesRes);
-      
-      // Load hierarchy mappings
-      final managerSpv = await supabase.from('hierarchy_manager_spv').select('*').eq('active', true);
-      final spvSator = await supabase.from('hierarchy_spv_sator').select('*').eq('active', true);
-      final satorPromotor = await supabase.from('hierarchy_sator_promotor').select('*').eq('active', true);
-      final promotorStore = await supabase.from('assignments_promotor_store').select('*').eq('active', true);
-      
+      final usersList = List<Map<String, dynamic>>.from(results[0] as List);
+      _stores = List<Map<String, dynamic>>.from(results[1] as List);
+      final managerSpv = List<Map<String, dynamic>>.from(results[2] as List);
+      final spvSator = List<Map<String, dynamic>>.from(results[3] as List);
+      final satorPromotor = List<Map<String, dynamic>>.from(results[4] as List);
+      final promotorStore = List<Map<String, dynamic>>.from(results[5] as List);
+
       // Build maps
       _managerSpvMap = {};
       for (var h in managerSpv) {
@@ -73,28 +88,28 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
         _managerSpvMap.putIfAbsent(managerId, () => []);
         _managerSpvMap[managerId]!.add(h['spv_id'] as String);
       }
-      
+
       _spvSatorMap = {};
       for (var h in spvSator) {
         final spvId = h['spv_id'] as String;
         _spvSatorMap.putIfAbsent(spvId, () => []);
         _spvSatorMap[spvId]!.add(h['sator_id'] as String);
       }
-      
+
       _satorPromotorMap = {};
       for (var h in satorPromotor) {
         final satorId = h['sator_id'] as String;
         _satorPromotorMap.putIfAbsent(satorId, () => []);
         _satorPromotorMap[satorId]!.add(h['promotor_id'] as String);
       }
-      
+
       _promotorStoreMap = {};
       for (var h in promotorStore) {
         final promotorId = h['promotor_id'] as String;
         _promotorStoreMap.putIfAbsent(promotorId, () => []);
         _promotorStoreMap[promotorId]!.add(h['store_id'] as String);
       }
-      
+
       if (!mounted) return;
       setState(() {
         _managers = usersList.where((u) => u['role'] == 'manager').toList();
@@ -104,7 +119,6 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading hierarchy: $e');
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
@@ -123,9 +137,17 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isDesktop) Text('Hierarchy Management', style: Theme.of(context).textTheme.headlineMedium),
+                  if (isDesktop)
+                    Text(
+                      'Hierarchy Management',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
                   if (isDesktop) const SizedBox(height: 8),
-                  if (isDesktop) Text('Kelola siapa di bawah siapa, dan promotor pegang toko mana', style: Theme.of(context).textTheme.bodyMedium),
+                  if (isDesktop)
+                    Text(
+                      'Kelola siapa di bawah siapa, dan promotor pegang toko mana',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   const SizedBox(height: 24),
 
                   _buildInfoCard(),
@@ -135,21 +157,39 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
                   const SizedBox(height: 16),
                   _buildSection('SPV', _spvs, AppColors.info, 'SATOR'),
                   const SizedBox(height: 16),
-                  _buildSection('SATOR', _sators, AppColors.primary, 'Promotor'),
+                  _buildSection(
+                    'SATOR',
+                    _sators,
+                    AppColors.primary,
+                    'Promotor',
+                  ),
                   const SizedBox(height: 16),
-                  _buildSection('Promotor', _promotors, AppColors.success, 'Toko'),
+                  _buildSection(
+                    'Promotor',
+                    _promotors,
+                    AppColors.success,
+                    'Toko',
+                  ),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildSection(String title, List<Map<String, dynamic>> users, Color color, String assignLabel) {
+  Widget _buildSection(
+    String title,
+    List<Map<String, dynamic>> users,
+    Color color,
+    String assignLabel,
+  ) {
     return Card(
       child: ExpansionTile(
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.2),
-          child: Text('${users.length}', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          child: Text(
+            '${users.length}',
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
         ),
         title: Text(title),
         subtitle: Text('${users.length} orang'),
@@ -159,7 +199,10 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
           return ListTile(
             leading: CircleAvatar(
               backgroundColor: color.withValues(alpha: 0.1),
-              child: Text((u['full_name'] ?? 'U')[0].toUpperCase(), style: TextStyle(color: color)),
+              child: Text(
+                (u['full_name'] ?? 'U')[0].toUpperCase(),
+                style: TextStyle(color: color),
+              ),
             ),
             title: Text(u['full_name'] ?? 'Unknown'),
             subtitle: Padding(
@@ -168,13 +211,18 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('${u['area'] ?? 'No Area'} • $assignedCount $assignLabel'),
+                  Text(
+                    '${u['area'] ?? 'No Area'} • $assignedCount $assignLabel',
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     assignedNames.isEmpty
                         ? 'Belum ada $assignLabel terhubung'
                         : '${_assignmentTitles[title] ?? assignLabel}: ${assignedNames.join(', ')}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -188,7 +236,10 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: color,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
                 onPressed: () => _showAssignDialog(u, title),
               ),
@@ -225,7 +276,7 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
       ),
     );
   }
-  
+
   int _getAssignedCount(String? userId, String role) {
     if (userId == null) return 0;
     switch (role) {
@@ -250,7 +301,10 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
       case 'SPV':
         return _lookupUserNames(_spvSatorMap[userId] ?? <String>[], _sators);
       case 'SATOR':
-        return _lookupUserNames(_satorPromotorMap[userId] ?? <String>[], _promotors);
+        return _lookupUserNames(
+          _satorPromotorMap[userId] ?? <String>[],
+          _promotors,
+        );
       case 'Promotor':
         return _lookupStoreNames(_promotorStoreMap[userId] ?? <String>[]);
       default:
@@ -258,10 +312,14 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
     }
   }
 
-  List<String> _lookupUserNames(List<String> ids, List<Map<String, dynamic>> source) {
+  List<String> _lookupUserNames(
+    List<String> ids,
+    List<Map<String, dynamic>> source,
+  ) {
     if (ids.isEmpty) return <String>[];
     final namesById = <String, String>{
-      for (final item in source) item['id'] as String: '${item['full_name'] ?? 'Unknown'}',
+      for (final item in source)
+        item['id'] as String: '${item['full_name'] ?? 'Unknown'}',
     };
     return ids.map((id) => namesById[id]).whereType<String>().toList();
   }
@@ -269,7 +327,8 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
   List<String> _lookupStoreNames(List<String> ids) {
     if (ids.isEmpty) return <String>[];
     final storesById = <String, String>{
-      for (final item in _stores) item['id'] as String: '${item['store_name'] ?? 'Unknown'}',
+      for (final item in _stores)
+        item['id'] as String: '${item['store_name'] ?? 'Unknown'}',
     };
     return ids.map((id) => storesById[id]).whereType<String>().toList();
   }
@@ -277,14 +336,14 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
   void _showAssignDialog(Map<String, dynamic> user, String role) {
     final userId = user['id'] as String;
     final userName = user['full_name'] ?? 'Unknown';
-    
+
     List<Map<String, dynamic>> availableItems = [];
     List<String> currentAssignments = [];
     String tableName = '';
     String parentColumn = '';
     String childColumn = '';
     String itemLabel = '';
-    
+
     switch (role) {
       case 'Manager':
         availableItems = _spvs;
@@ -319,10 +378,10 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
         itemLabel = 'Toko';
         break;
     }
-    
+
     // Create mutable copy for dialog
     List<String> selectedIds = List.from(currentAssignments);
-    
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -334,8 +393,17 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Centang untuk menambah. Hilangkan centang untuk melepas.', style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('${selectedIds.length} $itemLabel aktif', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(
+                  'Centang untuk menambah. Hilangkan centang untuk melepas.',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${selectedIds.length} $itemLabel aktif',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Expanded(
                   child: availableItems.isEmpty
@@ -346,13 +414,13 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
                             final item = availableItems[i];
                             final itemId = item['id'] as String;
                             final isSelected = selectedIds.contains(itemId);
-                            final displayName = role == 'Promotor' 
+                            final displayName = role == 'Promotor'
                                 ? (item['store_name'] ?? 'Unknown')
                                 : (item['full_name'] ?? 'Unknown');
                             final subtitle = role == 'Promotor'
                                 ? (item['area'] ?? 'No Area')
                                 : (item['area'] ?? 'No Area');
-                            
+
                             return CheckboxListTile(
                               value: isSelected,
                               title: Text(displayName),
@@ -382,11 +450,11 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
               onPressed: () async {
                 Navigator.pop(ctx);
                 await _saveAssignments(
-                  userId, 
-                  selectedIds, 
-                  currentAssignments, 
-                  tableName, 
-                  parentColumn, 
+                  userId,
+                  selectedIds,
+                  currentAssignments,
+                  tableName,
+                  parentColumn,
                   childColumn,
                 );
               },
@@ -397,7 +465,7 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
       ),
     );
   }
-  
+
   Future<void> _saveAssignments(
     String parentId,
     List<String> newAssignments,
@@ -408,10 +476,14 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
   ) async {
     try {
       // Find items to add
-      final toAdd = newAssignments.where((id) => !oldAssignments.contains(id)).toList();
+      final toAdd = newAssignments
+          .where((id) => !oldAssignments.contains(id))
+          .toList();
       // Find items to remove
-      final toRemove = oldAssignments.where((id) => !newAssignments.contains(id)).toList();
-      
+      final toRemove = oldAssignments
+          .where((id) => !newAssignments.contains(id))
+          .toList();
+
       // Add new assignments
       for (final childId in toAdd) {
         await supabase.from(tableName).upsert({
@@ -420,28 +492,35 @@ class _AdminHierarchyPageState extends State<AdminHierarchyPage> {
           'active': true,
         }, onConflict: '$parentColumn,$childColumn');
       }
-      
+
       // Deactivate removed assignments
       for (final childId in toRemove) {
-        await supabase.from(tableName)
+        await supabase
+            .from(tableName)
             .update({'active': false})
             .eq(parentColumn, parentId)
             .eq(childColumn, childId);
       }
-      
+
       // Reload data
       await _loadData();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Assignment berhasil disimpan!'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('Assignment berhasil disimpan!'),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
       debugPrint('Error saving assignments: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     }

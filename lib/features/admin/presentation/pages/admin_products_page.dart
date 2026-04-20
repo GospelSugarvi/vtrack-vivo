@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../main.dart';
 import '../../../../ui/foundation/app_colors.dart';
+import '../widgets/admin_dialog_sync.dart';
 import 'package:vtrack/core/utils/success_dialog.dart';
 
 // Currency Input Formatter for Indonesian Rupiah (thousand separator with dot)
@@ -276,9 +277,9 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
                   child: Text('Hapus Produk'),
                 ),
               ],
-              onSelected: (value) {
+              onSelected: (value) async {
                 if (value == 'edit') _showEditProductDialog(product);
-                if (value == 'addVariant') _showVariantsDialog(product);
+                if (value == 'addVariant') await _showVariantsDialog(product);
                 if (value == 'delete') _confirmDelete(product);
               },
             ),
@@ -370,12 +371,12 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
     );
   }
 
-  void _editVariantInline(
+  Future<void> _editVariantInline(
     Map<String, dynamic> variant,
     Map<String, dynamic> product,
-  ) {
+  ) async {
     // Show dialog to edit this variant
-    _showVariantsDialog(product);
+    await _showVariantsDialog(product, initialVariant: variant);
     // TODO: Could pre-populate form with this variant's data
   }
 
@@ -506,8 +507,9 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
     String networkType = product?['network_type'] ?? '4G';
     String bonusType = product?['bonus_type'] ?? 'range';
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadProducts,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(isEdit ? 'Edit Produk' : 'Tambah Produk'),
@@ -589,8 +591,7 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
                 }
 
                 if (!context.mounted) return;
-                Navigator.pop(context);
-                _loadProducts();
+                closeAdminDialog(context, changed: true);
               },
               child: Text(isEdit ? 'Simpan' : 'Tambah'),
             ),
@@ -600,10 +601,15 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
     );
   }
 
-  void _showVariantsDialog(Map<String, dynamic> product) {
-    showDialog(
+  Future<void> _showVariantsDialog(
+    Map<String, dynamic> product, {
+    Map<String, dynamic>? initialVariant,
+  }) async {
+    await showAdminChangedDialog(
       context: context,
-      builder: (context) => _VariantsDialog(product: product),
+      onChanged: _loadProducts,
+      builder: (context) =>
+          _VariantsDialog(product: product, initialVariant: initialVariant),
     );
   }
 
@@ -639,8 +645,9 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
 
 class _VariantsDialog extends StatefulWidget {
   final Map<String, dynamic> product;
+  final Map<String, dynamic>? initialVariant;
 
-  const _VariantsDialog({required this.product});
+  const _VariantsDialog({required this.product, this.initialVariant});
 
   @override
   State<_VariantsDialog> createState() => _VariantsDialogState();
@@ -649,6 +656,8 @@ class _VariantsDialog extends StatefulWidget {
 class _VariantsDialogState extends State<_VariantsDialog> {
   List<Map<String, dynamic>> _variants = [];
   bool _isLoading = true;
+  String? _editingVariantId;
+  bool _hasChanges = false;
 
   // Controllers
   final _ramController = TextEditingController();
@@ -659,6 +668,63 @@ class _VariantsDialogState extends State<_VariantsDialog> {
 
   // List of colors (chips)
   List<String> _selectedColors = [];
+
+  String _normalizeStorageToken(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), '');
+
+  String _normalizeColorToken(String value) => value.trim().toUpperCase();
+
+  String _variantRamValue(Map<String, dynamic> variant) {
+    final explicit = '${variant['ram'] ?? ''}'.trim();
+    if (explicit.isNotEmpty) return explicit;
+    final ramRom = '${variant['ram_rom'] ?? ''}'.trim();
+    if (!ramRom.contains('/')) return '';
+    return ramRom.split('/').first.trim();
+  }
+
+  String _variantStorageValue(Map<String, dynamic> variant) {
+    final explicit = '${variant['storage'] ?? ''}'.trim();
+    if (explicit.isNotEmpty) return explicit;
+    final ramRom = '${variant['ram_rom'] ?? ''}'.trim();
+    if (!ramRom.contains('/')) return '';
+    return ramRom.split('/').last.trim();
+  }
+
+  Map<String, dynamic>? _findDuplicateVariant({
+    required String ram,
+    required String storage,
+    required String color,
+    String? ignoreVariantId,
+  }) {
+    final normalizedRam = _normalizeStorageToken(ram);
+    final normalizedStorage = _normalizeStorageToken(storage);
+    final normalizedColor = _normalizeColorToken(color);
+
+    for (final variant in _variants) {
+      final variantId = '${variant['id'] ?? ''}'.trim();
+      if (ignoreVariantId != null && variantId == ignoreVariantId) continue;
+      if ('${variant['deleted_at'] ?? ''}'.trim().isNotEmpty) continue;
+
+      final sameRam =
+          _normalizeStorageToken(_variantRamValue(variant)) == normalizedRam;
+      final sameStorage =
+          _normalizeStorageToken(_variantStorageValue(variant)) ==
+          normalizedStorage;
+      final sameColor =
+          _normalizeColorToken('${variant['color'] ?? ''}') == normalizedColor;
+
+      if (sameRam && sameStorage && sameColor) {
+        return variant;
+      }
+    }
+    return null;
+  }
+
+  void _showVariantError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppTheme.errorRed),
+    );
+  }
 
   @override
   void initState() {
@@ -675,11 +741,26 @@ class _VariantsDialogState extends State<_VariantsDialog> {
         .isFilter('deleted_at', null)
         .order('srp');
 
-    if (mounted) {
-      setState(() {
-        _variants = List<Map<String, dynamic>>.from(response);
-        _isLoading = false;
-      });
+    final variants = List<Map<String, dynamic>>.from(response);
+    if (!mounted) return;
+
+    setState(() {
+      _variants = variants;
+      _isLoading = false;
+    });
+
+    if (widget.initialVariant != null && _editingVariantId == null) {
+      final initialVariantId = '${widget.initialVariant!['id'] ?? ''}'.trim();
+      Map<String, dynamic>? match;
+      for (final variant in variants) {
+        if ('${variant['id'] ?? ''}'.trim() == initialVariantId) {
+          match = variant;
+          break;
+        }
+      }
+      if (match != null && mounted) {
+        _editVariant(match);
+      }
     }
   }
 
@@ -699,7 +780,7 @@ class _VariantsDialogState extends State<_VariantsDialog> {
     });
   }
 
-  Future<void> _addVariant() async {
+  Future<void> _saveVariant() async {
     if (_ramController.text.isEmpty ||
         _storageController.text.isEmpty ||
         _selectedColors.isEmpty ||
@@ -714,6 +795,7 @@ class _VariantsDialogState extends State<_VariantsDialog> {
     }
 
     try {
+      final isEditing = _editingVariantId != null;
       // Create one variant for EACH color
       final modal =
           int.tryParse(
@@ -723,33 +805,79 @@ class _VariantsDialogState extends State<_VariantsDialog> {
       final srp =
           int.tryParse(_srpController.text.replaceAll(RegExp(r'[^0-9]'), '')) ??
           0;
-      final ram = _ramController.text.trim();
-      final storage = _storageController.text.trim();
+      final ram = _normalizeStorageToken(_ramController.text);
+      final storage = _normalizeStorageToken(_storageController.text);
+      final normalizedColors = _selectedColors
+          .map(_normalizeColorToken)
+          .where((color) => color.isNotEmpty)
+          .toList();
 
-      List<Map<String, dynamic>> variantsToInsert = [];
-
-      for (String color in _selectedColors) {
-        variantsToInsert.add({
-          'product_id': widget.product['id'],
-          'ram': ram,
-          'storage': storage,
-          'ram_rom': '$ram/$storage',
-          'color': color,
-          'modal': modal,
-          'srp': srp,
-        });
+      if (ram.isEmpty || storage.isEmpty || normalizedColors.isEmpty) {
+        _showVariantError('RAM, internal, dan warna wajib valid.');
+        return;
       }
 
-      await supabase.from('product_variants').insert(variantsToInsert);
+      if (isEditing && normalizedColors.length != 1) {
+        _showVariantError('Mode edit hanya boleh menyimpan satu warna.');
+        return;
+      }
 
+      for (final color in normalizedColors) {
+        final duplicate = _findDuplicateVariant(
+          ram: ram,
+          storage: storage,
+          color: color,
+          ignoreVariantId: _editingVariantId,
+        );
+        if (duplicate != null) {
+          _showVariantError(
+            'Varian $ram/$storage $color sudah ada. Hapus atau edit varian yang lama.',
+          );
+          return;
+        }
+      }
+
+      if (isEditing) {
+        await supabase
+            .from('product_variants')
+            .update({
+              'ram': ram,
+              'storage': storage,
+              'ram_rom': '$ram/$storage',
+              'color': normalizedColors.first,
+              'modal': modal,
+              'srp': srp,
+            })
+            .eq('id', _editingVariantId!);
+      } else {
+        final variantsToInsert = normalizedColors
+            .map(
+              (color) => <String, dynamic>{
+                'product_id': widget.product['id'],
+                'ram': ram,
+                'storage': storage,
+                'ram_rom': '$ram/$storage',
+                'color': color,
+                'modal': modal,
+                'srp': srp,
+              },
+            )
+            .toList();
+
+        await supabase.from('product_variants').insert(variantsToInsert);
+      }
+
+      await _loadVariants();
+      _hasChanges = true;
       _clearForm();
-      _loadVariants();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Berhasil menambahkan ${variantsToInsert.length} varian',
+              isEditing
+                  ? 'Varian berhasil diperbarui'
+                  : 'Berhasil menambahkan ${normalizedColors.length} varian',
             ),
             backgroundColor: AppTheme.successGreen,
           ),
@@ -774,32 +902,29 @@ class _VariantsDialogState extends State<_VariantsDialog> {
     _modalController.clear();
     _srpController.clear();
     setState(() {
+      _editingVariantId = null;
       _selectedColors.clear();
     });
   }
 
   void _editVariant(Map<String, dynamic> variant) {
-    // Populate form with variant data
-    _ramController.text = variant['ram']?.toString() ?? '';
-    _storageController.text = variant['storage']?.toString() ?? '';
+    _ramController.text = _variantRamValue(variant);
+    _storageController.text = _variantStorageValue(variant);
     _colorInputController.clear();
     setState(() {
-      _selectedColors = [variant['color']?.toString() ?? ''];
+      _editingVariantId = '${variant['id'] ?? ''}'.trim();
+      _selectedColors = [_normalizeColorToken('${variant['color'] ?? ''}')];
     });
 
-    // Format price for display
     final modal = variant['modal'];
     final srp = variant['srp'];
     _modalController.text = modal != null ? _formatCurrency(modal) : '';
     _srpController.text = srp != null ? _formatCurrency(srp) : '';
 
-    // Delete the old variant after editing
-    _deleteVariant(variant['id']);
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          'Data varian dimuat ke form. Edit dan klik Tambah Varian untuk menyimpan.',
+          'Data varian dimuat ke form. Edit lalu klik Simpan Perubahan.',
         ),
       ),
     );
@@ -823,6 +948,7 @@ class _VariantsDialogState extends State<_VariantsDialog> {
           })
           .eq('id', id);
       await _loadVariants();
+      _hasChanges = true;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -864,8 +990,18 @@ class _VariantsDialogState extends State<_VariantsDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Tambah Varian Baru',
+                      'Kelola Varian',
                       style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _editingVariantId == null
+                          ? 'Tambah varian baru dengan kombinasi RAM / internal / warna yang unik.'
+                          : 'Mode edit aktif. Simpan akan memperbarui varian yang dipilih.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -1050,15 +1186,31 @@ class _VariantsDialogState extends State<_VariantsDialog> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _addVariant,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Tambah Varian'),
+                        onPressed: _saveVariant,
+                        icon: Icon(
+                          _editingVariantId == null ? Icons.add : Icons.save,
+                        ),
+                        label: Text(
+                          _editingVariantId == null
+                              ? 'Tambah Varian'
+                              : 'Simpan Perubahan',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryBlue,
                           foregroundColor: Colors.white,
                         ),
                       ),
                     ),
+                    if (_editingVariantId != null) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _clearForm,
+                          child: const Text('Batal Edit'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1155,7 +1307,7 @@ class _VariantsDialogState extends State<_VariantsDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => closeAdminDialog(context, changed: _hasChanges),
           child: const Text('Selesai'),
         ),
       ],

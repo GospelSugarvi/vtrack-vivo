@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "173713265602",
+    "project_id": "vtrack-vivo",
+    "storage_bucket": "vtrack-vivo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:173713265602:android:adb20940aaa2aacf6afc5b",
+        "android_client_info": {
+          "package_name": "com.vtrack.vtrack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBY9Gyf-h90TUVSGo5VQWgDxnMWDo9itN0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

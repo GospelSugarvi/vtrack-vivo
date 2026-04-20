@@ -59,9 +59,19 @@ class SatorStockTab extends StatelessWidget {
               context,
               icon: Icons.store,
               title: 'Stok Toko',
-              subtitle: 'Cek stok per outlet dan buat rekomendasi order',
+              subtitle: 'Cek stok outlet dan buka tab chip per toko',
               color: t.warning,
               onTap: () => context.pushNamed('sator-list-toko'),
+            ),
+            const SizedBox(height: 12),
+
+            _buildMenuCard(
+              context,
+              icon: Icons.sim_card_alert_outlined,
+              title: 'Persetujuan Chip',
+              subtitle: 'Review request chip dari promotor',
+              color: t.info,
+              onTap: () => context.pushNamed('sator-chip-approval'),
             ),
             const SizedBox(height: 12),
 

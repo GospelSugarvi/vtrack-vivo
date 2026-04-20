@@ -18,6 +18,9 @@ class AppTargetHeroCard extends StatelessWidget {
     this.progressColor,
     this.ringColor,
     this.useCompactNominal = true,
+    this.nominalFontSize,
+    this.nominalPrefixFontSize,
+    this.useMetricCards = false,
     this.bottomContent,
     this.onTap,
   });
@@ -32,6 +35,9 @@ class AppTargetHeroCard extends StatelessWidget {
   final Color? progressColor;
   final Color? ringColor;
   final bool useCompactNominal;
+  final double? nominalFontSize;
+  final double? nominalPrefixFontSize;
+  final bool useMetricCards;
   final Widget? bottomContent;
   final VoidCallback? onTap;
 
@@ -55,29 +61,59 @@ class AppTargetHeroCard extends StatelessWidget {
     final resolvedProgressColor = progressColor ?? t.primaryAccent;
     final resolvedRingColor = ringColor ?? resolvedProgressColor;
     final borderColor = resolvedProgressColor.withValues(alpha: 0.22);
+    final highlightSoft = Color.lerp(
+      resolvedProgressColor.withValues(alpha: 0.16),
+      t.heroGradientStart,
+      0.65,
+    )!;
+    final topGlow = Color.lerp(
+      resolvedProgressColor.withValues(alpha: 0.22),
+      t.primaryAccentGlow,
+      0.45,
+    )!;
+    final panelBg = Color.lerp(
+      t.textOnAccent,
+      resolvedProgressColor.withValues(alpha: 0.08),
+      0.35,
+    )!;
 
     final card = Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [t.heroGradientStart, t.heroGradientEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          colors: [highlightSoft, t.heroGradientStart, t.heroGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
         border: Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: t.background.withValues(alpha: 0.38),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: topGlow,
+            blurRadius: 32,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            height: 1,
+            height: 4,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  t.background.withValues(alpha: 0),
-                  resolvedProgressColor.withValues(alpha: 0.6),
-                  t.background.withValues(alpha: 0),
+                  resolvedProgressColor.withValues(alpha: 0.4),
+                  resolvedProgressColor,
+                  resolvedProgressColor.withValues(alpha: 0.45),
                 ],
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
               ),
             ),
           ),
@@ -87,87 +123,111 @@ class AppTargetHeroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: t.primaryAccentSoft,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: t.primaryAccentGlow),
-                        ),
-                        child: Text(
-                          title,
-                          style: PromotorText.outfit(
-                            size: 11,
-                            weight: FontWeight.w800,
-                            color: t.primaryAccent,
-                            letterSpacing: 0.08,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    decoration: BoxDecoration(
+                      color: panelBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: resolvedProgressColor.withValues(alpha: 0.14),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'Rp ',
-                              style: PromotorText.outfit(
-                                size: 13,
-                                weight: FontWeight.w600,
-                                color: t.textPrimary,
-                              ),
+                          decoration: BoxDecoration(
+                            color: resolvedProgressColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: resolvedProgressColor.withValues(alpha: 0.22),
                             ),
-                            TextSpan(
-                              text: useCompactNominal
-                                  ? _formatCompactNumber(nominal)
-                                  : NumberFormat.decimalPattern(
-                                      'id_ID',
-                                    ).format(nominal),
-                              style: PromotorText.display(
-                                size: useCompactNominal ? 28 : 24,
-                                color: t.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'Pencapaian',
+                          ),
+                          child: Text(
+                            title,
                             style: PromotorText.outfit(
-                              size: 13,
-                              weight: FontWeight.w700,
-                              color: t.textPrimary,
+                              size: 11,
+                              weight: FontWeight.w800,
+                              color: resolvedProgressColor,
+                              letterSpacing: 0.08,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              _formatRupiah(realisasi),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: PromotorText.outfit(
-                                size: 15,
-                                weight: FontWeight.w700,
-                                color: t.success,
+                        ),
+                        const SizedBox(height: 8),
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Rp ',
+                                style: PromotorText.outfit(
+                                  size: nominalPrefixFontSize ?? 12,
+                                  weight: FontWeight.w700,
+                                  color: t.textMutedStrong,
+                                ),
                               ),
-                            ),
+                              TextSpan(
+                                text: useCompactNominal
+                                    ? _formatCompactNumber(nominal)
+                                    : NumberFormat.decimalPattern(
+                                        'id_ID',
+                                      ).format(nominal),
+                                style: PromotorText.display(
+                                  size:
+                                      nominalFontSize ??
+                                      (useCompactNominal ? 24 : 22),
+                                  color: t.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!useMetricCards) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Text(
+                                'Pencapaian',
+                                style: PromotorText.outfit(
+                                  size: 13,
+                                  weight: FontWeight.w700,
+                                  color: t.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _formatRupiah(realisasi),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: PromotorText.outfit(
+                                    size: 15,
+                                    weight: FontWeight.w700,
+                                    color: t.success,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-                SizedBox(
-                  width: 62,
-                  height: 62,
+                const SizedBox(width: 12),
+                Container(
+                  width: 82,
+                  height: 82,
+                  decoration: BoxDecoration(
+                    color: panelBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: resolvedProgressColor.withValues(alpha: 0.14),
+                    ),
+                  ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -193,11 +253,20 @@ class AppTargetHeroCard extends StatelessWidget {
                               color: resolvedRingColor,
                             ),
                           ),
-                          Text(
-                            ringLabel,
-                            style: PromotorText.outfit(
-                              size: 10,
-                              color: t.textPrimary,
+                          SizedBox(
+                            width: 52,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                ringLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: PromotorText.outfit(
+                                  size: 10,
+                                  color: t.textPrimary,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -208,6 +277,37 @@ class AppTargetHeroCard extends StatelessWidget {
               ],
             ),
           ),
+          if (useMetricCards) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      context,
+                      label: 'Pencapaian',
+                      value: _formatRupiah(realisasi),
+                      color: t.success,
+                      background: t.successSoft,
+                      alignEnd: false,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildMetricCard(
+                      context,
+                      label: 'Sisa',
+                      value: _formatRupiah(sisa),
+                      color: t.primaryAccentLight,
+                      background: t.primaryAccentSoft,
+                      alignEnd: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -229,23 +329,25 @@ class AppTargetHeroCard extends StatelessWidget {
                   )
                 else
                   const Spacer(),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: Text(
-                      'Sisa ${_formatRupiah(sisa)}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                      style: PromotorText.outfit(
-                        size: 13,
-                        weight: FontWeight.bold,
-                        color: t.primaryAccentLight,
+                if (!useMetricCards) ...[
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: Text(
+                        'Sisa ${_formatRupiah(sisa)}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: PromotorText.outfit(
+                          size: 13,
+                          weight: FontWeight.bold,
+                          color: t.primaryAccentLight,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -272,5 +374,54 @@ class AppTargetHeroCard extends StatelessWidget {
     }
 
     return GestureDetector(onTap: onTap, child: card);
+  }
+
+  Widget _buildMetricCard(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required Color color,
+    required Color background,
+    required bool alignEnd,
+  }) {
+    final t = context.fieldTokens;
+    final alignment = alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: alignment,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+            style: PromotorText.outfit(
+              size: 10,
+              weight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+            style: PromotorText.outfit(
+              size: 13,
+              weight: FontWeight.w800,
+              color: t.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

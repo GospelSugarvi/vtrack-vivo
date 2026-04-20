@@ -6,6 +6,7 @@ import 'package:vtrack/ui/foundation/app_type_scale.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../../../ui/promotor/promotor.dart';
 
 class KpiBonusPage extends StatefulWidget {
   const KpiBonusPage({super.key});
@@ -41,91 +42,29 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
     setState(() => _isLoading = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
-      final kpi = await _supabase.rpc(
-        'get_sator_kpi_summary',
+      final snapshotRaw = await _supabase.rpc(
+        'get_sator_kpi_page_snapshot',
         params: {'p_sator_id': userId},
       );
-      final kpiDetail = await _loadKpiDetail(userId);
-      final kpiSettingsRaw = await _supabase
-          .from('kpi_settings')
-          .select('kpi_name, weight')
-          .eq('role', 'sator')
-          .order('weight', ascending: false);
-      final kpiSettings = List<Map<String, dynamic>>.from(kpiSettingsRaw);
-      final totalWeight = kpiSettings.fold<int>(
-        0,
-        (sum, row) => sum + (row['weight'] as int? ?? 0),
-      );
-      final resolvedComponents = <Map<String, dynamic>>[];
-      if (kpiSettings.isNotEmpty && totalWeight > 0) {
-        for (final setting in kpiSettings) {
-          final name = '${setting['kpi_name'] ?? '-'}';
-          final rawWeight = (setting['weight'] as int? ?? 0);
-          final normalizedWeight = (rawWeight * 100 / totalWeight);
-          double score = 0;
-          final lower = name.toLowerCase();
-          if (lower.contains('sell out all')) {
-            score = (kpi?['sell_out_all_score'] ?? 0).toDouble();
-          }
-          if (lower.contains('sell out fokus')) {
-            score = (kpi?['sell_out_fokus_score'] ?? 0).toDouble();
-          }
-          if (lower.contains('sell in')) {
-            score = (kpi?['sell_in_score'] ?? 0).toDouble();
-          }
-          if (lower.contains('kpi ma')) {
-            score = (kpi?['kpi_ma_score'] ?? 0).toDouble();
-          }
-          resolvedComponents.add({
-            'name': name,
-            'rawWeight': rawWeight,
-            'weight': normalizedWeight,
-            'score': score,
-          });
-        }
-      }
-      final pointRangesRaw = await _supabase
-          .from('point_ranges')
-          .select('min_price, max_price, points_per_unit, data_source')
-          .eq('role', 'sator')
-          .order('data_source')
-          .order('min_price');
-
-      final specialRewards = await _supabase.rpc(
-        'get_special_rewards_by_role',
-        params: {'p_role': 'sator'},
-      );
-
-      final rewards = await _supabase.rpc(
-        'get_sator_rewards',
-        params: {'p_sator_id': userId},
-      );
-      final bonusDetail = await _supabase
-          .rpc('get_sator_bonus_detail', params: {'p_sator_id': userId});
+      final snapshot = snapshotRaw is Map
+          ? Map<String, dynamic>.from(snapshotRaw)
+          : <String, dynamic>{};
       if (mounted) {
         setState(() {
           _loadError = null;
-          _kpiData = kpi is Map<String, dynamic>
-              ? Map<String, dynamic>.from(kpi)
-              : {};
-          _kpiComponents = resolvedComponents;
-          _kpiDetail = kpiDetail ??
-              {
-                'target_sellout': 0,
-                'target_fokus': 0,
-                'target_sellin': 0,
-                'actual_sellout': 0,
-                'actual_fokus': 0,
-                'actual_sellin': 0,
-                'kpi_ma': 0,
-              };
-          _pointRanges = List<Map<String, dynamic>>.from(pointRangesRaw);
-          _specialRewards =
-              List<Map<String, dynamic>>.from(specialRewards ?? []);
-          _rewards = List<Map<String, dynamic>>.from(rewards ?? []);
-          _bonusDetail = bonusDetail is Map<String, dynamic>
-              ? Map<String, dynamic>.from(bonusDetail)
-              : null;
+          _kpiData = Map<String, dynamic>.from(
+            snapshot['kpi_data'] as Map? ?? const {},
+          );
+          _kpiComponents = _parseMapList(snapshot['kpi_components']);
+          _kpiDetail = Map<String, dynamic>.from(
+            snapshot['kpi_detail'] as Map? ?? const {},
+          );
+          _pointRanges = _parseMapList(snapshot['point_ranges']);
+          _specialRewards = _parseMapList(snapshot['special_rewards']);
+          _rewards = _parseMapList(snapshot['rewards']);
+          _bonusDetail = Map<String, dynamic>.from(
+            snapshot['bonus_detail'] as Map? ?? const {},
+          );
           _isLoading = false;
         });
       }
@@ -139,134 +78,16 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
     }
   }
 
-  Future<Map<String, dynamic>?> _loadKpiDetail(String satorId) async {
-    try {
-      final periodId = await _supabase.rpc('get_current_target_period');
-      String? resolvedPeriodId = periodId?.toString();
-      if (resolvedPeriodId == null || resolvedPeriodId.isEmpty) {
-        final now = DateTime.now();
-        final periodRows = await _supabase
-            .from('target_periods')
-            .select('id')
-            .eq('target_month', now.month)
-            .eq('target_year', now.year)
-            .isFilter('deleted_at', null)
-            .order('start_date', ascending: false)
-            .limit(1);
-        final periodRowList = List<Map<String, dynamic>>.from(periodRows);
-        final periodRow = periodRowList.isNotEmpty ? periodRowList.first : null;
-        resolvedPeriodId = periodRow?['id']?.toString();
-      }
-      if (resolvedPeriodId == null || resolvedPeriodId.isEmpty) {
-        return {
-          'target_sellout': 0,
-          'target_fokus': 0,
-          'target_sellin': 0,
-          'actual_sellout': 0,
-          'actual_fokus': 0,
-          'actual_sellin': 0,
-          'kpi_ma': 0,
-        };
-      }
-
-      final periodRows = await _supabase
-          .from('target_periods')
-          .select('start_date, end_date')
-          .eq('id', resolvedPeriodId)
-          .limit(1);
-      final periodRowList = List<Map<String, dynamic>>.from(periodRows);
-      final periodRow = periodRowList.isNotEmpty ? periodRowList.first : null;
-      final startDate = periodRow?['start_date']?.toString();
-      final endDate = periodRow?['end_date']?.toString();
-
-      final targetRows = await _supabase
-          .from('user_targets')
-          .select('target_sell_out, target_fokus, target_sell_in')
-          .eq('user_id', satorId)
-          .eq('period_id', resolvedPeriodId)
-          .order('updated_at', ascending: false)
-          .limit(1);
-      final targetRowList = List<Map<String, dynamic>>.from(targetRows);
-      final targetRow = targetRowList.isNotEmpty ? targetRowList.first : null;
-
-      final promotorLinks = await _supabase
-          .from('hierarchy_sator_promotor')
-          .select('promotor_id')
-          .eq('sator_id', satorId)
-          .eq('active', true);
-      final promotorIds = (promotorLinks as List)
-          .map((row) => row['promotor_id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toList();
-
-      num actualSellout = 0;
-      int actualFokus = 0;
-      if (promotorIds.isNotEmpty) {
-          final metricsRows = await _supabase
-              .from('dashboard_performance_metrics')
-              .select('total_omzet_real, total_units_focus')
-              .inFilter('user_id', promotorIds)
-              .eq('period_id', resolvedPeriodId);
-        for (final row in List<Map<String, dynamic>>.from(metricsRows)) {
-          actualSellout += (row['total_omzet_real'] as num?) ?? 0;
-          actualFokus += (row['total_units_focus'] as num?)?.toInt() ?? 0;
-        }
-      }
-
-      num actualSellin = 0;
-      if (startDate != null && endDate != null) {
-        final sellinRows = await _supabase
-            .from('sales_sell_in')
-            .select('total_value')
-            .eq('sator_id', satorId)
-            .gte('transaction_date', startDate)
-            .lte('transaction_date', endDate)
-            .isFilter('deleted_at', null);
-        for (final row in List<Map<String, dynamic>>.from(sellinRows)) {
-          actualSellin += (row['total_value'] as num?) ?? 0;
-        }
-      }
-
-      num kpiMa = 0;
-      if (startDate != null) {
-        final kpiMaRow = await _supabase
-            .from('kpi_ma_scores')
-            .select('score')
-            .eq('sator_id', satorId)
-            .eq('period_date', startDate)
-            .maybeSingle();
-        kpiMa = (kpiMaRow?['score'] as num?) ?? 0;
-      }
-
-      return {
-        'target_sellout': (targetRow?['target_sell_out'] as num?) ?? 0,
-        'target_fokus': (targetRow?['target_fokus'] as num?) ?? 0,
-        'target_sellin': (targetRow?['target_sell_in'] as num?) ?? 0,
-        'actual_sellout': actualSellout,
-        'actual_fokus': actualFokus,
-        'actual_sellin': actualSellin,
-        'kpi_ma': kpiMa,
-      };
-    } catch (_) {
-      return {
-        'target_sellout': 0,
-        'target_fokus': 0,
-        'target_sellin': 0,
-        'actual_sellout': 0,
-        'actual_fokus': 0,
-        'actual_sellin': 0,
-        'kpi_ma': 0,
-      };
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: t.background,
       appBar: AppBar(
         title: const Text('KPI & Bonus'),
-        backgroundColor: Color.lerp(t.info, t.primaryAccentLight, 0.55)!,
+        backgroundColor: t.primaryAccent,
         foregroundColor: t.textOnAccent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -289,10 +110,15 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
     );
   }
 
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+    return value.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
   Widget _buildKpiCard() {
     final components = _kpiComponents;
     final totalScore = (_kpiData?['total_score'] ?? 0).toDouble();
-    final formatter = NumberFormat.currency(
+    final currencyFormatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
@@ -306,11 +132,17 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'KPI Bulanan',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTypeScale.bodyStrong),
+                Expanded(
+                  child: Text(
+                    'KPI Bulanan',
+                    style: PromotorText.outfit(
+                      size: 14,
+                      weight: FontWeight.w800,
+                      color: t.textPrimary,
+                    ),
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -323,124 +155,379 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
                   ),
                   child: Text(
                     '${_formatNumber(totalScore)}%',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
+                    style: PromotorText.outfit(
+                      size: 12,
+                      weight: FontWeight.w800,
                       color: t.primaryAccent,
                     ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 6),
+            Text(
+              'Pilih kategori untuk lihat detail hitungan.',
+              style: PromotorText.outfit(
+                size: 10.5,
+                weight: FontWeight.w700,
+                color: t.textMutedStrong,
+              ),
+            ),
             const SizedBox(height: 16),
             if (components.isEmpty)
               const Text('Belum ada pengaturan KPI di admin.')
             else
-              ...components.map(
-                (c) {
-                  final name = c['name']?.toString() ?? '-';
-                  final lower = name.toLowerCase();
-                  num actual = 0;
-                  num target = 0;
-                  String unitLabel = '';
-                  if (lower.contains('sell out all')) {
-                    actual = (_kpiDetail?['actual_sellout'] as num?) ?? 0;
-                    target = (_kpiDetail?['target_sellout'] as num?) ?? 0;
-                    unitLabel = 'Rp';
-                  } else if (lower.contains('sell out fokus')) {
-                    actual = (_kpiDetail?['actual_fokus'] as num?) ?? 0;
-                    target = (_kpiDetail?['target_fokus'] as num?) ?? 0;
-                    unitLabel = 'unit';
-                  } else if (lower.contains('sell in')) {
-                    actual = (_kpiDetail?['actual_sellin'] as num?) ?? 0;
-                    target = (_kpiDetail?['target_sellin'] as num?) ?? 0;
-                    unitLabel = 'Rp';
-                  } else if (lower.contains('kpi ma')) {
-                    actual = (_kpiDetail?['kpi_ma'] as num?) ?? 0;
-                    target = 100;
-                    unitLabel = '%';
-                  }
-                  final achievement = target > 0 ? (actual * 100 / target) : 0;
-                  final weight = (c['rawWeight'] as num?) ?? (c['weight'] as num?) ?? 0;
-                  final score = achievement * weight / 100;
-                  String formatValue(num value) {
-                    if (unitLabel == 'Rp') return formatter.format(value);
-                    if (unitLabel == 'unit') return '${value.toInt()} unit';
-                    if (unitLabel == '%') return '${value.toStringAsFixed(0)}%';
-                    return value.toString();
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '$name (Bobot ${weight.toStringAsFixed(0)}%)',
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: AppTypeScale.body),
-                              ),
-                            ),
-                            Text(
-                              '${_formatNumber(achievement)}%',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: AppTypeScale.body),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Nilai bobot',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              '${_formatNumber(score)}%',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Pencapaian: ${formatValue(actual)} / ${formatValue(target)} × 100',
-                          style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Hitung skor: ${_formatNumber(achievement)} × ${weight.toStringAsFixed(0)} ÷ 100 = ${_formatNumber(score)}',
-                          style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              ...components.map((component) {
+                final metrics = _resolveKpiMetrics(
+                  component,
+                  currencyFormatter,
+                );
+                return _buildKpiCategoryTile(
+                  component: component,
+                  metrics: metrics,
+                  onTap: () => _showKpiCategoryDetail(
+                    component: component,
+                    metrics: metrics,
+                  ),
+                );
+              }),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Total KPI',
-                  style: TextStyle(fontSize: AppTypeScale.body, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: AppTypeScale.body,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 Text(
                   '${_formatNumber(totalScore)}%',
-                  style: TextStyle(fontSize: AppTypeScale.bodyStrong, fontWeight: FontWeight.w700),
+                  style: PromotorText.outfit(
+                    size: 12,
+                    weight: FontWeight.w800,
+                    color: t.textPrimary,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 2),
             Text(
               'Total KPI = jumlah nilai bobot',
-              style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
+              style: PromotorText.outfit(
+                size: 10,
+                weight: FontWeight.w700,
+                color: t.textMutedStrong,
+              ),
             ),
             const SizedBox(height: 6),
             _buildKpiBonusEligibilityNote(totalScore),
           ],
         ),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _resolveKpiMetrics(
+    Map<String, dynamic> component,
+    NumberFormat currencyFormatter,
+  ) {
+    final code = component['metricCode']?.toString() ?? '';
+    num actual = 0;
+    num target = 0;
+    String unit = '';
+    String note = '';
+
+    switch (code) {
+      case 'sell_out_all':
+        actual = (_kpiDetail?['actual_sellout'] as num?) ?? 0;
+        target = (_kpiDetail?['target_sellout'] as num?) ?? 0;
+        unit = 'currency';
+        note = 'Pencapaian omzet sell out area SATOR.';
+        break;
+      case 'sell_out_focus':
+        actual = (_kpiDetail?['actual_fokus'] as num?) ?? 0;
+        target = (_kpiDetail?['target_fokus'] as num?) ?? 0;
+        unit = 'unit';
+        note = 'Pencapaian unit produk fokus area SATOR.';
+        break;
+      case 'sell_in_all':
+        actual = (_kpiDetail?['actual_sellin'] as num?) ?? 0;
+        target = (_kpiDetail?['target_sellin'] as num?) ?? 0;
+        unit = 'currency';
+        note = 'Total sell in SATOR pada periode berjalan.';
+        break;
+      case 'kpi_ma':
+        actual = (_kpiDetail?['kpi_ma'] as num?) ?? 0;
+        target = 100;
+        unit = 'percent';
+        note = 'Nilai subjektif dari MA. Bisa aktif walau belum otomatis.';
+        break;
+      case 'low_sellout':
+        actual = (_kpiDetail?['low_sellout_pct'] as num?) ?? 0;
+        target = 10;
+        unit = 'percent';
+        note =
+            'Persentase promotor low sellout: ${_kpiDetail?['low_sellout_count'] ?? 0} dari ${_kpiDetail?['total_promotor'] ?? 0} promotor.';
+        break;
+    }
+
+    final weight =
+        (component['rawWeight'] as num?) ?? (component['weight'] as num?) ?? 0;
+    final rawScore = (component['score'] as num?) ?? 0;
+    final achievement = code == 'low_sellout'
+        ? rawScore
+        : target > 0
+        ? (actual * 100 / target)
+        : 0.0;
+    final contribution = rawScore * weight / 100;
+
+    String formatValue(num value) {
+      if (unit == 'currency') return currencyFormatter.format(value);
+      if (unit == 'unit') return '${value.toInt()} unit';
+      if (unit == 'percent') return '${value.toStringAsFixed(1)}%';
+      return value.toString();
+    }
+
+    return {
+      'actual': actual,
+      'target': target,
+      'weight': weight,
+      'achievement': achievement,
+      'score': rawScore,
+      'contribution': contribution,
+      'note': note,
+      'actualLabel': formatValue(actual),
+      'targetLabel': formatValue(target),
+    };
+  }
+
+  Widget _buildKpiCategoryTile({
+    required Map<String, dynamic> component,
+    required Map<String, dynamic> metrics,
+    required VoidCallback onTap,
+  }) {
+    final name = component['name']?.toString() ?? '-';
+    final achievement = (metrics['achievement'] as num?) ?? 0;
+    final score = (metrics['score'] as num?) ?? 0;
+    final contribution = (metrics['contribution'] as num?) ?? 0;
+    final weight = (metrics['weight'] as num?) ?? 0;
+    final tone = achievement >= 100
+        ? t.success
+        : achievement >= 80
+        ? t.warning
+        : t.danger;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: t.surface2,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: t.surface3),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: PromotorText.outfit(
+                        size: 11,
+                        weight: FontWeight.w800,
+                        color: t.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Bobot ${weight.toStringAsFixed(0)}% • Skor ${_formatNumber(score)}%',
+                      style: PromotorText.outfit(
+                        size: 9.5,
+                        weight: FontWeight.w700,
+                        color: t.textMutedStrong,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: t.primaryAccent.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: t.primaryAccent.withValues(alpha: 0.24),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Kontribusi',
+                          style: PromotorText.outfit(
+                            size: 8.8,
+                            weight: FontWeight.w800,
+                            color: t.primaryAccent,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_formatNumber(contribution)}%',
+                          style: PromotorText.outfit(
+                            size: 12,
+                            weight: FontWeight.w900,
+                            color: t.primaryAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tone.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${_formatNumber(achievement)}%',
+                      style: PromotorText.outfit(
+                        size: 10,
+                        weight: FontWeight.w800,
+                        color: tone,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right_rounded, size: 18, color: t.textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showKpiCategoryDetail({
+    required Map<String, dynamic> component,
+    required Map<String, dynamic> metrics,
+  }) async {
+    final name = component['name']?.toString() ?? '-';
+    final weight = (metrics['weight'] as num?) ?? 0;
+    final achievement = (metrics['achievement'] as num?) ?? 0;
+    final score = (metrics['score'] as num?) ?? 0;
+    final contribution = (metrics['contribution'] as num?) ?? 0;
+    final actualLabel = metrics['actualLabel']?.toString() ?? '0';
+    final targetLabel = metrics['targetLabel']?.toString() ?? '0';
+    final note = metrics['note']?.toString() ?? '';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: t.surface1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: t.surface3,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  name,
+                  style: PromotorText.outfit(
+                    size: 13,
+                    weight: FontWeight.w800,
+                    color: t.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Bobot ${weight.toStringAsFixed(0)}%',
+                  style: PromotorText.outfit(
+                    size: 10,
+                    weight: FontWeight.w700,
+                    color: t.textMutedStrong,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _detailLine('Pencapaian', '$actualLabel / $targetLabel'),
+                _detailLine(
+                  'Rumus Achievement',
+                  '($actualLabel ÷ $targetLabel) × 100 = ${_formatNumber(achievement)}%',
+                ),
+                _detailLine(
+                  'Rumus Nilai Bobot',
+                  '${_formatNumber(score)} × ${weight.toStringAsFixed(0)} ÷ 100 = ${_formatNumber(contribution)}%',
+                ),
+                if (note.isNotEmpty) _detailLine('Catatan', note),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: PromotorText.outfit(
+              size: 9.5,
+              weight: FontWeight.w700,
+              color: t.textMutedStrong,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: PromotorText.outfit(
+              size: 10.5,
+              weight: FontWeight.w800,
+              color: t.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -456,12 +543,18 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
           children: [
             const Text(
               'Gagal Memuat Bonus Detail',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTypeScale.body),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: AppTypeScale.body,
+              ),
             ),
             const SizedBox(height: 6),
             SelectableText(
               error,
-              style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
+              style: TextStyle(
+                fontSize: AppTypeScale.body,
+                color: t.textSecondary,
+              ),
             ),
             const SizedBox(height: 8),
             Align(
@@ -635,10 +728,7 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Cara hitung KPI:',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        Text('Cara hitung KPI:', style: TextStyle(fontWeight: FontWeight.bold)),
         SizedBox(height: 6),
         Text(
           '1. Achievement per kategori = (Actual / Target) × 100%.',
@@ -720,52 +810,93 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Tabel Bonus Poin',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTypeScale.bodyStrong),
+              style: PromotorText.outfit(
+                size: 14,
+                weight: FontWeight.w800,
+                color: t.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Rentang harga dan poin per unit.',
+              style: PromotorText.outfit(
+                size: 10,
+                weight: FontWeight.w700,
+                color: t.textMutedStrong,
+              ),
             ),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: _actionLink(
                 onPressed: () {
                   setState(() => _showPointRanges = !_showPointRanges);
                 },
-                child: Text(_showPointRanges ? 'Sembunyikan Tabel' : 'Lihat Tabel'),
+                label: _showPointRanges ? 'Sembunyikan Tabel' : 'Lihat Tabel',
               ),
             ),
             if (_showPointRanges)
               if (_pointRanges.isEmpty)
-                const Text('Belum ada pengaturan poin di admin.')
+                Text(
+                  'Belum ada pengaturan poin di admin.',
+                  style: PromotorText.outfit(
+                    size: 10.5,
+                    weight: FontWeight.w700,
+                    color: t.textMutedStrong,
+                  ),
+                )
               else
-                ..._pointRanges.map(
-                  (p) {
-                    final min = (p['min_price'] as num?) ?? 0;
-                    final max = (p['max_price'] as num?) ?? 0;
-                    final points = (p['points_per_unit'] as num?) ?? 0;
-                    final source = (p['data_source'] ?? 'sell_out').toString();
-                    final rangeLabel = max > 0
-                        ? '${formatter.format(min)} - ${formatter.format(max)}'
-                        : '> ${formatter.format(min)}';
-                    final sourceLabel = source == 'sell_in'
-                        ? 'Sell In'
-                        : 'Sell Out';
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text('$sourceLabel • $rangeLabel'),
-                          ),
-                          Text(
-                            '${points.toStringAsFixed(0)} Poin',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: t.surface2,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: t.surface3),
+                  ),
+                  child: Column(
+                    children: _pointRanges.map((p) {
+                      final min = (p['min_price'] as num?) ?? 0;
+                      final max = (p['max_price'] as num?) ?? 0;
+                      final points = (p['points_per_unit'] as num?) ?? 0;
+                      final source = (p['data_source'] ?? 'sell_out')
+                          .toString();
+                      final rangeLabel = max > 0
+                          ? '${formatter.format(min)} - ${formatter.format(max)}'
+                          : '> ${formatter.format(min)}';
+                      final sourceLabel = source == 'sell_in'
+                          ? 'Sell In'
+                          : 'Sell Out';
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '$sourceLabel • $rangeLabel',
+                                style: PromotorText.outfit(
+                                  size: 9.8,
+                                  weight: FontWeight.w700,
+                                  color: t.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${points.toStringAsFixed(0)} poin',
+                              style: PromotorText.outfit(
+                                size: 10,
+                                weight: FontWeight.w800,
+                                color: t.primaryAccent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
           ],
         ),
@@ -795,7 +926,8 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
         bonus?['special_rewards']?['special_bonus_effective'] ?? 0;
     final specialBonus = rawSpecialBonus < 0 ? 0 : rawSpecialBonus;
     final specialRewardTotal = bonus?['special_rewards']?['reward_total'] ?? 0;
-    final specialPenaltyTotal = bonus?['special_rewards']?['penalty_total'] ?? 0;
+    final specialPenaltyTotal =
+        bonus?['special_rewards']?['penalty_total'] ?? 0;
     final rewardBreakdown = List<Map<String, dynamic>>.from(
       bonus?['special_rewards']?['breakdown'] ?? [],
     );
@@ -804,250 +936,374 @@ class _KpiBonusPageState extends State<KpiBonusPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Ringkasan Bonus',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTypeScale.bodyStrong),
-            ),
-            const SizedBox(height: 12),
-            if (bonus != null) ...[
-              Text(
-                'Bonus KPI (Poin Sell Out)',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: bonus == null
+            ? Text(
+                'Data bonus belum tersedia.',
+                style: PromotorText.outfit(
+                  size: 11,
+                  weight: FontWeight.w700,
+                  color: t.textMutedStrong,
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    kpiEligible ? 'Status: Layak Cair' : 'Status: Belum Layak',
-                    style: TextStyle(
-                      fontSize: AppTypeScale.support,
-                      color: kpiEligible ? t.success : t.warning,
-                      fontWeight: FontWeight.w600,
+                    'Ringkasan Bonus',
+                    style: PromotorText.outfit(
+                      size: 14,
+                      weight: FontWeight.w800,
+                      color: t.textPrimary,
                     ),
                   ),
-                  Text(
-                    '${_formatPoints(totalPoints)} poin',
-                    style: TextStyle(fontSize: AppTypeScale.support),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Nilai per poin',
-                    style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                  ),
-                  Text(
-                    bonusFormatter.format(pointValue),
-                    style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Bonus KPI efektif', style: TextStyle(fontSize: AppTypeScale.support)),
-                  Text(
-                    bonusFormatter.format(kpiBonusEffective),
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTypeScale.support),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    kpiEligible ? 'Potensi KPI (jika performa naik)' : 'Potensi KPI (belum cair)',
-                    style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                  ),
-                  Text(
-                    bonusFormatter.format(kpiBonusPotential),
-                    style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () {
-                    setState(() => _showPointDetail = !_showPointDetail);
-                  },
-                  child: Text(_showPointDetail ? 'Sembunyikan Detail' : 'Lihat Detail'),
-                ),
-              ),
-              if (_showPointDetail && pointBreakdown.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                const Text(
-                  'Detail Poin Sell Out',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: AppTypeScale.support),
-                ),
-                const SizedBox(height: 8),
-                ...pointBreakdown.map((b) {
-                  final min = (b['min_price'] as num?) ?? 0;
-                  final max = (b['max_price'] as num?) ?? 0;
-                  final points = (b['points_per_unit'] as num?) ?? 0;
-                  final units = (b['units'] as num?) ?? 0;
-                  final totalPoints = (b['total_points'] as num?) ?? 0;
-                  final rangeLabel = max > 0
-                      ? '${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(min)} - ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(max)}'
-                      : '> ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(min)}';
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: t.primaryAccent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: t.primaryAccent.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          'Unit ${_formatPoints(units)} × ${points.toStringAsFixed(2)} poin = ${_formatPoints(totalPoints)} poin',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: AppTypeScale.support),
+                        Expanded(
+                          child: _summaryItem(
+                            'Total Bonus Efektif',
+                            bonusFormatter.format(effectiveBonus),
+                            t.primaryAccent,
+                          ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Range harga: $rangeLabel',
-                          style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _summaryItem(
+                            'Total Potensi',
+                            bonusFormatter.format(potentialBonus),
+                            t.textPrimary,
+                          ),
                         ),
                       ],
                     ),
-                  );
-                }),
-              ],
-              const SizedBox(height: 10),
-              const Divider(height: 24),
-              const Text(
-                'Bonus Reward Tipe Khusus',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total reward', style: TextStyle(fontSize: AppTypeScale.support)),
-                  Text(
-                    bonusFormatter.format(specialRewardTotal),
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: AppTypeScale.support),
                   ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total denda', style: TextStyle(fontSize: AppTypeScale.support)),
-                  Text(
-                    bonusFormatter.format(specialPenaltyTotal),
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: AppTypeScale.support),
+                  const SizedBox(height: 12),
+                  _buildBonusSection(
+                    title: 'Bonus KPI (Poin Sell Out)',
+                    children: [
+                      _valueRow(
+                        'Status',
+                        kpiEligible ? 'Layak Cair' : 'Belum Layak',
+                        valueColor: kpiEligible ? t.success : t.warning,
+                      ),
+                      _valueRow(
+                        'Total Poin',
+                        '${_formatPoints(totalPoints)} poin',
+                      ),
+                      _valueRow(
+                        'Nilai per poin',
+                        bonusFormatter.format(pointValue),
+                      ),
+                      _valueRow(
+                        'Bonus KPI Efektif',
+                        bonusFormatter.format(kpiBonusEffective),
+                        valueColor: t.primaryAccent,
+                      ),
+                      _valueRow(
+                        'Potensi KPI',
+                        bonusFormatter.format(kpiBonusPotential),
+                        muted: true,
+                      ),
+                    ],
+                    action: _actionLink(
+                      onPressed: () {
+                        setState(() => _showPointDetail = !_showPointDetail);
+                      },
+                      label: _showPointDetail
+                          ? 'Sembunyikan Detail'
+                          : 'Lihat Detail',
+                    ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () {
-                    setState(() => _showRewardDetail = !_showRewardDetail);
-                  },
-                  child: Text(_showRewardDetail ? 'Sembunyikan Detail' : 'Lihat Detail'),
-                ),
-              ),
-              if (_showRewardDetail && rewardBreakdown.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                const Text(
-                  'Detail Reward Tipe Khusus',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: AppTypeScale.support),
-                ),
-                const SizedBox(height: 6),
-                ...rewardBreakdown.map((r) {
-                  final name = (r['name'] ?? 'Bundle').toString();
-                  final minUnit = (r['min_unit'] as num?)?.toInt() ?? 0;
-                  final maxUnit = (r['max_unit'] as num?)?.toInt() ?? 0;
-                  final actualUnits = (r['actual_units'] as num?)?.toDouble() ?? 0;
-                  final rewardAmount = (r['reward_amount'] as num?) ?? 0;
-                  final penaltyAmount = (r['penalty_amount'] as num?) ?? 0;
-                  final rewardEffective = (r['reward_effective'] as num?) ?? 0;
-                  final penaltyEffective = (r['penalty_effective'] as num?) ?? 0;
-                  final netBonus = (r['net_bonus'] as num?) ?? 0;
-                  final netDisplay = netBonus < 0 ? 0 : netBonus;
-                  final dataSource = (r['data_source'] ?? 'sell_out').toString();
-                  final unitRange = maxUnit > 0
-                      ? '$minUnit - $maxUnit unit'
-                      : '>= $minUnit unit';
-                  final sourceLabel =
-                      dataSource == 'sell_in' ? 'Sell In' : 'Sell Out';
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  if (_showPointDetail && pointBreakdown.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ...pointBreakdown.map((item) {
+                      final min = (item['min_price'] as num?) ?? 0;
+                      final max = (item['max_price'] as num?) ?? 0;
+                      final points = (item['points_per_unit'] as num?) ?? 0;
+                      final units = (item['units'] as num?) ?? 0;
+                      final total = (item['total_points'] as num?) ?? 0;
+                      final rangeLabel = max > 0
+                          ? '${bonusFormatter.format(min)} - ${bonusFormatter.format(max)}'
+                          : '> ${bonusFormatter.format(min)}';
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: t.surface2,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: t.surface3),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                '$name • $sourceLabel',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: AppTypeScale.support,
-                                ),
+                            Text(
+                              'Unit ${_formatPoints(units)} × ${points.toStringAsFixed(2)} = ${_formatPoints(total)} poin',
+                              style: PromotorText.outfit(
+                                size: 10.5,
+                                weight: FontWeight.w800,
+                                color: t.textPrimary,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
-                              unitRange,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: AppTypeScale.support,
+                              'Range harga: $rangeLabel',
+                              style: PromotorText.outfit(
+                                size: 9.5,
+                                weight: FontWeight.w700,
+                                color: t.textMutedStrong,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Pencapaian ${_formatPoints(actualUnits)} unit',
-                          style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Reward ${bonusFormatter.format(rewardAmount)} → ${bonusFormatter.format(rewardEffective)}',
-                          style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                        ),
-                        Text(
-                          'Denda ${bonusFormatter.format(penaltyAmount)} → ${bonusFormatter.format(penaltyEffective)}',
-                          style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                        ),
-                        Text(
-                          'Hasil ${bonusFormatter.format(netDisplay)}',
-                          style: TextStyle(fontSize: AppTypeScale.body, color: t.textSecondary),
-                        ),
-                      ],
+                      );
+                    }),
+                  ],
+                  const SizedBox(height: 10),
+                  _buildBonusSection(
+                    title: 'Bonus Reward Tipe Khusus',
+                    children: [
+                      _valueRow(
+                        'Total Reward',
+                        bonusFormatter.format(specialRewardTotal),
+                      ),
+                      _valueRow(
+                        'Total Denda',
+                        bonusFormatter.format(specialPenaltyTotal),
+                        valueColor: t.danger,
+                      ),
+                      _valueRow(
+                        'Bonus Efektif Reward',
+                        bonusFormatter.format(specialBonus),
+                        valueColor: t.primaryAccent,
+                      ),
+                    ],
+                    action: _actionLink(
+                      onPressed: () {
+                        setState(() => _showRewardDetail = !_showRewardDetail);
+                      },
+                      label: _showRewardDetail
+                          ? 'Sembunyikan Detail'
+                          : 'Lihat Detail',
                     ),
-                  );
-                }),
-              ],
-              const SizedBox(height: 10),
-              const Divider(height: 24),
-              Text(
-                'Total bonus efektif',
-                style: TextStyle(fontSize: AppTypeScale.support),
+                  ),
+                  if (_showRewardDetail && rewardBreakdown.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ...rewardBreakdown.map((item) {
+                      final name = (item['name'] ?? 'Bundle').toString();
+                      final targetQty =
+                          (item['target_qty'] as num?)?.toDouble() ?? 0;
+                      final actualUnits =
+                          (item['actual_units'] as num?)?.toDouble() ?? 0;
+                      final achievementPct =
+                          (item['achievement_pct'] as num?)?.toDouble() ?? 0;
+                      final rewardAmount = (item['reward_amount'] as num?) ?? 0;
+                      final penaltyAmount =
+                          (item['penalty_amount'] as num?) ?? 0;
+                      final rewardEffective =
+                          (item['reward_effective'] as num?) ?? 0;
+                      final penaltyEffective =
+                          (item['penalty_effective'] as num?) ?? 0;
+                      final netBonus = (item['net_bonus'] as num?) ?? 0;
+                      final eligible = item['eligible'] == true;
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: t.surface2,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: t.surface3),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: PromotorText.outfit(
+                                      size: 10.5,
+                                      weight: FontWeight.w800,
+                                      color: t.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  eligible ? 'Cair' : 'Belum Cair',
+                                  style: PromotorText.outfit(
+                                    size: 9.5,
+                                    weight: FontWeight.w700,
+                                    color: eligible ? t.success : t.warning,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            _valueRow(
+                              'Target',
+                              '${_formatPoints(targetQty)} unit',
+                              compact: true,
+                            ),
+                            _valueRow(
+                              'Pencapaian',
+                              '${_formatPoints(actualUnits)} unit',
+                              compact: true,
+                            ),
+                            _valueRow(
+                              'Achievement',
+                              '${achievementPct.toStringAsFixed(1)}%',
+                              compact: true,
+                            ),
+                            _valueRow(
+                              'Reward',
+                              '${bonusFormatter.format(rewardAmount)} -> ${bonusFormatter.format(rewardEffective)}',
+                              compact: true,
+                            ),
+                            _valueRow(
+                              'Denda',
+                              '${bonusFormatter.format(penaltyAmount)} -> ${bonusFormatter.format(penaltyEffective)}',
+                              compact: true,
+                            ),
+                            _valueRow(
+                              'Hasil',
+                              bonusFormatter.format(
+                                netBonus < 0 ? 0 : netBonus,
+                              ),
+                              valueColor: t.primaryAccent,
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                bonusFormatter.format(effectiveBonus),
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTypeScale.body),
-              ),
-              const SizedBox(height: 2),
-              const SizedBox(height: 10),
-            ],
-            const SizedBox(height: 8),
-          ],
+      ),
+    );
+  }
+
+  Widget _buildBonusSection({
+    required String title,
+    required List<Widget> children,
+    Widget? action,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: t.surface3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: PromotorText.outfit(
+              size: 11.5,
+              weight: FontWeight.w800,
+              color: t.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...children,
+          if (action != null) ...[const SizedBox(height: 4), action],
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryItem(String label, String value, Color tone) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: PromotorText.outfit(
+            size: 9.5,
+            weight: FontWeight.w700,
+            color: t.textMutedStrong,
+          ),
         ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: PromotorText.outfit(
+            size: 12,
+            weight: FontWeight.w800,
+            color: tone,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionLink({required VoidCallback onPressed, required String label}) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: t.primaryAccent,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        minimumSize: const Size(0, 28),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        label,
+        style: PromotorText.outfit(
+          size: 9.5,
+          weight: FontWeight.w800,
+          color: t.primaryAccent,
+        ),
+      ),
+    );
+  }
+
+  Widget _valueRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool muted = false,
+    bool compact = false,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: compact ? 4 : 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: PromotorText.outfit(
+                size: compact ? 9 : 10,
+                weight: FontWeight.w700,
+                color: muted ? t.textMutedStrong : t.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            textAlign: TextAlign.right,
+            style: PromotorText.outfit(
+              size: compact ? 9.5 : 10.5,
+              weight: FontWeight.w800,
+              color: valueColor ?? t.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/utils/auth_role_cache.dart';
 import '../../../main.dart';
 import '../../../ui/foundation/app_colors.dart';
 
@@ -12,6 +13,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  bool _navigationScheduled = false;
+
   @override
   void initState() {
     super.initState();
@@ -19,16 +22,22 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 2));
-
     if (!mounted) return;
 
     final session = supabase.auth.currentSession;
 
     if (session != null) {
-      // User is logged in, fetch their role and navigate
+      final userId = session.user.id;
+      final cachedRole = await AuthRoleCache.getFreshRole(userId);
+
+      if (!mounted) return;
+
+      if (cachedRole != null) {
+        _navigateByRole(cachedRole);
+        return;
+      }
+
       try {
-        final userId = session.user.id;
         final response = await supabase
             .from('users')
             .select('role')
@@ -38,34 +47,43 @@ class _SplashScreenState extends State<SplashScreen> {
         if (!mounted) return;
 
         final role = response['role'] as String;
+        await AuthRoleCache.saveRole(userId: userId, role: role);
         _navigateByRole(role);
       } catch (e) {
-        // Error fetching role, go to login
-        if (mounted) context.go('/login');
+        await AuthRoleCache.clearRole(userId);
+        _goWhenReady('/login');
       }
     } else {
-      // Not logged in
-      if (mounted) context.go('/login');
+      _goWhenReady('/login');
     }
   }
 
   void _navigateByRole(String role) {
     switch (role) {
       case 'admin':
-        context.go('/admin');
+        _goWhenReady('/admin');
         break;
       case 'manager':
       case 'spv':
-        context.go('/spv');
+        _goWhenReady('/spv');
         break;
       case 'sator':
-        context.go('/sator');
+        _goWhenReady('/sator');
         break;
       case 'promotor':
       default:
-        context.go('/promotor');
+        _goWhenReady('/promotor');
         break;
     }
+  }
+
+  void _goWhenReady(String location) {
+    if (!mounted || _navigationScheduled) return;
+    _navigationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go(location);
+    });
   }
 
   @override
@@ -107,10 +125,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 8),
             const Text(
               'Sales Performance Tracker',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textInverse,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.textInverse),
             ),
             const SizedBox(height: 48),
             const CircularProgressIndicator(

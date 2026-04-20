@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../main.dart';
 import '../../../../ui/foundation/app_colors.dart';
+import '../widgets/admin_dialog_sync.dart';
 import 'package:vtrack/core/utils/success_dialog.dart';
 
 // Rupiah Input Formatter - auto formats as: 1.000.000
@@ -77,6 +78,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
   // Sator/SPV data
   List<Map<String, dynamic>> _satorKpi = [];
   List<Map<String, dynamic>> _spvKpi = [];
+  List<Map<String, dynamic>> _satorKpiTemplates = [];
+  List<Map<String, dynamic>> _spvKpiTemplates = [];
   List<Map<String, dynamic>> _satorPointRanges = [];
   List<Map<String, dynamic>> _spvPointRanges = [];
   List<Map<String, dynamic>> _satorRewards = [];
@@ -125,6 +128,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     try {
       _clearError();
       await _loadRewardPeriods();
+      await _loadKpiConfigs();
 
       // Promotor Range Bonus
       final rangeRes = await supabase
@@ -147,21 +151,6 @@ class _AdminBonusPageState extends State<AdminBonusPage>
           .select('*, products(model_name, network_type)')
           .eq('bonus_type', 'ratio');
       _ratioProducts = List<Map<String, dynamic>>.from(ratioRes);
-
-      // KPI Settings
-      final satorKpiRes = await supabase
-          .from('kpi_settings')
-          .select('*')
-          .eq('role', 'sator')
-          .order('weight', ascending: false);
-      _satorKpi = List<Map<String, dynamic>>.from(satorKpiRes);
-
-      final spvKpiRes = await supabase
-          .from('kpi_settings')
-          .select('*')
-          .eq('role', 'spv')
-          .order('weight', ascending: false);
-      _spvKpi = List<Map<String, dynamic>>.from(spvKpiRes);
 
       // Point Ranges
       final satorPtRes = await supabase
@@ -223,9 +212,9 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     if (text == null || text.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Error berhasil dicopy')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Error berhasil dicopy')));
   }
 
   Future<void> _loadRewardPeriods() async {
@@ -243,33 +232,65 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     if (_selectedRewardPeriodId == null) return;
     final res = await supabase
         .from('special_focus_bundles')
-        .select(
-          'id, bundle_name, period_id, special_focus_bundle_products(*)',
-        )
+        .select('id, bundle_name, period_id, special_focus_bundle_products(*)')
         .eq('period_id', _selectedRewardPeriodId!);
     _specialBundles = List<Map<String, dynamic>>.from(res);
   }
 
   Future<void> _loadSpecialRewards() async {
     if (_selectedRewardPeriodId == null) return;
-    final bundleIds = _specialBundles
-        .map((row) => row['id']?.toString() ?? '')
-        .where((id) => id.isNotEmpty)
-        .toList();
-    if (bundleIds.isEmpty) {
-      _satorRewards = [];
-      _spvRewards = [];
-      return;
-    }
     final res = await supabase
-        .from('special_rewards')
+        .from('special_reward_configs')
         .select(
-          '*, special_focus_bundles!special_rewards_special_bundle_id_fkey(id, bundle_name, period_id)',
+          '*, special_focus_bundles!special_reward_configs_special_bundle_id_fkey(id, bundle_name, period_id)',
         )
-        .inFilter('special_bundle_id', bundleIds);
+        .eq('period_id', _selectedRewardPeriodId!)
+        .order('role')
+        .order('special_bundle_id');
     final rows = List<Map<String, dynamic>>.from(res);
     _satorRewards = rows.where((r) => r['role'] == 'sator').toList();
     _spvRewards = rows.where((r) => r['role'] == 'spv').toList();
+  }
+
+  Future<void> _loadKpiConfigs() async {
+    if (_selectedRewardPeriodId == null) {
+      _satorKpi = [];
+      _spvKpi = [];
+      _satorKpiTemplates = [];
+      _spvKpiTemplates = [];
+      return;
+    }
+
+    await supabase.rpc(
+      'ensure_kpi_period_settings',
+      params: {'p_period_id': _selectedRewardPeriodId, 'p_role': 'sator'},
+    );
+    await supabase.rpc(
+      'ensure_kpi_period_settings',
+      params: {'p_period_id': _selectedRewardPeriodId, 'p_role': 'spv'},
+    );
+
+    final templateRes = await supabase
+        .from('kpi_metric_templates')
+        .select('*')
+        .order('role')
+        .order('sort_order')
+        .order('display_name');
+    final templates = List<Map<String, dynamic>>.from(templateRes);
+    _satorKpiTemplates = templates.where((row) => row['role'] == 'sator').toList();
+    _spvKpiTemplates = templates.where((row) => row['role'] == 'spv').toList();
+
+    final periodRes = await supabase
+        .from('kpi_period_settings')
+        .select('*')
+        .eq('period_id', _selectedRewardPeriodId!)
+        .eq('is_active', true)
+        .order('role')
+        .order('sort_order')
+        .order('display_name');
+    final settings = List<Map<String, dynamic>>.from(periodRes);
+    _satorKpi = settings.where((row) => row['role'] == 'sator').toList();
+    _spvKpi = settings.where((row) => row['role'] == 'spv').toList();
   }
 
   void _syncPointRangeEdits(String role, List<Map<String, dynamic>> data) {
@@ -401,6 +422,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
           .from('product_variants')
           .select('ram, storage, srp')
           .eq('product_id', productId)
+          .isFilter('deleted_at', null)
           .order('ram')
           .order('storage');
 
@@ -424,8 +446,9 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       });
     }
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (c) => StatefulBuilder(
         builder: (c, setState) => AlertDialog(
           title: const Text('Tambah Flat Bonus'),
@@ -465,7 +488,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                     )
                   else
                     DropdownButtonFormField<String>(
-                      initialValue: selectedRam != null && selectedStorage != null
+                      initialValue:
+                          selectedRam != null && selectedStorage != null
                           ? '${selectedRam}_$selectedStorage'
                           : null,
                       decoration: const InputDecoration(
@@ -529,18 +553,20 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                           'bonus_training': parseRupiah(trainingC.text),
                         });
                         if (!c.mounted) return;
-                        Navigator.pop(c);
-                        _loadData();
+                        closeAdminDialog(c, changed: true);
                       } catch (e) {
                         debugPrint('Error: $e');
                         if (!c.mounted) return;
-                        Navigator.pop(c);
                         _reportError(
                           'Admin reward add flat failed',
                           e,
                           StackTrace.current,
                         );
-                        showErrorDialog(c, title: 'Gagal', message: 'Error: $e');
+                        showErrorDialog(
+                          c,
+                          title: 'Gagal',
+                          message: 'Error: $e',
+                        );
                       }
                     },
               child: const Text('Simpan'),
@@ -596,8 +622,9 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     String? selectedProductId;
     final ratioC = TextEditingController(text: '2');
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (c) => StatefulBuilder(
         builder: (c, setState) => AlertDialog(
           title: const Text('Tambah Ratio Bonus'),
@@ -643,12 +670,15 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                           'ratio_value': int.tryParse(ratioC.text) ?? 0,
                         });
                         if (!c.mounted) return;
-                        Navigator.pop(c);
-                        _loadData();
+                        closeAdminDialog(c, changed: true);
                       } catch (e, stack) {
                         _reportError('Admin reward add ratio failed', e, stack);
                         if (!c.mounted) return;
-                        showErrorDialog(c, title: 'Gagal', message: 'Error: $e');
+                        showErrorDialog(
+                          c,
+                          title: 'Gagal',
+                          message: 'Error: $e',
+                        );
                       }
                     },
               child: const Text('Simpan'),
@@ -660,9 +690,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
   }
 
   void _showEditRatioDialog(Map<String, dynamic> rule) {
-    final ratioC = TextEditingController(
-      text: '${rule['ratio_value'] ?? 0}',
-    );
+    final ratioC = TextEditingController(text: '${rule['ratio_value'] ?? 0}');
     _showFormDialog(
       'Edit Ratio Bonus',
       [
@@ -686,23 +714,18 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     );
   }
 
-  void _showEditKpiDialog(Map<String, dynamic> k, List<String> options) {
-    String selectedName = k['kpi_name'] ?? options.first;
+  void _showEditKpiDialog(Map<String, dynamic> k) {
+    final nameC = TextEditingController(
+      text: '${k['display_name'] ?? k['kpi_name'] ?? ''}',
+    );
     final weightC = TextEditingController(text: k['weight']?.toString());
-    final descC = TextEditingController(text: k['description']);
+    final descC = TextEditingController(text: '${k['description'] ?? ''}');
     _showFormDialog(
       'Edit KPI',
       [
-        DropdownButtonFormField<String>(
-          initialValue: selectedName,
+        TextField(
+          controller: nameC,
           decoration: inputDeco('Nama KPI'),
-          items: options
-              .map((n) => DropdownMenuItem(value: n, child: Text(n)))
-              .toList(),
-          onChanged: (v) {
-            if (v == null) return;
-            selectedName = v;
-          },
         ),
         const SizedBox(height: 12),
         TextField(
@@ -715,9 +738,9 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       ],
       () async {
         await supabase
-            .from('kpi_settings')
+            .from('kpi_period_settings')
             .update({
-              'kpi_name': selectedName,
+              'display_name': nameC.text.trim(),
               'weight': int.tryParse(weightC.text) ?? 0,
               'description': descC.text.trim(),
             })
@@ -726,13 +749,222 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     );
   }
 
-  List<String> _kpiOptions(String role) {
-    return [
-      'Sell Out All Type',
-      'Sell Out Produk Fokus',
-      'Sell In All Type',
-      'KPI MA',
-    ];
+  void _showEditKpiTemplateDialog(Map<String, dynamic> template) {
+    final nameC = TextEditingController(
+      text: '${template['display_name'] ?? ''}',
+    );
+    final descC = TextEditingController(
+      text: '${template['description'] ?? ''}',
+    );
+    final weightC = TextEditingController(
+      text: '${template['default_weight'] ?? 0}',
+    );
+    final orderC = TextEditingController(text: '${template['sort_order'] ?? 0}');
+
+    _showFormDialog(
+      'Edit Template KPI',
+      [
+        Text(
+          'Kode: ${template['metric_code'] ?? '-'}',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: nameC,
+          decoration: inputDeco('Nama Template'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: weightC,
+          decoration: inputDeco('Bobot Default', suffix: '%'),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: orderC,
+          decoration: inputDeco('Urutan'),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: descC,
+          decoration: inputDeco('Deskripsi'),
+          minLines: 2,
+          maxLines: 4,
+        ),
+      ],
+      () async {
+        await supabase
+            .from('kpi_metric_templates')
+            .update({
+              'display_name': nameC.text.trim(),
+              'default_weight': int.tryParse(weightC.text) ?? 0,
+              'sort_order': int.tryParse(orderC.text) ?? 0,
+              'description': descC.text.trim(),
+            })
+            .eq('id', template['id']);
+      },
+    );
+  }
+
+  Future<void> _showManageKpiDialog(String role) async {
+    if (_selectedRewardPeriodId == null) return;
+    final templates = role == 'sator' ? _satorKpiTemplates : _spvKpiTemplates;
+    final currentRows = role == 'sator' ? _satorKpi : _spvKpi;
+    final selectedCodes = {
+      for (final row in currentRows) '${row['metric_code']}': true,
+    };
+    final weightCtrls = <String, TextEditingController>{};
+    for (final template in templates) {
+      final code = '${template['metric_code']}';
+      final current = currentRows.cast<Map<String, dynamic>?>().firstWhere(
+            (row) => row?['metric_code'] == code,
+            orElse: () => null,
+          );
+      weightCtrls[code] = TextEditingController(
+        text: '${current?['weight'] ?? template['default_weight'] ?? 0}',
+      );
+    }
+
+    await showAdminChangedDialog(
+      context: context,
+      onChanged: _loadData,
+      builder: (c) => StatefulBuilder(
+        builder: (c, setLocalState) {
+          int totalSelectedWeight() {
+            var total = 0;
+            for (final template in templates) {
+              final code = '${template['metric_code']}';
+              if (selectedCodes[code] == true) {
+                total += int.tryParse(weightCtrls[code]?.text ?? '0') ?? 0;
+              }
+            }
+            return total;
+          }
+
+          return AlertDialog(
+            title: Text('Atur KPI ${role.toUpperCase()}'),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Pilih kategori KPI untuk periode ini. Total bobot harus 100%.',
+                      style: Theme.of(c).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    ...templates.map((template) {
+                      final code = '${template['metric_code']}';
+                      final ctrl = weightCtrls[code]!;
+                      final checked = selectedCodes[code] == true;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: checked,
+                              onChanged: (value) => setLocalState(() {
+                                selectedCodes[code] = value == true;
+                              }),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${template['display_name'] ?? code}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if ('${template['description'] ?? ''}'
+                                      .trim()
+                                      .isNotEmpty)
+                                    Text(
+                                      '${template['description']}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 90,
+                              child: TextField(
+                                controller: ctrl,
+                                enabled: checked,
+                                keyboardType: TextInputType.number,
+                                decoration: inputDeco('Bobot', suffix: '%'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Total bobot aktif: ${totalSelectedWeight()}%',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => closeAdminDialog(c),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final total = totalSelectedWeight();
+                  if (total != 100) {
+                    if (!c.mounted) return;
+                    showErrorDialog(
+                      c,
+                      title: 'Bobot Belum Valid',
+                      message: 'Total bobot KPI aktif harus tepat 100%.',
+                    );
+                    return;
+                  }
+
+                  for (final template in templates) {
+                    final code = '${template['metric_code']}';
+                    final isActive = selectedCodes[code] == true;
+                    await supabase.from('kpi_period_settings').upsert({
+                      'period_id': _selectedRewardPeriodId,
+                      'role': role,
+                      'template_id': template['id'],
+                      'metric_code': code,
+                      'display_name': template['display_name'],
+                      'description': template['description'],
+                      'score_source': template['score_source'],
+                      'score_config': template['score_config'],
+                      'weight': int.tryParse(weightCtrls[code]?.text ?? '0') ?? 0,
+                      'sort_order': template['sort_order'] ?? 0,
+                      'is_active': isActive,
+                    }, onConflict: 'period_id,role,metric_code');
+                  }
+                  if (!c.mounted) return;
+                  closeAdminDialog(c, changed: true);
+                },
+                child: const Text('Simpan'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    for (final ctrl in weightCtrls.values) {
+      ctrl.dispose();
+    }
   }
 
   // ---- Point Range Dialogs ----
@@ -742,8 +974,9 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     final maxC = TextEditingController();
     final pointsC = TextEditingController();
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (c) => StatefulBuilder(
         builder: (c, setState) => AlertDialog(
           title: const Text('Tambah Point Range'),
@@ -808,8 +1041,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                     'points_per_unit': double.tryParse(pointsC.text) ?? 0,
                   });
                   if (!c.mounted) return;
-                  Navigator.pop(c);
-                  _loadData();
+                  closeAdminDialog(c, changed: true);
                 } catch (e, stack) {
                   _reportError('Admin reward add point range failed', e, stack);
                   if (!c.mounted) return;
@@ -832,8 +1064,9 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       text: '${row['points_per_unit'] ?? 0}',
     );
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (c) => StatefulBuilder(
         builder: (c, setState) => AlertDialog(
           title: Text('Edit Point Range ${role.toUpperCase()}'),
@@ -901,10 +1134,13 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                       })
                       .eq('id', row['id']);
                   if (!c.mounted) return;
-                  Navigator.pop(c);
-                  _loadData();
+                  closeAdminDialog(c, changed: true);
                 } catch (e, stack) {
-                  _reportError('Admin reward edit point range failed', e, stack);
+                  _reportError(
+                    'Admin reward edit point range failed',
+                    e,
+                    stack,
+                  );
                   if (!c.mounted) return;
                   showErrorDialog(c, title: 'Gagal', message: 'Error: $e');
                 }
@@ -920,15 +1156,13 @@ class _AdminBonusPageState extends State<AdminBonusPage>
   // ---- Reward Dialogs ----
   void _showAddRewardDialog(String role) {
     String? selectedBundleId;
-    String dataSource = 'sell_out';
-    final minC = TextEditingController();
-    final maxC = TextEditingController();
     final rewardC = TextEditingController();
     final penaltyThreshC = TextEditingController(text: '80');
-    final penaltyAmtC = TextEditingController(text: '100000');
+    final penaltyAmtC = TextEditingController(text: '0');
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (c) => StatefulBuilder(
         builder: (c, setState) => AlertDialog(
           title: const Text('Tambah Reward Tipe Khusus'),
@@ -936,23 +1170,6 @@ class _AdminBonusPageState extends State<AdminBonusPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<String>(
-                  initialValue: dataSource,
-                  decoration: inputDeco('Sumber Data'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'sell_out',
-                      child: Text('Sell Out (Penjualan Promotor)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'sell_in',
-                      child: Text('Sell In (Orderan)'),
-                    ),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => dataSource = v ?? 'sell_out'),
-                ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedBundleId,
                   decoration: inputDeco('Bundle Tipe Khusus'),
@@ -963,26 +1180,10 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                     final prodCount = products.length;
                     return DropdownMenuItem(
                       value: b['id'] as String,
-                      child:
-                          Text('${b['bundle_name']} ($prodCount tipe)'),
+                      child: Text('${b['bundle_name']} ($prodCount tipe)'),
                     );
                   }).toList(),
                   onChanged: (v) => setState(() => selectedBundleId = v),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: minC,
-                  decoration: inputDeco('Min Unit'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: maxC,
-                  decoration: inputDeco(
-                    'Max Unit',
-                    hint: 'Kosongkan jika unlimited',
-                  ),
-                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -1017,27 +1218,29 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                   ? null
                   : () async {
                       try {
-                        await supabase.from('special_rewards').insert({
+                        await supabase.from('special_reward_configs').upsert({
+                          'period_id': _selectedRewardPeriodId,
                           'role': role,
-                          'data_source': dataSource,
                           'special_bundle_id': selectedBundleId,
-                          'min_unit': int.tryParse(minC.text) ?? 0,
-                          'max_unit': maxC.text.isEmpty
-                              ? null
-                              : int.tryParse(maxC.text),
                           'reward_amount': parseRupiah(rewardC.text),
                           'penalty_threshold':
                               int.tryParse(penaltyThreshC.text) ?? 80,
                           'penalty_amount': parseRupiah(penaltyAmtC.text),
-                        });
+                        }, onConflict: 'period_id,role,special_bundle_id');
                         if (!c.mounted) return;
-                        Navigator.pop(c);
-                        _loadData();
+                        closeAdminDialog(c, changed: true);
                       } catch (e, stack) {
-                        _reportError('Admin reward add special reward failed', e, stack);
+                        _reportError(
+                          'Admin reward add special reward failed',
+                          e,
+                          stack,
+                        );
                         if (!c.mounted) return;
-                        Navigator.pop(c);
-                        showErrorDialog(c, title: 'Gagal', message: 'Error: $e');
+                        showErrorDialog(
+                          c,
+                          title: 'Gagal',
+                          message: 'Error: $e',
+                        );
                       }
                     },
               child: const Text('Simpan'),
@@ -1049,10 +1252,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
   }
 
   void _showEditRewardDialog(Map<String, dynamic> r) {
-    final displayName = r['special_focus_bundles']?['bundle_name'] ?? 'Unknown Bundle';
-    final dataSource = r['data_source'] ?? 'sell_out';
-    final minC = TextEditingController(text: r['min_unit']?.toString());
-    final maxC = TextEditingController(text: r['max_unit']?.toString());
+    final displayName =
+        r['special_focus_bundles']?['bundle_name'] ?? 'Unknown Bundle';
     final rewardC = TextEditingController(
       text: _formatPrice(r['reward_amount']),
     );
@@ -1069,26 +1270,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
           'Target: $displayName',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        Text(
-          'Sumber: $dataSource',
-          style: const TextStyle(
-            fontStyle: FontStyle.italic,
-            color: AppColors.textSecondary,
-          ),
-        ),
         const SizedBox(height: 16),
-        TextField(
-          controller: minC,
-          decoration: inputDeco('Min Unit'),
-          keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: maxC,
-          decoration: inputDeco('Max Unit'),
-          keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 12),
         TextField(
           controller: rewardC,
           decoration: inputDeco('Reward', prefix: 'Rp '),
@@ -1111,10 +1293,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       ],
       () async {
         await supabase
-            .from('special_rewards')
+            .from('special_reward_configs')
             .update({
-              'min_unit': int.tryParse(minC.text) ?? 0,
-              'max_unit': maxC.text.isEmpty ? null : int.tryParse(maxC.text),
               'reward_amount': parseRupiah(rewardC.text),
               'penalty_threshold': int.tryParse(penaltyThreshC.text) ?? 80,
               'penalty_amount': parseRupiah(penaltyAmtC.text),
@@ -1130,8 +1310,9 @@ class _AdminBonusPageState extends State<AdminBonusPage>
     List<Widget> fields,
     Future<void> Function() onSave,
   ) {
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (c) => AlertDialog(
         title: Text(title),
         content: SingleChildScrollView(
@@ -1139,22 +1320,21 @@ class _AdminBonusPageState extends State<AdminBonusPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(c),
+            onPressed: () => closeAdminDialog(c),
             child: const Text('Batal'),
           ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await onSave();
-                  if (!c.mounted) return;
-                  Navigator.pop(c);
-                  _loadData();
-                } catch (e, stack) {
-                  _reportError('Admin reward save dialog failed', e, stack);
-                  if (!c.mounted) return;
-                  showErrorDialog(c, title: 'Gagal', message: 'Error: $e');
-                }
-              },
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await onSave();
+                if (!c.mounted) return;
+                closeAdminDialog(c, changed: true);
+              } catch (e, stack) {
+                _reportError('Admin reward save dialog failed', e, stack);
+                if (!c.mounted) return;
+                showErrorDialog(c, title: 'Gagal', message: 'Error: $e');
+              }
+            },
             child: const Text('Simpan'),
           ),
         ],
@@ -1288,6 +1468,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       _isLoading = true;
     });
     try {
+      await _loadKpiConfigs();
       await _loadSpecialBundles();
       await _loadSpecialRewards();
       if (!mounted) return;
@@ -1388,7 +1569,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       children: [
         _buildOverviewCard(
           title: 'Bonus Promotor',
-          subtitle: 'Atur range bonus, flat bonus per varian, dan ratio product.',
+          subtitle:
+              'Atur range bonus, flat bonus per varian, dan ratio product.',
           metrics: [
             _MetricData('Range', '${_rangeRules.length}'),
             _MetricData('Flat', '${_flatRules.length}'),
@@ -1492,7 +1674,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       children: [
         _buildOverviewCard(
           title: 'Bonus Sator',
-          subtitle: 'Kelola bobot KPI, point range, dan reward tipe khusus per periode.',
+          subtitle:
+              'Kelola bobot KPI, point range, dan reward tipe khusus per periode.',
           metrics: [
             _MetricData('KPI', '${_satorKpi.length}'),
             _MetricData('Point', '${_satorPointRanges.length}'),
@@ -1503,18 +1686,38 @@ class _AdminBonusPageState extends State<AdminBonusPage>
         const SizedBox(height: 16),
         _buildSectionCard(
           title: 'KPI Settings',
+          actionLabel: 'Atur Bulan',
+          onAction: () => _showManageKpiDialog('sator'),
           children: _satorKpi.isEmpty
               ? [_buildEmptyTile('Belum ada KPI sator')]
               : _satorKpi
                     .map(
                       (k) => _buildConfigTile(
-                        title: '${k['kpi_name'] ?? '-'}',
+                        title: '${k['display_name'] ?? k['kpi_name'] ?? '-'}',
                         subtitle:
                             'Bobot ${k['weight'] ?? 0}% · ${k['description'] ?? '-'}',
                         trailing: IconButton(
                           icon: const Icon(Icons.edit_rounded),
-                          onPressed: () =>
-                              _showEditKpiDialog(k, _kpiOptions('sator')),
+                          onPressed: () => _showEditKpiDialog(k),
+                        ),
+                      ),
+                    )
+                    .toList(),
+        ),
+        const SizedBox(height: 12),
+        _buildSectionCard(
+          title: 'Template KPI',
+          children: _satorKpiTemplates.isEmpty
+              ? [_buildEmptyTile('Belum ada template KPI sator')]
+              : _satorKpiTemplates
+                    .map(
+                      (k) => _buildConfigTile(
+                        title: '${k['display_name'] ?? '-'}',
+                        subtitle:
+                            'Default ${k['default_weight'] ?? 0}% · ${k['metric_code'] ?? '-'}',
+                        trailing: IconButton(
+                          icon: const Icon(Icons.tune_rounded),
+                          onPressed: () => _showEditKpiTemplateDialog(k),
                         ),
                       ),
                     )
@@ -1532,7 +1735,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                       (row) => _buildConfigTile(
                         title:
                             '${(row['data_source'] ?? 'sell_out').toString().toUpperCase()} · Rp ${_formatPrice(row['min_price'])} - Rp ${_formatPrice(row['max_price'])}',
-                        subtitle: 'Poin per unit ${row['points_per_unit'] ?? 0}',
+                        subtitle:
+                            'Poin per unit ${row['points_per_unit'] ?? 0}',
                         trailing: _buildEditDeleteActions(
                           onEdit: () => _showEditPointRangeDialog('sator', row),
                           onDelete: () => _confirmDeleteItem(
@@ -1562,7 +1766,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                         title:
                             '${r['special_focus_bundles']?['bundle_name'] ?? 'Bundle tidak ditemukan'}',
                         subtitle:
-                            '${(r['data_source'] ?? 'sell_out').toString().toUpperCase()} · ${r['min_unit'] ?? 0}-${r['max_unit'] ?? '∞'} unit · Reward Rp ${_formatPrice(r['reward_amount'])}',
+                            'Target ikut target user · Reward Rp ${_formatPrice(r['reward_amount'])}',
                         trailing: _buildEditDeleteActions(
                           onEdit: () => _showEditRewardDialog(r),
                           onDelete: () => _confirmDeleteItem(
@@ -1570,7 +1774,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                             message:
                                 'Reward tipe khusus ini akan dihapus dari pengaturan. Lanjutkan?',
                             onDelete: () => supabase
-                                .from('special_rewards')
+                                .from('special_reward_configs')
                                 .delete()
                                 .eq('id', r['id']),
                           ),
@@ -1589,7 +1793,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
       children: [
         _buildOverviewCard(
           title: 'Bonus SPV',
-          subtitle: 'Kelola KPI, point range, dan reward SPV dalam periode yang sama.',
+          subtitle:
+              'Kelola KPI, point range, dan reward SPV dalam periode yang sama.',
           metrics: [
             _MetricData('KPI', '${_spvKpi.length}'),
             _MetricData('Point', '${_spvPointRanges.length}'),
@@ -1600,17 +1805,38 @@ class _AdminBonusPageState extends State<AdminBonusPage>
         const SizedBox(height: 16),
         _buildSectionCard(
           title: 'KPI Settings',
+          actionLabel: 'Atur Bulan',
+          onAction: () => _showManageKpiDialog('spv'),
           children: _spvKpi.isEmpty
               ? [_buildEmptyTile('Belum ada KPI spv')]
               : _spvKpi
                     .map(
                       (k) => _buildConfigTile(
-                        title: '${k['kpi_name'] ?? '-'}',
+                        title: '${k['display_name'] ?? k['kpi_name'] ?? '-'}',
                         subtitle:
                             'Bobot ${k['weight'] ?? 0}% · ${k['description'] ?? '-'}',
                         trailing: IconButton(
                           icon: const Icon(Icons.edit_rounded),
-                          onPressed: () => _showEditKpiDialog(k, _kpiOptions('spv')),
+                          onPressed: () => _showEditKpiDialog(k),
+                        ),
+                      ),
+                    )
+                    .toList(),
+        ),
+        const SizedBox(height: 12),
+        _buildSectionCard(
+          title: 'Template KPI',
+          children: _spvKpiTemplates.isEmpty
+              ? [_buildEmptyTile('Belum ada template KPI spv')]
+              : _spvKpiTemplates
+                    .map(
+                      (k) => _buildConfigTile(
+                        title: '${k['display_name'] ?? '-'}',
+                        subtitle:
+                            'Default ${k['default_weight'] ?? 0}% · ${k['metric_code'] ?? '-'}',
+                        trailing: IconButton(
+                          icon: const Icon(Icons.tune_rounded),
+                          onPressed: () => _showEditKpiTemplateDialog(k),
                         ),
                       ),
                     )
@@ -1628,7 +1854,8 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                       (row) => _buildConfigTile(
                         title:
                             '${(row['data_source'] ?? 'sell_out').toString().toUpperCase()} · Rp ${_formatPrice(row['min_price'])} - Rp ${_formatPrice(row['max_price'])}',
-                        subtitle: 'Poin per unit ${row['points_per_unit'] ?? 0}',
+                        subtitle:
+                            'Poin per unit ${row['points_per_unit'] ?? 0}',
                         trailing: _buildEditDeleteActions(
                           onEdit: () => _showEditPointRangeDialog('spv', row),
                           onDelete: () => _confirmDeleteItem(
@@ -1658,7 +1885,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                         title:
                             '${r['special_focus_bundles']?['bundle_name'] ?? 'Bundle tidak ditemukan'}',
                         subtitle:
-                            '${(r['data_source'] ?? 'sell_out').toString().toUpperCase()} · ${r['min_unit'] ?? 0}-${r['max_unit'] ?? '∞'} unit · Reward Rp ${_formatPrice(r['reward_amount'])}',
+                            'Target ikut target user · Reward Rp ${_formatPrice(r['reward_amount'])}',
                         trailing: _buildEditDeleteActions(
                           onEdit: () => _showEditRewardDialog(r),
                           onDelete: () => _confirmDeleteItem(
@@ -1666,7 +1893,7 @@ class _AdminBonusPageState extends State<AdminBonusPage>
                             message:
                                 'Reward tipe khusus ini akan dihapus dari pengaturan. Lanjutkan?',
                             onDelete: () => supabase
-                                .from('special_rewards')
+                                .from('special_reward_configs')
                                 .delete()
                                 .eq('id', r['id']),
                           ),

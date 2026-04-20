@@ -11,6 +11,7 @@ class SpvLeaderboardPage extends StatelessWidget {
       title: 'Ranking Area',
       liveSubtitle: 'Live semua area · source ranking bersama',
       scopeLabel: 'Semua Area',
+      actorMode: LeaderboardActorMode.spv,
     );
   }
 }

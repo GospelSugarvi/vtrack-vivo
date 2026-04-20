@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:vtrack/ui/foundation/foundation.dart';
 import '../../../../core/utils/avatar_refresh_bus.dart';
 import '../../../../core/utils/app_download_qr_dialog.dart';
@@ -24,9 +23,6 @@ class SatorProfilTab extends StatefulWidget {
 }
 
 class _SatorProfilTabState extends State<SatorProfilTab> {
-  static final Uri _latestReleaseUri = Uri.parse(
-    'https://github.com/GospelSugarvi/vtrack-vivo/releases/latest',
-  );
   FieldThemeTokens get t => context.fieldTokens;
   final _supabase = Supabase.instance.client;
   Map<String, dynamic>? _userProfile;
@@ -793,14 +789,7 @@ class _SatorProfilTabState extends State<SatorProfilTab> {
   }
 
   Future<void> _openLatestRelease() async {
-    final launched = await launchUrl(
-      _latestReleaseUri,
-      mode: LaunchMode.externalApplication,
-    );
-    if (launched || !mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link update tidak bisa dibuka')),
-    );
+    await openLatestAppDownload(context);
   }
 }
 

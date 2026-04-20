@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 enum AppFontRole {
   primary,
@@ -146,48 +145,14 @@ final class AppFontTokens {
     double? height,
     double? letterSpacing,
   }) {
-    switch (preference) {
-      case AppFontPreference.outfit:
-        return GoogleFonts.outfit(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: color,
-          height: height,
-          letterSpacing: letterSpacing,
-        );
-      case AppFontPreference.inter:
-        return GoogleFonts.inter(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: color,
-          height: height,
-          letterSpacing: letterSpacing,
-        );
-      case AppFontPreference.manrope:
-        return GoogleFonts.manrope(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: color,
-          height: height,
-          letterSpacing: letterSpacing,
-        );
-      case AppFontPreference.playfair:
-        return GoogleFonts.playfairDisplay(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: color,
-          height: height,
-          letterSpacing: letterSpacing,
-        );
-      case AppFontPreference.jetbrainsMono:
-        return GoogleFonts.jetBrainsMono(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: color,
-          height: height,
-          letterSpacing: letterSpacing,
-        );
-    }
+    return TextStyle(
+      fontFamily: _fontFamilyForPreference(preference),
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
   }
 
   static TextTheme primaryTextTheme([TextTheme? base]) {
@@ -202,17 +167,25 @@ final class AppFontTokens {
     AppFontPreference preference, [
     TextTheme? base,
   ]) {
+    final seed = base ?? Typography.material2021().black;
+    final family = _fontFamilyForPreference(preference);
+    return seed.apply(
+      fontFamily: family,
+      displayColor: seed.bodyMedium?.color,
+      bodyColor: seed.bodyMedium?.color,
+    );
+  }
+
+  static String _fontFamilyForPreference(AppFontPreference preference) {
     switch (preference) {
       case AppFontPreference.outfit:
-        return GoogleFonts.outfitTextTheme(base);
       case AppFontPreference.inter:
-        return GoogleFonts.interTextTheme(base);
       case AppFontPreference.manrope:
-        return GoogleFonts.manropeTextTheme(base);
+        return 'sans-serif';
       case AppFontPreference.playfair:
-        return GoogleFonts.playfairDisplayTextTheme(base);
+        return 'serif';
       case AppFontPreference.jetbrainsMono:
-        return GoogleFonts.jetBrainsMonoTextTheme(base);
+        return 'monospace';
     }
   }
 

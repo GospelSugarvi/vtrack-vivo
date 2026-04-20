@@ -11,13 +11,10 @@ class BarcodeScannerPage extends StatelessWidget {
         onDetect: (BarcodeCapture capture) {
           final String? scannedValue = capture.barcodes.first.rawValue;
           if (scannedValue != null && scannedValue.isNotEmpty) {
-            debugPrint('=== SCANNER: Scanned = $scannedValue ===');
             Navigator.pop(context, scannedValue);
           }
         },
-        onDispose: () {
-          debugPrint('=== SCANNER: Disposed ===');
-        },
+        onDispose: () {},
         controller: MobileScannerController(
           detectionSpeed: DetectionSpeed.noDuplicates,
         ),
@@ -25,4 +22,3 @@ class BarcodeScannerPage extends StatelessWidget {
     );
   }
 }
-

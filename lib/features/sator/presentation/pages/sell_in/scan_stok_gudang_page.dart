@@ -12,6 +12,13 @@ import '../../../services/stok_gudang_ai_service.dart';
 
 enum _StockInputMode { gemini, manualJson }
 
+class _CatalogCandidate {
+  const _CatalogCandidate({required this.item, required this.score});
+
+  final Map<String, dynamic> item;
+  final int score;
+}
+
 class ScanStokGudangPage extends StatefulWidget {
   final Map<String, dynamic>? params;
 
@@ -62,33 +69,13 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
     setState(() => _isLoadingCatalog = true);
 
     try {
-      final rows = await _supabase
-          .from('product_variants')
-          .select(
-            'id, ram_rom, color, srp, products!product_id(id, model_name, network_type, series, status)',
-          )
-          .eq('active', true)
-          .order('id');
-
-      final catalog = List<Map<String, dynamic>>.from(rows)
-          .map((row) {
-            final product = row['products'] is Map
-                ? Map<String, dynamic>.from(row['products'] as Map)
-                : <String, dynamic>{};
-            return {
-              'variant_id': '${row['id'] ?? ''}',
-              'product_id': '${product['id'] ?? ''}',
-              'product_name': '${product['model_name'] ?? ''}',
-              'network_type': '${product['network_type'] ?? ''}',
-              'series': '${product['series'] ?? ''}',
-              'variant': '${row['ram_rom'] ?? ''}',
-              'color': '${row['color'] ?? ''}',
-              'price': _toInt(row['srp']),
-              'status': '${product['status'] ?? 'active'}',
-            };
-          })
-          .where((row) => row['status'] == 'active')
-          .toList();
+      final snapshotRaw = await _supabase.rpc(
+        'get_active_product_variant_catalog',
+      );
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      final catalog = _parseMapList(snapshot['items']);
 
       if (!mounted) return;
       setState(() {
@@ -104,6 +91,14 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
         message: 'Tidak bisa memuat katalog varian aktif: $e',
       );
     }
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -276,6 +271,7 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
         final otw = _extractOtw(item);
 
         if (matchedCatalog == null) {
+          final diagnostics = _buildMatchDiagnostics(item);
           unmatched.add({
             'variant_id': '${item['variant_id'] ?? ''}',
             'product_name': _extractProductName(item),
@@ -284,6 +280,8 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
             'color': _extractColor(item),
             'qty': qty,
             'otw': otw,
+            'reason': diagnostics['reason'],
+            'suggestion': diagnostics['suggestion'],
           });
           continue;
         }
@@ -328,31 +326,24 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
     }
 
     final targetProduct = _normalizeText(_extractProductName(item));
-    final targetVariant = _normalizeText(_extractVariant(item));
-    final targetColor = _normalizeText(_extractColor(item));
-    final targetNetwork = _normalizeText(_extractNetworkType(item));
-
-    final matches = _catalog.where((catalogItem) {
-      final sameProduct =
-          targetProduct.isEmpty ||
-          _normalizeText(catalogItem['product_name']).contains(targetProduct) ||
-          targetProduct.contains(_normalizeText(catalogItem['product_name']));
-      final sameVariant =
-          targetVariant.isEmpty ||
-          _normalizeText(catalogItem['variant']) == targetVariant;
-      final sameColor =
-          targetColor.isEmpty ||
-          _normalizeText(catalogItem['color']) == targetColor;
-      final sameNetwork =
-          targetNetwork.isEmpty ||
-          _normalizeText(catalogItem['network_type']) == targetNetwork;
-      return sameProduct && sameVariant && sameColor && sameNetwork;
-    }).toList();
-
-    if (matches.length == 1) {
-      return matches.first;
+    final candidates = _scoredCatalogCandidates(item);
+    if (targetProduct.isEmpty || candidates.isEmpty) {
+      return null;
     }
-    return null;
+
+    final best = candidates.first;
+    if (!_candidatePassesThreshold(best, item)) {
+      return null;
+    }
+
+    if (candidates.length == 1) {
+      return best.item;
+    }
+
+    final runnerUp = candidates[1];
+    if (best.score == runnerUp.score) return null;
+    if ((best.score - runnerUp.score) < 2) return null;
+    return best.item;
   }
 
   String _extractProductName(Map<String, dynamic> item) {
@@ -422,6 +413,10 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
       result['network_type'] = '5G';
     } else if (upper.contains('4G')) {
       result['network_type'] = '4G';
+    } else {
+      // Untuk format gudang yang tidak menulis network,
+      // absence of "5G" berarti default ke varian 4G.
+      result['network_type'] = '4G';
     }
 
     final variantMatch = RegExp(
@@ -488,6 +483,219 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
         .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  String _compactText(dynamic value) {
+    return _normalizeText(value).replaceAll(' ', '');
+  }
+
+  String _normalizeVariant(dynamic value) {
+    return '${value ?? ''}'
+        .toLowerCase()
+        .replaceAll('gb', '')
+        .replaceAll('ram', '')
+        .replaceAll('rom', '')
+        .replaceAll('+', '/')
+        .replaceAll(RegExp(r'[^a-z0-9/]+'), '')
+        .trim();
+  }
+
+  String _normalizeColor(dynamic value) {
+    var normalized = _normalizeText(
+      value,
+    ).replaceAll(' colour', '').replaceAll(' color', '').trim();
+
+    const colorAliases = <String, String>{
+      'grey': 'gray',
+      'space grey': 'space gray',
+      'spacegrey': 'space gray',
+      'midnight black': 'black',
+      'night black': 'black',
+      'jet black': 'black',
+      'dark black': 'black',
+      'navy': 'blue',
+      'dark blue': 'blue',
+      'ocean blue': 'blue',
+      'sky blue': 'blue',
+      'ice blue': 'blue',
+      'golden': 'gold',
+      'sunset gold': 'gold',
+      'rose gold': 'gold',
+      'silver grey': 'silver gray',
+      'silver grey blue': 'silver gray blue',
+      'violet': 'purple',
+      'lavender': 'purple',
+    };
+
+    normalized = colorAliases[normalized] ?? normalized;
+    return normalized;
+  }
+
+  String _normalizeNetwork(dynamic value) {
+    final raw = '${value ?? ''}'.toUpperCase().replaceAll(
+      RegExp(r'[^0-9A-Z]'),
+      '',
+    );
+    if (raw.contains('5G')) return '5G';
+    if (raw.contains('4G')) return '4G';
+    if (raw.contains('LTE')) return '4G';
+    if (raw.contains('NR')) return '5G';
+    return raw;
+  }
+
+  bool _looselyMatches(String left, String right) {
+    if (left.isEmpty || right.isEmpty) return false;
+    return left == right || left.contains(right) || right.contains(left);
+  }
+
+  bool _colorMatches(String left, String right) {
+    if (left.isEmpty || right.isEmpty) return false;
+    final normalizedLeft = _normalizeColor(left);
+    final normalizedRight = _normalizeColor(right);
+    return _looselyMatches(normalizedLeft, normalizedRight);
+  }
+
+  bool _productMatches(String catalogProduct, String targetProduct) {
+    if (catalogProduct.isEmpty || targetProduct.isEmpty) return false;
+
+    final catalogCompact = _compactText(catalogProduct);
+    final targetCompact = _compactText(targetProduct);
+    if (catalogCompact == targetCompact) return true;
+
+    final catalogTokens = _normalizeText(
+      catalogProduct,
+    ).split(' ').where((token) => token.isNotEmpty).toList();
+    final targetTokens = _normalizeText(
+      targetProduct,
+    ).split(' ').where((token) => token.isNotEmpty).toList();
+
+    if (catalogTokens.isEmpty || targetTokens.isEmpty) return false;
+
+    final allTargetInCatalog = targetTokens.every(catalogTokens.contains);
+    final allCatalogInTarget = catalogTokens.every(targetTokens.contains);
+
+    return allTargetInCatalog && allCatalogInTarget;
+  }
+
+  List<_CatalogCandidate> _scoredCatalogCandidates(Map<String, dynamic> item) {
+    final targetProduct = _normalizeText(_extractProductName(item));
+    final targetVariant = _normalizeVariant(_extractVariant(item));
+    final targetColor = _normalizeColor(_extractColor(item));
+    final targetNetwork = _normalizeNetwork(_extractNetworkType(item));
+
+    final candidates = <_CatalogCandidate>[];
+    for (final catalogItem in _catalog) {
+      final productName = _normalizeText(catalogItem['product_name']);
+      final variant = _normalizeVariant(catalogItem['variant']);
+      final color = _normalizeColor(catalogItem['color']);
+      final network = _normalizeNetwork(catalogItem['network_type']);
+
+      final productMatch =
+          targetProduct.isNotEmpty &&
+          _productMatches(productName, targetProduct);
+      if (!productMatch) continue;
+
+      var score = 6;
+      if (targetVariant.isEmpty) {
+        score += 1;
+      } else if (_looselyMatches(variant, targetVariant)) {
+        score += variant == targetVariant ? 4 : 2;
+      }
+
+      if (targetColor.isEmpty) {
+        score += 1;
+      } else if (_colorMatches(color, targetColor)) {
+        score += color == targetColor ? 3 : 1;
+      }
+
+      if (targetNetwork.isEmpty) {
+        score += 1;
+      } else if (_looselyMatches(network, targetNetwork)) {
+        score += network == targetNetwork ? 3 : 1;
+      }
+
+      candidates.add(_CatalogCandidate(item: catalogItem, score: score));
+    }
+
+    candidates.sort((a, b) => b.score.compareTo(a.score));
+    return candidates;
+  }
+
+  bool _candidatePassesThreshold(
+    _CatalogCandidate candidate,
+    Map<String, dynamic> sourceItem,
+  ) {
+    final targetVariant = _normalizeVariant(_extractVariant(sourceItem));
+    final targetColor = _normalizeColor(_extractColor(sourceItem));
+    final targetNetwork = _normalizeNetwork(_extractNetworkType(sourceItem));
+    final variant = _normalizeVariant(candidate.item['variant']);
+    final color = _normalizeColor(candidate.item['color']);
+    final network = _normalizeNetwork(candidate.item['network_type']);
+
+    final variantOk =
+        targetVariant.isEmpty || _looselyMatches(variant, targetVariant);
+    final colorOk = targetColor.isEmpty || _colorMatches(color, targetColor);
+    final networkOk =
+        targetNetwork.isEmpty || _looselyMatches(network, targetNetwork);
+
+    return variantOk && colorOk && networkOk && candidate.score >= 8;
+  }
+
+  Map<String, String> _buildMatchDiagnostics(Map<String, dynamic> item) {
+    final targetVariant = _extractVariant(item);
+    final targetColor = _extractColor(item);
+    final targetNetwork = _extractNetworkType(item);
+    final candidates = _scoredCatalogCandidates(item);
+
+    if (candidates.isEmpty) {
+      return {
+        'reason': 'Nama produk tidak ketemu di katalog aktif.',
+        'suggestion': '',
+      };
+    }
+
+    final best = candidates.first.item;
+    final reasons = <String>[];
+
+    final bestVariant = '${best['variant'] ?? ''}'.trim();
+    if (targetVariant.isNotEmpty &&
+        !_looselyMatches(
+          _normalizeVariant(bestVariant),
+          _normalizeVariant(targetVariant),
+        )) {
+      reasons.add('varian beda');
+    }
+
+    final bestColor = '${best['color'] ?? ''}'.trim();
+    if (targetColor.isNotEmpty &&
+        !_colorMatches(
+          _normalizeColor(bestColor),
+          _normalizeColor(targetColor),
+        )) {
+      reasons.add('warna beda');
+    }
+
+    final bestNetwork = '${best['network_type'] ?? ''}'.trim();
+    if (targetNetwork.isNotEmpty &&
+        !_looselyMatches(
+          _normalizeNetwork(bestNetwork),
+          _normalizeNetwork(targetNetwork),
+        )) {
+      reasons.add('network beda');
+    }
+
+    final reason = reasons.isEmpty
+        ? 'Ada lebih dari satu kandidat mirip, sistem belum berani pilih otomatis.'
+        : 'Cocok sebagian, tapi ${reasons.join(', ')}.';
+
+    final suggestionParts = <String>[
+      '${best['product_name'] ?? ''}'.trim(),
+      '${best['network_type'] ?? ''}'.trim(),
+      '${best['variant'] ?? ''}'.trim(),
+      '${best['color'] ?? ''}'.trim(),
+    ].where((part) => part.isNotEmpty).toList();
+
+    return {'reason': reason, 'suggestion': suggestionParts.join(' • ')};
   }
 
   void _changeQty(String variantId, int delta) {
@@ -980,6 +1188,27 @@ class _ScanStokGudangPageState extends State<ScanStokGudangPage> {
                 ),
               ),
             ),
+            ..._unmatchedItems.map((item) {
+              final reason = '${item['reason'] ?? ''}'.trim();
+              final suggestion = '${item['suggestion'] ?? ''}'.trim();
+              if (reason.isEmpty && suggestion.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8, left: 4),
+                child: Text(
+                  [
+                    if (reason.isNotEmpty) reason,
+                    if (suggestion.isNotEmpty) 'Kandidat terdekat: $suggestion',
+                  ].join(' '),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: t.warning,
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ),

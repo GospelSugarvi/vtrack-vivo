@@ -50,7 +50,9 @@ class _LaporanAllbrandInputPageState extends State<LaporanAllbrandInputPage> {
 
   FieldThemeTokens get t => context.fieldTokens;
   final _supabase = Supabase.instance.client;
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>(
+    debugLabel: 'laporan_allbrand_input_form',
+  );
   final _notesController = TextEditingController();
 
   late final Map<String, Map<String, TextEditingController>> _brandControllers;
@@ -492,7 +494,7 @@ class _LaporanAllbrandInputPageState extends State<LaporanAllbrandInputPage> {
             children: [
               Expanded(
                 child: Text(
-                  'VIVO Auto',
+                  'VIVO',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,

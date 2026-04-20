@@ -55,7 +55,20 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, full_name, nickname, role, area, supervisor_id, store_id, promotor_status } = await req.json();
+    const {
+      email,
+      password,
+      full_name,
+      nickname,
+      role,
+      area,
+      whatsapp_phone,
+      hire_date,
+      supervisor_id,
+      store_id,
+      promotor_status,
+      base_salary,
+    } = await req.json();
 
     if (!email || !password || !full_name) {
       throw new Error("Email, password, and full_name are required");
@@ -66,6 +79,13 @@ serve(async (req) => {
       email,
       password,
       email_confirm: true,
+      user_metadata: {
+        full_name,
+        nickname: nickname || null,
+        role: role || "promotor",
+        area: area || null,
+        whatsapp_phone: whatsapp_phone || null,
+      },
     });
 
     if (createError) {
@@ -87,6 +107,9 @@ serve(async (req) => {
       username: full_name.toLowerCase().replace(/\s/g, '_'),
       role: role || "promotor",
       area: area || null,
+      whatsapp_phone: whatsapp_phone || null,
+      base_salary: typeof base_salary === "number" ? base_salary : 0,
+      hire_date: hire_date || null,
       promotor_status: role === 'promotor' ? (promotor_status || 'training') : null,
       status: "active",
     });

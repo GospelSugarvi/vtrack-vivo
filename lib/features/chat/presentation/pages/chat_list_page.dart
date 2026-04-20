@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/chat_unread_refresh_bus.dart';
 import '../../cubit/chat_list_cubit.dart';
 import '../../repository/chat_repository.dart';
 import '../../models/chat_room.dart';
@@ -29,6 +30,27 @@ class ChatListView extends StatefulWidget {
 
 class _ChatListViewState extends State<ChatListView> {
   ChatUiPalette get c => chatPaletteOf(context);
+  bool _showSearchBar = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    chatUnreadRefreshTick.addListener(_handleUnreadRefresh);
+  }
+
+  @override
+  void dispose() {
+    chatUnreadRefreshTick.removeListener(_handleUnreadRefresh);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _handleUnreadRefresh() {
+    if (!mounted) return;
+    final cubit = context.read<ChatListCubit>();
+    cubit.refreshChatRooms();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +79,6 @@ class _ChatListViewState extends State<ChatListView> {
                 child: Column(
                   children: [
                     _buildHeader(),
-                    _buildSearch(),
                     _buildTabBar(rooms),
                     Expanded(
                       child: TabBarView(
@@ -67,13 +88,13 @@ class _ChatListViewState extends State<ChatListView> {
                             _roomsForTab(rooms, _ChatTab.store),
                             compactStore: true,
                           ),
+                          _buildRoomTabList(_roomsForTab(rooms, _ChatTab.team)),
                           _buildRoomTabList(
                             _roomsForTab(rooms, _ChatTab.global),
                           ),
                           _buildRoomTabList(
                             _roomsForTab(rooms, _ChatTab.announcement),
                           ),
-                          _buildRoomTabList(_roomsForTab(rooms, _ChatTab.team)),
                         ],
                       ),
                     ),
@@ -91,7 +112,7 @@ class _ChatListViewState extends State<ChatListView> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       decoration: BoxDecoration(
         color: c.surfaceRaised,
         border: Border(bottom: BorderSide(color: c.s3)),
@@ -104,107 +125,73 @@ class _ChatListViewState extends State<ChatListView> {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Chat',
-                style: PromotorText.display(size: 24, color: c.cream),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Percakapan lintas tim dan toko',
-                style: PromotorText.outfit(
-                  size: 10,
-                  weight: FontWeight.w700,
-                  color: c.muted,
-                ),
-              ),
-            ],
+          Expanded(
+            child: _showSearchBar
+                ? Container(
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: c.s1,
+                      borderRadius: BorderRadius.circular(11),
+                      border: Border.all(color: c.s3),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      cursorColor: c.gold,
+                      decoration: InputDecoration(
+                        hintText: 'Cari percakapan...',
+                        hintStyle: PromotorText.outfit(
+                          size: 12,
+                          weight: FontWeight.w700,
+                          color: c.muted,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                      style: PromotorText.outfit(
+                        size: 12,
+                        weight: FontWeight.w700,
+                        color: c.cream2,
+                      ),
+                    ),
+                  )
+                : Text(
+                    'Chat',
+                    style: PromotorText.display(size: 24, color: c.cream),
+                  ),
           ),
-          GestureDetector(
-            onTap: () => context.read<ChatListCubit>().markAllAsRead(),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _showSearchBar = !_showSearchBar;
+                if (!_showSearchBar) {
+                  _searchController.clear();
+                }
+              });
+            },
+            borderRadius: BorderRadius.circular(10),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: c.s1,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: c.s3),
               ),
-              child: Text(
-                'Baca semua',
-                style: PromotorText.outfit(
-                  size: 10,
-                  weight: FontWeight.w800,
-                  color: c.gold,
-                ),
+              child: Icon(
+                _showSearchBar ? Icons.close_rounded : Icons.search,
+                size: 16,
+                color: c.muted,
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSearch() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: c.surfaceRaised,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: c.s3),
-          boxShadow: [
-            BoxShadow(
-              color: c.shadow.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.search, size: 16, color: c.muted),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Theme(
-                data: Theme.of(context).copyWith(
-                  textSelectionTheme: TextSelectionThemeData(
-                    cursorColor: c.gold,
-                    selectionColor: c.gold.withValues(alpha: 0.2),
-                    selectionHandleColor: c.gold,
-                  ),
-                ),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Cari percakapan...',
-                    hintStyle: PromotorText.outfit(
-                      size: 13,
-                      weight: FontWeight.w700,
-                      color: c.muted,
-                    ),
-                    filled: false,
-                    fillColor: c.transparent,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    isDense: true,
-                  ),
-                  cursorColor: c.gold,
-                  style: PromotorText.outfit(
-                    size: 13,
-                    weight: FontWeight.w700,
-                    color: c.cream2,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -248,9 +235,7 @@ class _ChatListViewState extends State<ChatListView> {
             size: 11,
             weight: FontWeight.w800,
           ),
-          overlayColor: WidgetStatePropertyAll(
-            c.gold.withValues(alpha: 0.08),
-          ),
+          overlayColor: WidgetStatePropertyAll(c.gold.withValues(alpha: 0.08)),
           indicator: BoxDecoration(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -262,8 +247,8 @@ class _ChatListViewState extends State<ChatListView> {
           tabs: [
             _buildTab(tabContext, 'Semua', unreadAll),
             _buildTab(tabContext, 'Toko', unreadStore),
-            _buildTab(tabContext, 'Global', unreadGlobal),
             _buildTab(tabContext, 'Tim', unreadTeam),
+            _buildTab(tabContext, 'Global', unreadGlobal),
             _buildTab(tabContext, 'Info', unreadAnnouncement),
           ],
         ),
@@ -276,8 +261,8 @@ class _ChatListViewState extends State<ChatListView> {
     final tabIndex = switch (label) {
       'Semua' => 0,
       'Toko' => 1,
-      'Global' => 2,
-      'Tim' => 3,
+      'Tim' => 2,
+      'Global' => 3,
       'Info' => 4,
       _ => 0,
     };
@@ -286,8 +271,7 @@ class _ChatListViewState extends State<ChatListView> {
     return AnimatedBuilder(
       animation: animation ?? controller,
       builder: (context, _) {
-        final animationValue =
-            animation?.value ?? controller.index.toDouble();
+        final animationValue = animation?.value ?? controller.index.toDouble();
         final isSelected = (animationValue - tabIndex).abs() < 0.5;
 
         return Tab(
@@ -356,10 +340,12 @@ class _ChatListViewState extends State<ChatListView> {
     final hasUnread = room.unreadCount > 0;
     final timeLabel = _formatTimeLabel(room.lastMessageTime);
     final preview = _buildPreview(room);
-    final memberLabel = '${room.memberCount} anggota';
+    final meta = (room.description ?? '').trim();
     final accent = _chatAccent(type);
     final avatarLetter = _avatarLetter(type, room.name);
     final isStore = type == _ChatType.store;
+    final hasMentionPersonal = room.mentionUnreadCount > 0;
+    final hasMentionAll = room.mentionAllUnreadCount > 0;
     final borderColor = isStore && hasUnread
         ? c.gold.withValues(alpha: 0.3)
         : accent.border;
@@ -377,8 +363,8 @@ class _ChatListViewState extends State<ChatListView> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 46,
-                  height: 46,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
                     color: accent.bg,
                     shape: BoxShape.circle,
@@ -388,7 +374,7 @@ class _ChatListViewState extends State<ChatListView> {
                     child: Text(
                       avatarLetter,
                       style: PromotorText.display(
-                        size: isStore ? 13 : 16,
+                        size: isStore ? 12 : 15,
                         color: avatarTextColor,
                       ),
                     ),
@@ -410,7 +396,7 @@ class _ChatListViewState extends State<ChatListView> {
                   ),
               ],
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,55 +405,89 @@ class _ChatListViewState extends State<ChatListView> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          room.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: PromotorText.outfit(
-                            size: 14,
-                            weight: FontWeight.w700,
-                            color: c.cream,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isStore
+                                  ? c.gold.withValues(alpha: 0.1)
+                                  : c.s1,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: isStore
+                                    ? c.gold.withValues(alpha: 0.22)
+                                    : c.s3,
+                              ),
+                            ),
+                            child: Text(
+                              _displayRoomName(room),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: PromotorText.outfit(
+                                size: 12,
+                                weight: FontWeight.w700,
+                                color: isStore ? c.gold : c.cream,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                       Text(
                         timeLabel,
                         style: PromotorText.outfit(
-                          size: 11,
+                          size: 10,
                           weight: FontWeight.w700,
                           color: hasUnread ? accent.text : c.muted,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  if (meta.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: PromotorText.outfit(
+                        size: 10,
+                        weight: FontWeight.w700,
+                        color: c.muted2,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 2),
                   Text(
                     preview,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: PromotorText.outfit(
-                      size: 12,
+                      size: 11,
                       weight: hasUnread ? FontWeight.w700 : FontWeight.w600,
                       color: hasUnread ? c.cream2 : c.muted,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
                   Row(
                     children: [
-                      Icon(
-                        isStore ? Icons.storefront : Icons.group,
-                        size: 13,
-                        color: c.muted2,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        memberLabel,
-                        style: PromotorText.outfit(
-                          size: 10,
-                          weight: FontWeight.w700,
-                          color: c.muted2,
+                      if (hasMentionPersonal) ...[
+                        _buildMentionBadge(
+                          label: '@ ${room.mentionUnreadCount}',
+                          backgroundColor: c.gold.withValues(alpha: 0.14),
+                          textColor: c.gold,
                         ),
-                      ),
+                      ],
+                      if (hasMentionAll) ...[
+                        if (hasMentionPersonal) const SizedBox(width: 6),
+                        _buildMentionBadge(
+                          label: '@all ${room.mentionAllUnreadCount}',
+                          backgroundColor: c.muted2.withValues(alpha: 0.18),
+                          textColor: c.cream2,
+                        ),
+                      ],
                       const Spacer(),
                       if (hasUnread)
                         Container(
@@ -497,6 +517,28 @@ class _ChatListViewState extends State<ChatListView> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMentionBadge({
+    required String label,
+    required Color backgroundColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: PromotorText.outfit(
+          size: 9,
+          weight: FontWeight.w800,
+          color: textColor,
         ),
       ),
     );
@@ -638,9 +680,7 @@ class _ChatListViewState extends State<ChatListView> {
               itemBuilder: (context, index) {
                 final room = rooms[index];
                 return Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: compactStore ? 7 : 10,
-                  ),
+                  padding: EdgeInsets.symmetric(vertical: compactStore ? 6 : 8),
                   child: compactStore
                       ? _buildStoreRow(room)
                       : _buildChatRow(room: room, type: _roomType(room)),
@@ -690,6 +730,16 @@ class _ChatListViewState extends State<ChatListView> {
   }
 
   bool _matchType(ChatRoom room, String type) {
+    final explicitTab = _normalizeChatTab(room.chatTab);
+    if (explicitTab != null) {
+      return switch (type) {
+        'announcement' => explicitTab == _ChatTab.announcement,
+        'global' => explicitTab == _ChatTab.global,
+        'team' => explicitTab == _ChatTab.team,
+        _ => false,
+      };
+    }
+
     final rt = room.roomType.toLowerCase();
     if (type == 'announcement') {
       return rt.contains('announce') ||
@@ -700,14 +750,41 @@ class _ChatListViewState extends State<ChatListView> {
           room.name.toLowerCase().contains('global');
     }
     if (type == 'team') {
-      return rt.contains('team') || room.name.toLowerCase().contains('tim');
+      return rt.contains('team') ||
+          rt.contains('tim') ||
+          rt.contains('leader') ||
+          room.name.toLowerCase().contains('tim');
     }
     return false;
   }
 
   bool _isStoreRoom(ChatRoom room) {
+    final explicitTab = _normalizeChatTab(room.chatTab);
+    if (explicitTab != null) {
+      return explicitTab == _ChatTab.store;
+    }
+
     final rt = room.roomType.toLowerCase();
     return rt.contains('toko') || rt.contains('store') || room.tokoId != null;
+  }
+
+  _ChatTab? _normalizeChatTab(String? raw) {
+    final value = (raw ?? '').trim().toLowerCase();
+    switch (value) {
+      case 'team':
+      case 'tim':
+        return _ChatTab.team;
+      case 'global':
+        return _ChatTab.global;
+      case 'announcement':
+      case 'info':
+        return _ChatTab.announcement;
+      case 'store':
+      case 'toko':
+        return _ChatTab.store;
+      default:
+        return null;
+    }
   }
 
   List<ChatRoom> _roomsForTab(List<ChatRoom> rooms, _ChatTab tab) {
@@ -789,7 +866,48 @@ class _ChatListViewState extends State<ChatListView> {
     final sender = room.lastMessageSenderName ?? 'Administrator';
     final msg = room.lastMessageContent ?? '';
     if (msg.isEmpty) return '';
+    if (msg.startsWith('report_request_card::')) {
+      return 'Permintaan laporan progress';
+    }
+    if (msg.startsWith('clock_in_success::')) {
+      final parts = msg.split('::');
+      final promotorName = parts.length > 1 && parts[1].trim().isNotEmpty
+          ? parts[1].trim()
+          : sender;
+      return '$promotorName berhasil absen masuk';
+    }
     return '$sender: $msg';
+  }
+
+  String _displayRoomName(ChatRoom room) {
+    final raw = room.name.trim();
+    if (raw.isEmpty) {
+      if (_matchType(room, 'announcement')) return 'Info';
+      if (_matchType(room, 'global')) return 'Global';
+      if (_matchType(room, 'team')) return 'Tim';
+      return '';
+    }
+    if (_matchType(room, 'announcement')) {
+      return 'Info';
+    }
+    if (_matchType(room, 'global')) {
+      return 'Global';
+    }
+    if (!_matchType(room, 'team')) {
+      return raw
+          .replaceFirst(RegExp(r'^chat\s+', caseSensitive: false), '')
+          .replaceFirst(RegExp(r'\s+chat$', caseSensitive: false), '')
+          .trim();
+    }
+    final cleaned = raw
+        .replaceFirst(RegExp(r'^grup\s+tim\s+', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'^team\s+', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'^tim\s+', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'^chat\s+', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'\s+chat$', caseSensitive: false), '')
+        .trim();
+    if (cleaned.isEmpty) return 'Tim';
+    return 'Tim $cleaned';
   }
 
   String _formatTimeLabel(DateTime? time) {

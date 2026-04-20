@@ -38,81 +38,20 @@ class _SatorTimTabState extends State<SatorTimTab> with SingleTickerProviderStat
     setState(() => _isLoading = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
-
-      // Load promotors under this SATOR via hierarchy table
-      final hierarchyData = await _supabase
-          .from('hierarchy_sator_promotor')
-          .select('promotor_id')
-          .eq('sator_id', userId)
-          .eq('active', true);
-
-      final promotorIds = (hierarchyData as List).map((h) => h['promotor_id']).toList();
-
-      List<Map<String, dynamic>> promotors = [];
-      List<Map<String, dynamic>> stores = [];
-      Map<String, String> promotorStoreMap = {};
-      
-      if (promotorIds.isNotEmpty) {
-        // Get promotor details
-        final promotorData = await _supabase
-            .from('users')
-            .select('*')
-            .inFilter('id', promotorIds)
-            .order('full_name');
-        promotors = List<Map<String, dynamic>>.from(promotorData);
-
-        // Get stores assigned to these promotors
-        final storeAssignments = await _supabase
-            .from('assignments_promotor_store')
-            .select('''
-              store_id,
-              promotor_id,
-              stores(id, store_name, address)
-            ''')
-            .inFilter('promotor_id', promotorIds)
-            .eq('active', true);
-
-        // Build promotor -> store_name mapping
-        for (var assignment in storeAssignments) {
-          final promotorId = assignment['promotor_id']?.toString();
-          final storeInfo = assignment['stores'];
-          if (promotorId != null && storeInfo != null) {
-            promotorStoreMap[promotorId] = storeInfo['store_name'] ?? '-';
-          }
-        }
-
-        // Group stores and their promotors
-        final storeMap = <String, Map<String, dynamic>>{};
-        for (var assignment in storeAssignments) {
-          final storeId = assignment['store_id'];
-          final storeInfo = assignment['stores'];
-          if (storeInfo != null && storeId != null) {
-            if (!storeMap.containsKey(storeId)) {
-              storeMap[storeId] = {
-                'stores': storeInfo,
-                'promotor_ids': <String>[],
-              };
-            }
-            storeMap[storeId]!['promotor_ids'].add(assignment['promotor_id']);
-          }
-        }
-
-        // Add promotor names to each store
-        for (var entry in storeMap.entries) {
-          final pIds = entry.value['promotor_ids'] as List<String>;
-          entry.value['promotors'] = promotors
-              .where((p) => pIds.contains(p['id']))
-              .toList();
-        }
-
-        stores = storeMap.values.toList();
-      }
+      final snapshotRaw = await _supabase.rpc(
+        'get_sator_team_snapshot',
+        params: {
+          'p_sator_id': userId,
+          'p_date': DateTime.now().toIso8601String().split('T').first,
+        },
+      );
+      final snapshot = snapshotRaw is Map
+          ? Map<String, dynamic>.from(snapshotRaw)
+          : <String, dynamic>{};
+      final promotors = _parseMapList(snapshot['promotors']);
+      final stores = _parseMapList(snapshot['stores']);
 
       if (mounted) {
-        // Add store_name to each promotor
-        for (var p in promotors) {
-          p['store_name'] = promotorStoreMap[p['id']] ?? '-';
-        }
         setState(() {
           _promotors = promotors;
           _stores = stores;
@@ -270,18 +209,19 @@ class _SatorTimTabState extends State<SatorTimTab> with SingleTickerProviderStat
         padding: const EdgeInsets.all(16),
         itemCount: _stores.length,
         itemBuilder: (context, index) {
-          final storeData = _stores[index]['stores'];
-          if (storeData == null) return const SizedBox.shrink();
-          
-          final promotors = _stores[index]['promotors'] as List? ?? [];
-          final completionPercent = 75.0; // TODO: Calculate actual completion
+          final store = _stores[index];
+          final promotors = List<Map<String, dynamic>>.from(
+            store['promotors'] as List? ?? const [],
+          );
+          final completionPercent =
+              (_toNum(store['completion_percent'])).toDouble();
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: InkWell(
               onTap: () {
-                context.push('/sator/toko/${storeData['id']}');
+                context.push('/sator/toko/${store['store_id']}');
               },
               borderRadius: BorderRadius.circular(12),
               child: Padding(
@@ -305,15 +245,15 @@ class _SatorTimTabState extends State<SatorTimTab> with SingleTickerProviderStat
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                storeData['store_name'] ?? '',
+                                '${store['store_name'] ?? ''}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: AppTypeScale.bodyStrong,
                                 ),
                               ),
-                              if (storeData['address'] != null)
+                              if (store['address'] != null)
                                 Text(
-                                  storeData['address'],
+                                  '${store['address']}',
                                   style: TextStyle(
                                     fontSize: AppTypeScale.support,
                                     color: t.textSecondary,
@@ -348,16 +288,17 @@ class _SatorTimTabState extends State<SatorTimTab> with SingleTickerProviderStat
                       spacing: 8,
                       runSpacing: 8,
                       children: promotors.take(4).map<Widget>((p) {
+                        final fullName = '${p['full_name'] ?? 'P'}';
                         return Chip(
                           avatar: CircleAvatar(
                             backgroundColor: t.infoSoft,
                             child: Text(
-                              (p['full_name'] ?? 'P')[0],
+                              fullName[0],
                               style: TextStyle(fontSize: AppTypeScale.support, color: t.info),
                             ),
                           ),
                           label: Text(
-                            p['full_name'] ?? '',
+                            fullName,
                             style: const TextStyle(fontSize: AppTypeScale.support),
                           ),
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -389,5 +330,15 @@ class _SatorTimTabState extends State<SatorTimTab> with SingleTickerProviderStat
     if (percent >= 80) return t.success;
     if (percent >= 60) return t.warning;
     return t.danger;
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+    return value.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  num _toNum(dynamic value) {
+    if (value is num) return value;
+    return num.tryParse('${value ?? ''}') ?? 0;
   }
 }

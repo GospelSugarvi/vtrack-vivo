@@ -11,6 +11,7 @@ class SatorLeaderboardPage extends StatelessWidget {
       title: 'Ranking Tim',
       liveSubtitle: 'Live semua area · source ranking bersama',
       scopeLabel: 'Semua Area',
+      actorMode: LeaderboardActorMode.sator,
     );
   }
 }

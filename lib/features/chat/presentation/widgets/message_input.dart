@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/utils/cloudinary_upload_helper.dart';
 import '../theme/chat_theme.dart';
 
 class MessageInput extends StatefulWidget {
@@ -27,9 +25,6 @@ class MessageInput extends StatefulWidget {
 class _MessageInputState extends State<MessageInput> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploading = false;
-
-  static const String _cloudinaryCloudName = 'dkkbwu8hj';
-  static const String _cloudinaryUploadPreset = 'vtrack_uploads';
 
   @override
   Widget build(BuildContext context) {
@@ -227,30 +222,18 @@ class _MessageInputState extends State<MessageInput> {
   }
 
   Future<Map<String, Object?>?> _uploadToCloudinary(XFile image) async {
-    try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(
-          'https://api.cloudinary.com/v1_1/$_cloudinaryCloudName/image/upload',
-        ),
-      );
-      request.fields['upload_preset'] = _cloudinaryUploadPreset;
-      request.files.add(await http.MultipartFile.fromPath('file', image.path));
-
-      final response = await request.send();
-      if (response.statusCode != 200) {
-        return null;
-      }
-
-      final responseData = await response.stream.bytesToString();
-      final jsonData = json.decode(responseData) as Map<String, dynamic>;
-      return <String, Object?>{
-        'url': jsonData['secure_url'] as String?,
-        'width': jsonData['width'] as int?,
-        'height': jsonData['height'] as int?,
-      };
-    } catch (_) {
-      return null;
-    }
+    final result = await CloudinaryUploadHelper.uploadXFile(
+      image,
+      folder: 'vtrack/chat',
+      fileName: 'chat_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      maxWidth: 1280,
+      quality: 80,
+    );
+    if (result == null) return null;
+    return <String, Object?>{
+      'url': result.url,
+      'width': result.width,
+      'height': result.height,
+    };
   }
 }

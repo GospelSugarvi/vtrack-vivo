@@ -61,6 +61,13 @@ String _buildProductName(Map<String, dynamic> product) {
   return model;
 }
 
+int _variantPrice(Map<String, dynamic> variant) {
+  final raw = variant['srp'];
+  if (raw is int) return raw;
+  if (raw is num) return raw.toInt();
+  return int.tryParse('${raw ?? ''}') ?? 0;
+}
+
 class StockInputPage extends StatefulWidget {
   const StockInputPage({super.key});
 
@@ -69,9 +76,12 @@ class StockInputPage extends StatefulWidget {
 }
 
 class _StockInputPageState extends State<StockInputPage> {
+  static List<Map<String, dynamic>> _variantCache = <Map<String, dynamic>>[];
+
   FieldThemeTokens get t => context.fieldTokens;
   final _imeiController = TextEditingController();
-  bool _isLoading = false;
+  bool _isCheckingImei = false;
+  bool _isSubmittingStock = false;
   String _selectedTipeStok = 'fresh'; // fresh, chip, display
   final List<Map<String, dynamic>> _addedItems = [];
   List<Map<String, dynamic>> _variants = [];
@@ -155,16 +165,30 @@ class _StockInputPageState extends State<StockInputPage> {
   @override
   void initState() {
     super.initState();
-    _loadVariants();
+    if (_variantCache.isNotEmpty) {
+      _variants = List<Map<String, dynamic>>.from(_variantCache);
+    }
+    unawaited(_loadVariants(forceRefresh: _variantCache.isNotEmpty));
   }
 
-  Future<void> _loadVariants() async {
+  Future<void> _loadVariants({bool forceRefresh = false}) async {
+    if (!forceRefresh && _variantCache.isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _variants = List<Map<String, dynamic>>.from(_variantCache);
+        _isLoadingVariants = false;
+      });
+      return;
+    }
     setState(() => _isLoadingVariants = true);
 
     try {
       final result = await Supabase.instance.client
           .from('product_variants')
-          .select('id, ram_rom, color, products(id, model_name, network_type)')
+          .select(
+            'id, srp, ram_rom, color, products(id, model_name, network_type)',
+          )
+          .isFilter('deleted_at', null)
           .order('products(model_name)')
           .timeout(
             const Duration(seconds: 10),
@@ -175,6 +199,7 @@ class _StockInputPageState extends State<StockInputPage> {
 
       setState(() {
         _variants = List<Map<String, dynamic>>.from(result);
+        _variantCache = List<Map<String, dynamic>>.from(result);
         _isLoadingVariants = false;
       });
     } on SocketException catch (e) {
@@ -249,7 +274,7 @@ class _StockInputPageState extends State<StockInputPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isCheckingImei = true);
 
     try {
       // Check if IMEI already exists in database
@@ -288,7 +313,7 @@ class _StockInputPageState extends State<StockInputPage> {
           if (claimed) {
             _imeiController.clear();
           }
-          setState(() => _isLoading = false);
+          setState(() => _isCheckingImei = false);
           return;
         }
 
@@ -297,7 +322,7 @@ class _StockInputPageState extends State<StockInputPage> {
           context,
           'IMEI sudah ada di database (${existingStock['is_sold'] == true ? 'Terjual' : 'Tersedia'})',
         );
-        setState(() => _isLoading = false);
+        setState(() => _isCheckingImei = false);
         return;
       }
 
@@ -333,7 +358,7 @@ class _StockInputPageState extends State<StockInputPage> {
       final exception = ErrorHandler.handleError(e);
       ErrorHandler.showErrorDialog(context, exception);
     } finally {
-      setState(() => _isLoading = false);
+      setState(() => _isCheckingImei = false);
     }
   }
 
@@ -345,10 +370,10 @@ class _StockInputPageState extends State<StockInputPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('IMEI Sudah Pernah Diinput'),
+        title: const Text('Barang Pindahan Terdeteksi'),
         content: SingleChildScrollView(
           child: Text(
-            'IMEI ini sudah terdaftar di sistem dan statusnya sedang menunggu claim toko penerima.\n\nToko asal: $sourceStoreName\nPromotor asal: $sourcePromotorName\n\nStok ini tidak akan dibuat baru. Sistem hanya akan memindahkan stok existing ini ke toko Anda.\n\nLanjut claim IMEI ini?',
+            'IMEI ini sudah ada di sistem dan sedang menunggu claim toko penerima.\n\nToko asal: $sourceStoreName\nPromotor asal: $sourcePromotorName\n\nSistem tidak akan membuat stok baru. IMEI lama akan dipindahkan ke toko Anda.\n\nLanjut claim sekarang?',
           ),
         ),
         actions: [
@@ -374,7 +399,7 @@ class _StockInputPageState extends State<StockInputPage> {
     if (!mounted) return false;
     ErrorHandler.showSuccessSnackBar(
       context,
-      'IMEI pindahan berhasil dipindahkan ke toko Anda',
+      'IMEI pindahan berhasil di-claim ke toko Anda',
     );
     return true;
   }
@@ -392,124 +417,45 @@ class _StockInputPageState extends State<StockInputPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isSubmittingStock = true);
 
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) {
         throw SessionExpiredException();
       }
-
-      // Get store_id from assignments_promotor_store.
-      // Use list + first to avoid hard-fail if bad data has multiple active rows.
-      final assignmentRows = await Supabase.instance.client
-          .from('assignments_promotor_store')
-          .select('store_id')
-          .eq('promotor_id', userId)
-          .eq('active', true)
-          .order('created_at', ascending: false)
-          .limit(1)
+      final rpcResult = await Supabase.instance.client
+          .rpc(
+            'submit_promotor_stock_input',
+            params: {
+              'p_items': _addedItems
+                  .map(
+                    (item) => <String, dynamic>{
+                      'imei': item['imei'],
+                      'variant_id': item['variant_id'],
+                      'tipe_stok': item['tipe_stok'],
+                    },
+                  )
+                  .toList(),
+            },
+          )
           .timeout(
-            const Duration(seconds: 10),
+            const Duration(seconds: 20),
             onTimeout: () {
-              throw TimeoutException(message: 'Waktu memuat data toko habis');
+              throw TimeoutException(message: 'Waktu kirim stok habis');
             },
           );
 
-      final assignments = List<Map<String, dynamic>>.from(assignmentRows);
-      final storeId = assignments.isNotEmpty
-          ? assignments.first['store_id']
-          : null;
-      if (storeId == null) {
-        throw AppException(
-          'Akun promotor belum terhubung ke toko aktif. Hubungi admin untuk assignment toko.',
-        );
-      }
-
-      int successCount = 0;
-      List<String> duplicateImeis = [];
-      List<String> failedImeis = [];
-
-      for (var item in _addedItems) {
-        final imei = item['imei'];
-
-        try {
-          // Double check if IMEI already exists before insert
-          final existing = await Supabase.instance.client
-              .from('stok')
-              .select('id')
-              .eq('imei', imei)
-              .order('created_at', ascending: false)
-              .limit(1)
-              .timeout(const Duration(seconds: 5));
-          final existingRows = List<Map<String, dynamic>>.from(existing);
-          final existingStock = existingRows.isNotEmpty
-              ? existingRows.first
-              : null;
-
-          if (existingStock != null) {
-            duplicateImeis.add(imei);
-            continue;
-          }
-
-          // Get product_id from variant
-          final variant = _variants.firstWhere(
-            (v) => _stringValue(v['id']) == _stringValue(item['variant_id']),
-            orElse: () => <String, dynamic>{},
-          );
-
-          if (variant.isEmpty) {
-            failedImeis.add(imei);
-            continue;
-          }
-
-          final product = _extractProductData(variant);
-          final productId = product['id'];
-          if (productId == null) {
-            failedImeis.add(imei);
-            continue;
-          }
-
-          // Insert new stock
-          await Supabase.instance.client
-              .from('stok')
-              .insert({
-                'imei': imei,
-                'store_id': storeId,
-                'promotor_id': userId,
-                'product_id': productId,
-                'variant_id': item['variant_id'],
-                'tipe_stok': item['tipe_stok'],
-                'is_sold': false,
-                'created_by': userId,
-                'created_at': DateTime.now().toIso8601String(),
-              })
-              .timeout(const Duration(seconds: 10));
-
-          // Log movement
-          await Supabase.instance.client
-              .from('stock_movement_log')
-              .insert({
-                'imei': imei,
-                'movement_type': 'initial',
-                'to_store_id': storeId,
-                'moved_by': userId,
-                'moved_at': DateTime.now().toIso8601String(),
-                'note': 'Initial stock input via mobile',
-              })
-              .timeout(const Duration(seconds: 5));
-
-          successCount++;
-        } on PostgrestException catch (e) {
-          if (e.code == '23505') {
-            duplicateImeis.add(imei);
-          } else {
-            failedImeis.add(imei);
-          }
-        } catch (e) {
-          failedImeis.add(imei);
-        }
-      }
+      final payload = rpcResult is Map<String, dynamic>
+          ? rpcResult
+          : Map<String, dynamic>.from(rpcResult as Map);
+      final successCount = (payload['success_count'] as num?)?.toInt() ?? 0;
+      final duplicateImeis = List<String>.from(
+        payload['duplicate_imeis'] as List? ?? const [],
+      );
+      final failedImeis = List<String>.from(
+        payload['failed_imeis'] as List? ?? const [],
+      );
 
       if (!mounted) return;
       String message = '';
@@ -558,7 +504,7 @@ class _StockInputPageState extends State<StockInputPage> {
       final exception = ErrorHandler.handleError(e);
       ErrorHandler.showErrorDialog(context, exception);
     } finally {
-      setState(() => _isLoading = false);
+      setState(() => _isSubmittingStock = false);
     }
   }
 
@@ -579,8 +525,37 @@ class _StockInputPageState extends State<StockInputPage> {
                 const SizedBox(height: 20),
                 // Variant selector
                 if (_isLoadingVariants)
-                  Center(
-                    child: CircularProgressIndicator(color: t.primaryAccent),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: t.surface1,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: t.surface3),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: t.primaryAccent,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Memuat produk...',
+                          style: PromotorText.outfit(
+                            size: 13,
+                            weight: FontWeight.w700,
+                            color: t.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   )
                 else
                   InkWell(
@@ -735,12 +710,12 @@ class _StockInputPageState extends State<StockInputPage> {
                     ),
                     const SizedBox(width: 8),
                     IconButton.filled(
-                      onPressed: _isLoading ? null : _addIMEI,
+                      onPressed: _isCheckingImei ? null : _addIMEI,
                       style: IconButton.styleFrom(
                         backgroundColor: t.primaryAccent,
                         foregroundColor: t.textOnAccent,
                       ),
-                      icon: _isLoading
+                      icon: _isCheckingImei
                           ? SizedBox(
                               width: 20,
                               height: 20,
@@ -844,9 +819,22 @@ class _StockInputPageState extends State<StockInputPage> {
                 // Submit button
                 if (_addedItems.isNotEmpty)
                   ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _submitStock,
-                    icon: Icon(Icons.save),
-                    label: Text('SIMPAN ${_addedItems.length} IMEI'),
+                    onPressed: _isSubmittingStock ? null : _submitStock,
+                    icon: _isSubmittingStock
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: t.textOnAccent,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    label: Text(
+                      _isSubmittingStock
+                          ? 'Sedang mengirim'
+                          : 'Kirim',
+                    ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: t.primaryAccent,
@@ -946,25 +934,31 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
 
       final modelRaw = _stringValue(_extractProductData(variant)['model_name']);
       final modelName = modelRaw.isEmpty ? 'Tanpa Model' : modelRaw;
-      grouped
-          .putIfAbsent(modelName, () => <Map<String, dynamic>>[])
-          .add(variant);
+      grouped.putIfAbsent(modelName, () => <Map<String, dynamic>>[]).add(variant);
     }
 
-    final groups =
-        grouped.entries.map((entry) {
-          final variants = List<Map<String, dynamic>>.from(entry.value)
-            ..sort(
-              (a, b) => _buildVariantLabel(a, includeModel: false)
-                  .toLowerCase()
-                  .compareTo(
-                    _buildVariantLabel(b, includeModel: false).toLowerCase(),
-                  ),
-            );
-          return _VariantGroup(model: entry.key, variants: variants);
-        }).toList()..sort(
-          (a, b) => a.model.toLowerCase().compareTo(b.model.toLowerCase()),
+      final groups = grouped.entries.map((entry) {
+      final variants = List<Map<String, dynamic>>.from(entry.value)
+        ..sort(
+          (a, b) {
+            final priceCompare = _variantPrice(a).compareTo(_variantPrice(b));
+            if (priceCompare != 0) return priceCompare;
+            return _buildVariantLabel(a, includeModel: false)
+                .toLowerCase()
+                .compareTo(
+                  _buildVariantLabel(b, includeModel: false).toLowerCase(),
+                );
+          },
         );
+      return _VariantGroup(model: entry.key, variants: variants);
+    }).toList()
+      ..sort((a, b) {
+        final aPrice = a.variants.isEmpty ? 0 : _variantPrice(a.variants.first);
+        final bPrice = b.variants.isEmpty ? 0 : _variantPrice(b.variants.first);
+        final priceCompare = aPrice.compareTo(bPrice);
+        if (priceCompare != 0) return priceCompare;
+        return a.model.toLowerCase().compareTo(b.model.toLowerCase());
+      });
 
     return groups;
   }
@@ -975,7 +969,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
     final groups = _buildGroups();
 
     return FractionallySizedBox(
-      heightFactor: 0.92,
+      heightFactor: 0.86,
       child: Container(
         decoration: BoxDecoration(
           color: t.background,
@@ -984,26 +978,70 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 14),
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: t.surface3,
-                  borderRadius: BorderRadius.circular(999),
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+              child: Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    width: 36,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: t.surface3,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).pop(),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: t.surface1,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: t.surface3),
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: t.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                'Pilih Varian Produk',
-                style: PromotorText.display(size: 18, color: t.textPrimary),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Pilih Produk',
+                      style: PromotorText.display(
+                        size: 16,
+                        color: t.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${widget.variants.length} varian',
+                    style: PromotorText.outfit(
+                      size: 11,
+                      weight: FontWeight.w700,
+                      color: t.textMuted,
+                    ),
+                  ),
+                ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) => setState(() => _query = value),
@@ -1049,10 +1087,14 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                     borderSide: BorderSide(color: t.primaryAccent),
                   ),
                   isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Expanded(
               child: groups.isEmpty
                   ? Center(
@@ -1066,25 +1108,29 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
                       itemCount: groups.length,
                       itemBuilder: (context, index) {
                         final group = groups[index];
                         final shouldExpand =
-                            _query.isNotEmpty ||
-                            _expandedModels.contains(group.model);
+                            _query.isNotEmpty || _expandedModels.contains(group.model);
 
                         return Card(
                           color: t.surface1,
-                          margin: const EdgeInsets.only(bottom: 10),
+                          margin: const EdgeInsets.only(bottom: 6),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(14),
                             side: BorderSide(color: t.surface3),
                           ),
                           child: ExpansionTile(
-                            key: PageStorageKey<String>(
-                              'group_${group.model}_$index',
+                            key: PageStorageKey<String>('group_${group.model}_$index'),
+                            tilePadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 0,
                             ),
+                            childrenPadding: const EdgeInsets.only(bottom: 4),
+                            dense: true,
+                            minTileHeight: 44,
                             iconColor: t.primaryAccent,
                             collapsedIconColor: t.textMuted,
                             initiallyExpanded: shouldExpand,
@@ -1099,8 +1145,10 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                             },
                             title: Text(
                               group.model,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: PromotorText.outfit(
-                                size: 16,
+                                size: 13,
                                 weight: FontWeight.w700,
                                 color: t.textPrimary,
                               ),
@@ -1112,10 +1160,19 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
 
                               return ListTile(
                                 dense: true,
+                                visualDensity: const VisualDensity(
+                                  horizontal: -2,
+                                  vertical: -3,
+                                ),
+                                minTileHeight: 38,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 leading: Icon(
                                   isSelected
                                       ? Icons.radio_button_checked
                                       : Icons.radio_button_off,
+                                  size: 18,
                                   color: isSelected
                                       ? t.primaryAccent
                                       : t.textMuted,
@@ -1125,8 +1182,10 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                                     variant,
                                     includeModel: false,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: PromotorText.outfit(
-                                    size: 15,
+                                    size: 12,
                                     weight: FontWeight.w600,
                                     color: t.textPrimary,
                                   ),

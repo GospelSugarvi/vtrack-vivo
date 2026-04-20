@@ -24,6 +24,7 @@ class _SellInAchievementPageState extends State<SellInAchievementPage> {
   List<Map<String, dynamic>> _rows = const [];
   List<Map<String, String>> _storeOptions = const [];
   String? _selectedStoreId;
+  String _satorName = 'SATOR';
   late DateTime _rangeStart;
   late DateTime _rangeEnd;
 
@@ -42,8 +43,19 @@ class _SellInAchievementPageState extends State<SellInAchievementPage> {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('Sesi login tidak ditemukan');
+      final userRow = await _supabase
+          .from('users')
+          .select('full_name, nickname')
+          .eq('id', userId)
+          .maybeSingle();
+      final resolvedSatorName =
+          '${userRow?['nickname'] ?? ''}'.trim().isNotEmpty
+          ? '${userRow?['nickname'] ?? ''}'.trim()
+          : ('${userRow?['full_name'] ?? ''}'.trim().isNotEmpty
+                ? '${userRow?['full_name'] ?? ''}'.trim()
+                : 'SATOR');
 
-      final stores = await _loadStoreOptions(userId);
+      final stores = await _loadStoreOptions();
       final response = await _supabase.rpc(
         'get_sellin_achievement',
         params: {
@@ -67,6 +79,7 @@ class _SellInAchievementPageState extends State<SellInAchievementPage> {
         _summary = summary;
         _rows = rows;
         _storeOptions = stores;
+        _satorName = resolvedSatorName;
         _isLoading = false;
       });
     } catch (_) {
@@ -75,33 +88,35 @@ class _SellInAchievementPageState extends State<SellInAchievementPage> {
         _summary = const {};
         _rows = const [];
         _storeOptions = const [];
+        _satorName = 'SATOR';
         _isLoading = false;
       });
     }
   }
 
-  Future<List<Map<String, String>>> _loadStoreOptions(String userId) async {
-    final response = await _supabase
-        .from('sales_sell_in')
-        .select('store_id, stores(store_name)')
-        .eq('sator_id', userId)
-        .isFilter('deleted_at', null);
-
-    final seen = <String>{};
+  Future<List<Map<String, String>>> _loadStoreOptions() async {
+    final snapshotRaw = await _supabase.rpc('get_sator_sellin_store_options');
+    final snapshot = Map<String, dynamic>.from(
+      (snapshotRaw as Map?) ?? const <String, dynamic>{},
+    );
     final stores = <Map<String, String>>[];
-    for (final raw in List<Map<String, dynamic>>.from(response)) {
-      final storeId = raw['store_id']?.toString();
-      if (storeId == null || storeId.isEmpty || !seen.add(storeId)) continue;
-      final store = raw['stores'] is Map
-          ? Map<String, dynamic>.from(raw['stores'] as Map)
-          : <String, dynamic>{};
+    for (final raw in _parseMapList(snapshot['stores'])) {
+      final storeId = raw['store_id']?.toString() ?? '';
+      if (storeId.isEmpty) continue;
       stores.add({
         'store_id': storeId,
-        'store_name': '${store['store_name'] ?? 'Toko'}',
+        'store_name': '${raw['store_name'] ?? 'Toko'}',
       });
     }
-    stores.sort((a, b) => a['store_name']!.compareTo(b['store_name']!));
     return stores;
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   int _toInt(dynamic value) {
@@ -126,7 +141,7 @@ class _SellInAchievementPageState extends State<SellInAchievementPage> {
     return DateFormat('EEEE, d MMM yyyy', 'id_ID').format(start);
   }
 
-  String get _pageTitle => 'Achievement Sell-In';
+  String get _pageTitle => 'Achievement Sell-In • $_satorName';
   String get _rangeLabel {
     final start = DateFormat('d MMM yy', 'id_ID').format(_rangeStart);
     final end = DateFormat('d MMM yy', 'id_ID').format(_rangeEnd);

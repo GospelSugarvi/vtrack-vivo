@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,7 @@ class TestAccountSwitcher {
   static const String _lastLoginKey = 'dev_last_login_v1';
 
   static Future<void> show(BuildContext context) async {
+    if (!kDebugMode) return;
     if (!context.mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -57,6 +59,7 @@ class TestAccountSwitcherFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) return const SizedBox.shrink();
     return Positioned(
       right: 12,
       bottom: 86,
@@ -74,7 +77,8 @@ class _TestAccountSwitcherSheet extends StatefulWidget {
   const _TestAccountSwitcherSheet();
 
   @override
-  State<_TestAccountSwitcherSheet> createState() => _TestAccountSwitcherSheetState();
+  State<_TestAccountSwitcherSheet> createState() =>
+      _TestAccountSwitcherSheetState();
 }
 
 class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
@@ -89,10 +93,26 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
   static const List<_TestSlot> _slots = [
     _TestSlot(id: 'sator_1', label: 'SATOR 1', expectedRole: 'sator'),
     _TestSlot(id: 'sator_2', label: 'SATOR 2', expectedRole: 'sator'),
-    _TestSlot(id: 'promotor_1', label: 'PROMOTOR 1 (SATOR 1)', expectedRole: 'promotor'),
-    _TestSlot(id: 'promotor_2', label: 'PROMOTOR 2 (SATOR 1)', expectedRole: 'promotor'),
-    _TestSlot(id: 'promotor_3', label: 'PROMOTOR 3 (SATOR 2)', expectedRole: 'promotor'),
-    _TestSlot(id: 'promotor_4', label: 'PROMOTOR 4 (SATOR 2)', expectedRole: 'promotor'),
+    _TestSlot(
+      id: 'promotor_1',
+      label: 'PROMOTOR 1 (SATOR 1)',
+      expectedRole: 'promotor',
+    ),
+    _TestSlot(
+      id: 'promotor_2',
+      label: 'PROMOTOR 2 (SATOR 1)',
+      expectedRole: 'promotor',
+    ),
+    _TestSlot(
+      id: 'promotor_3',
+      label: 'PROMOTOR 3 (SATOR 2)',
+      expectedRole: 'promotor',
+    ),
+    _TestSlot(
+      id: 'promotor_4',
+      label: 'PROMOTOR 4 (SATOR 2)',
+      expectedRole: 'promotor',
+    ),
     _TestSlot(id: 'spv_1', label: 'SPV 1', expectedRole: 'spv'),
   ];
 
@@ -116,10 +136,7 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
             final email = (val['email'] ?? '').toString();
             final password = (val['password'] ?? '').toString();
             if (email.isNotEmpty && password.isNotEmpty) {
-              map[entry.key] = {
-                'email': email,
-                'password': password,
-              };
+              map[entry.key] = {'email': email, 'password': password};
             }
           }
         }
@@ -256,9 +273,9 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal switch akun: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal switch akun: $e')));
     } finally {
       if (mounted) setState(() => _busySlotId = null);
     }
@@ -288,7 +305,9 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Semua Slot?'),
-        content: const Text('Semua email/password test yang tersimpan akan dihapus.'),
+        content: const Text(
+          'Semua email/password test yang tersimpan akan dihapus.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -344,7 +363,10 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
                         return ListTile(
                           leading: CircleAvatar(
                             radius: 14,
-                            child: Text('${index + 1}', style: const TextStyle(fontSize: 12)),
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                           title: Text(slot.label),
                           subtitle: Text(
@@ -359,20 +381,29 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
                             children: [
                               IconButton(
                                 tooltip: 'Edit slot',
-                                onPressed: isBusy ? null : () => _editSlot(slot),
+                                onPressed: isBusy
+                                    ? null
+                                    : () => _editSlot(slot),
                                 icon: const Icon(Icons.edit_outlined),
                               ),
                               FilledButton(
-                                onPressed: (!hasAccount || isBusy) ? null : () => _switchTo(slot),
+                                onPressed: (!hasAccount || isBusy)
+                                    ? null
+                                    : () => _switchTo(slot),
                                 style: FilledButton.styleFrom(
                                   visualDensity: VisualDensity.compact,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
                                 ),
                                 child: isBusy
                                     ? const SizedBox(
                                         width: 14,
                                         height: 14,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       )
                                     : const Text('Masuk'),
                               ),

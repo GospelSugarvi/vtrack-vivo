@@ -19,7 +19,7 @@ class LaporanPromosiPage extends StatefulWidget {
 
 class _LaporanPromosiPageState extends State<LaporanPromosiPage> {
   FieldThemeTokens get t => context.fieldTokens;
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>(debugLabel: 'laporan_promosi_form');
   final _postUrlController = TextEditingController();
   final _notesController = TextEditingController();
 
@@ -98,44 +98,33 @@ class _LaporanPromosiPageState extends State<LaporanPromosiPage> {
 
   Future<String?> _uploadToCloudinary(File file) async {
     try {
-      debugPrint('=== CLOUDINARY UPLOAD START (PROMOTION) ===');
-
-      // Compress image first (skip on web)
-      debugPrint('=== Compressing image... ===');
       final compressedFile = await _compressImage(file);
-      debugPrint('=== Compression done ===');
 
       final url = Uri.parse(
         'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload',
       );
-      debugPrint('=== Cloudinary URL: $url ===');
 
       final request = http.MultipartRequest('POST', url);
       request.fields['upload_preset'] = cloudinaryUploadPreset;
       request.fields['folder'] = 'vtrack/promotions';
 
-      debugPrint('=== Adding file to request... ===');
       request.files.add(
         await http.MultipartFile.fromPath('file', compressedFile.path),
       );
 
-      debugPrint('=== Sending request to Cloudinary... ===');
       final response = await request.send();
-      debugPrint('=== Response status: ${response.statusCode} ===');
 
       if (response.statusCode == 200) {
         final responseData = await response.stream.toBytes();
         final responseString = String.fromCharCodes(responseData);
         final jsonMap = json.decode(responseString);
 
-        debugPrint('=== Upload SUCCESS: ${jsonMap['secure_url']} ===');
-
         // Clean up temp file (only if different from original)
         if (!kIsWeb && compressedFile.path != file.path) {
           try {
             await compressedFile.delete();
           } catch (e) {
-            debugPrint('=== Error deleting temp file: $e ===');
+            debugPrint('Error deleting temp file: $e');
           }
         }
 
@@ -143,27 +132,22 @@ class _LaporanPromosiPageState extends State<LaporanPromosiPage> {
       } else {
         final responseData = await response.stream.toBytes();
         final errorMsg = String.fromCharCodes(responseData);
-        debugPrint('=== Upload FAILED: $errorMsg ===');
+        debugPrint('Upload promosi gagal: $errorMsg');
       }
 
       return null;
-    } catch (e, stackTrace) {
-      debugPrint('=== ERROR uploading to Cloudinary: $e ===');
-      debugPrint('=== STACK TRACE: $stackTrace ===');
+    } catch (e) {
+      debugPrint('Error upload promosi: $e');
       return null;
     }
   }
 
   Future<void> _submitReport() async {
-    debugPrint('=== SUBMIT PROMOTION REPORT START ===');
-
     if (!_formKey.currentState!.validate()) {
-      debugPrint('=== Form validation failed ===');
       return;
     }
 
     if (_selectedImages.isEmpty) {
-      debugPrint('=== ERROR: No images selected ===');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Minimal 1 screenshot harus diupload')),
       );
@@ -176,73 +160,35 @@ class _LaporanPromosiPageState extends State<LaporanPromosiPage> {
 
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
-      debugPrint('=== User ID: $userId ===');
-
       if (userId == null) throw Exception('User not logged in');
 
-      // Get store ID
-      debugPrint('=== Getting store ID... ===');
-      final storeRows = await Supabase.instance.client
-          .from('assignments_promotor_store')
-          .select('store_id')
-          .eq('promotor_id', userId)
-          .eq('active', true)
-          .order('created_at', ascending: false)
-          .limit(1);
-
-      final assignments = List<Map<String, dynamic>>.from(storeRows);
-      final storeData = assignments.isNotEmpty ? assignments.first : null;
-      if (storeData == null || storeData['store_id'] == null) {
-        throw Exception('Toko aktif promotor tidak ditemukan');
-      }
-
-      final storeId = storeData['store_id'];
-      debugPrint('=== Store ID: $storeId ===');
-
-      // Upload images to Cloudinary
-      debugPrint('=== Uploading ${_selectedImages.length} images... ===');
       List<String> uploadedUrls = [];
       for (int i = 0; i < _selectedImages.length; i++) {
-        debugPrint(
-          '=== Uploading image ${i + 1}/${_selectedImages.length} ===',
-        );
-        setState(() {
-        });
+        setState(() {});
 
         final url = await _uploadToCloudinary(_selectedImages[i]);
         if (url != null) {
           uploadedUrls.add(url);
-          debugPrint('=== Image ${i + 1} uploaded: $url ===');
-        } else {
-          debugPrint('=== Image ${i + 1} upload FAILED ===');
         }
       }
-
-      debugPrint(
-        '=== Total uploaded: ${uploadedUrls.length}/${_selectedImages.length} ===',
-      );
 
       if (uploadedUrls.isEmpty) {
         throw Exception('Gagal upload gambar');
       }
 
-      // Save to database
-      debugPrint('=== Saving to database... ===');
-      await Supabase.instance.client.from('promotion_reports').insert({
-        'promotor_id': userId,
-        'store_id': storeId,
-        'platform': _selectedPlatform,
-        'post_url': _postUrlController.text.trim().isEmpty
-            ? null
-            : _postUrlController.text.trim(),
-        'screenshot_urls': uploadedUrls,
-        'notes': _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
-        'status': 'submitted',
-      });
-
-      debugPrint('=== Promotion report SUCCESS ===');
+      await Supabase.instance.client.rpc(
+        'submit_promotion_report',
+        params: {
+          'p_platform': _selectedPlatform,
+          'p_post_url': _postUrlController.text.trim().isEmpty
+              ? null
+              : _postUrlController.text.trim(),
+          'p_screenshot_urls': uploadedUrls,
+          'p_notes': _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        },
+      );
 
       if (!mounted) return;
       await showSuccessDialog(
@@ -252,10 +198,8 @@ class _LaporanPromosiPageState extends State<LaporanPromosiPage> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-    } catch (e, stackTrace) {
-      debugPrint('=== ERROR PROMOTION REPORT: $e ===');
-      debugPrint('=== STACK TRACE: $stackTrace ===');
-
+    } catch (e) {
+      debugPrint('Error submit laporan promosi: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: t.danger),

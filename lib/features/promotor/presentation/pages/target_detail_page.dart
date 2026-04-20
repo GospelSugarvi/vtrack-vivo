@@ -362,7 +362,7 @@ class _TargetDetailPageState extends State<TargetDetailPage>
             ),
             const SizedBox(height: 8),
             Text(
-              'Urutannya begini: lihat minggu sekarang, ambil target bulan, kalikan persen minggu aktif, lalu bagi 6 hari kerja.',
+              'Urutannya begini: sistem lihat sisa target bulan, lalu membaginya ke sisa hari kerja efektif promotor dari jadwal bulanan yang sudah disubmit.',
               style: AppTextStyle.bodyMd(t.textSecondary),
             ),
             const SizedBox(height: 16),
@@ -385,9 +385,9 @@ class _TargetDetailPageState extends State<TargetDetailPage>
             ),
             const SizedBox(height: 12),
             _buildStepBox(
-              title: '3. Bagi 6 hari kerja',
+              title: '3. Bagi Sisa Hari Kerja Efektif',
               lines: [
-                'Hari kerja minggu ini = $workingDays hari',
+                'Hari kerja efektif yang tersisa = $workingDays hari',
                 'Target harian dari sistem = ${_formatCurrency(dailyTarget)}',
               ],
             ),

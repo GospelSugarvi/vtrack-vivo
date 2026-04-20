@@ -33,17 +33,33 @@ class _ListTokoPageState extends State<ListTokoPage> {
         params: {'p_sator_id': userId},
       );
       if (mounted) {
+        final stores = List<Map<String, dynamic>>.from(data ?? []);
         setState(() {
-          _stores = List<Map<String, dynamic>>.from(data ?? []);
-          _stores.sort(
-            (a, b) => (b['empty_count'] ?? 0).compareTo(a['empty_count'] ?? 0),
-          );
+          _stores = stores;
+          _stores.sort((a, b) {
+            final groupCompare = _compareText(a['group_name'], b['group_name']);
+            if (groupCompare != 0) return groupCompare;
+            final emptyCompare =
+                _toInt(b['empty_count']).compareTo(_toInt(a['empty_count']));
+            if (emptyCompare != 0) return emptyCompare;
+            return _compareText(a['store_name'], b['store_name']);
+          });
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('${value ?? ''}') ?? 0;
+  }
+
+  int _compareText(dynamic a, dynamic b) {
+    return '${a ?? ''}'.toLowerCase().compareTo('${b ?? ''}'.toLowerCase());
   }
 
   @override
@@ -126,9 +142,11 @@ class _ListTokoPageState extends State<ListTokoPage> {
     if (_searchQuery.isNotEmpty) {
       list = list
           .where(
-            (s) => (s['store_name'] ?? '').toString().toLowerCase().contains(
-              _searchQuery,
-            ),
+            (s) => [
+              '${s['store_name'] ?? ''}',
+              '${s['group_name'] ?? ''}',
+              '${s['area'] ?? ''}',
+            ].join(' ').toLowerCase().contains(_searchQuery),
           )
           .toList();
     }
@@ -138,26 +156,74 @@ class _ListTokoPageState extends State<ListTokoPage> {
 
   Widget _buildStoreRow(Map<String, dynamic> store) {
     return InkWell(
-      onTap: () => _openStock(store),
+      onTap: () => _openStockSummary(store),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: t.surface3)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                (store['store_name'] ?? '-').toString(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: t.textPrimary,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    (store['store_name'] ?? '-').toString(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: t.textPrimary,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: t.primaryAccentSoft.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: t.surface3),
+                  ),
+                  child: Text(
+                    'Kosong ${_toInt(store['empty_count'])}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: t.primaryAccent,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: t.textMuted,
+                  size: 20,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildMetaChip(
+                  Icons.layers_outlined,
+                  ('${store['group_name'] ?? ''}').trim().isEmpty
+                      ? 'Tanpa grup'
+                      : '${store['group_name']}',
+                ),
+                if ('${store['area'] ?? ''}'.trim().isNotEmpty)
+                  _buildMetaChip(Icons.place_outlined, '${store['area']}'),
+                _buildMetaChip(
+                  Icons.warning_amber_rounded,
+                  'Kurang ${_toInt(store['low_count'])}',
+                ),
+              ],
             ),
           ],
         ),
@@ -165,12 +231,40 @@ class _ListTokoPageState extends State<ListTokoPage> {
     );
   }
 
-  void _openStock(Map<String, dynamic> store) {
+  Widget _buildMetaChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: t.surface3),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: t.textMutedStrong),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: t.textMutedStrong,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openStockSummary(Map<String, dynamic> store) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => StokTokoPage(
           storeId: store['store_id'],
+          mode: 'all',
+          initialTab: 'stock',
           enableRecommendationAction: true,
         ),
       ),

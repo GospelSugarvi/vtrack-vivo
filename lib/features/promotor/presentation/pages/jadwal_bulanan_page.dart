@@ -98,32 +98,24 @@ class _JadwalBulananPageState extends State<JadwalBulananPage> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      // Delete existing schedules for this month
-      await _supabase
-          .from('schedules')
-          .delete()
-          .eq('promotor_id', userId)
-          .eq('month_year', _monthYear);
-
-      // Call copy function
       final result = await _supabase.rpc(
-        'copy_previous_month_schedule',
-        params: {'p_promotor_id': userId, 'p_target_month': _monthYear},
+        'replace_monthly_schedule_from_previous',
+        params: {'p_target_month': _monthYear},
       );
 
+      final rows = List<Map<String, dynamic>>.from(result ?? const []);
+      final first = rows.isNotEmpty ? rows.first : const <String, dynamic>{};
       if (mounted) {
-        if (result['success'] == true) {
+        if (first['success'] == true) {
           await showSuccessDialog(
             context,
             title: 'Berhasil',
-            message: result['message'] ?? 'Import jadwal berhasil.',
+            message: first['message'] ?? 'Import jadwal berhasil.',
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Import gagal'),
+              content: Text(first['message'] ?? 'Import gagal'),
               backgroundColor: t.danger,
             ),
           );
@@ -217,15 +209,14 @@ class _JadwalBulananPageState extends State<JadwalBulananPage> {
 
   Future<void> _saveSchedule(DateTime date, ShiftType shift) async {
     try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      await _supabase.from('schedules').upsert({
-        'promotor_id': userId,
-        'schedule_date': DateFormat('yyyy-MM-dd').format(date),
-        'shift_type': shift.name,
-        'status': 'draft',
-        'month_year': _monthYear,
-      }, onConflict: 'promotor_id,schedule_date');
+      await _supabase.rpc(
+        'save_monthly_schedule_draft',
+        params: {
+          'p_schedule_date': DateFormat('yyyy-MM-dd').format(date),
+          'p_shift_type': shift.name,
+          'p_month_year': _monthYear,
+        },
+      );
     } catch (e) {
       debugPrint('Error saving schedule: $e');
     }

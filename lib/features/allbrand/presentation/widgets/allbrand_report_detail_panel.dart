@@ -12,6 +12,7 @@ class AllbrandReportDetailPanel extends StatefulWidget {
   final String? initialStoreName;
   final DateTime? targetDate;
   final EdgeInsetsGeometry padding;
+  final bool showCopyAction;
 
   const AllbrandReportDetailPanel({
     super.key,
@@ -20,6 +21,7 @@ class AllbrandReportDetailPanel extends StatefulWidget {
     this.initialStoreName,
     this.targetDate,
     this.padding = EdgeInsets.zero,
+    this.showCopyAction = true,
   }) : assert(reportId != null || storeId != null);
 
   @override
@@ -59,6 +61,8 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
   bool _isLoading = true;
   Map<String, dynamic>? _report;
   String _messageText = '';
+  List<Map<String, dynamic>> _promotorSummaries = const [];
+  Map<String, dynamic> _vivoSummary = const {};
 
   @override
   void initState() {
@@ -109,6 +113,8 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
         setState(() {
           _report = null;
           _messageText = '';
+          _promotorSummaries = const [];
+          _vivoSummary = const {};
           _isLoading = false;
         });
         return;
@@ -123,6 +129,8 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
       setState(() {
         _report = report;
         _messageText = message;
+        _promotorSummaries = promotorSummaries;
+        _vivoSummary = vivoSummary;
         _isLoading = false;
       });
     } catch (_) {
@@ -130,6 +138,8 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
       setState(() {
         _report = null;
         _messageText = '';
+        _promotorSummaries = const [];
+        _vivoSummary = const {};
         _isLoading = false;
       });
     }
@@ -187,7 +197,7 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
             await _supabase
                 .from('user_targets')
                 .select(
-                  'user_id, target_sell_out, target_fokus_total, '
+                  'user_id, target_omzet, target_sell_out, target_fokus_total, '
                   'target_fokus_detail, target_special, target_special_detail',
                 )
                 .eq('period_id', periodId)
@@ -270,26 +280,34 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
       final dashboard = dashboardByUser[promotorId] ?? const <String, dynamic>{};
       final focusDetail = _safeMap(target['target_fokus_detail']);
       final specialDetail = _safeMap(target['target_special_detail']);
+      final focusMonthTarget = _sumJsonValues(focusDetail) > 0
+          ? _sumJsonValues(focusDetail).toDouble()
+          : _toNum(target['target_fokus_total']);
+      final specialMonthTarget = _sumJsonValues(specialDetail) > 0
+          ? _sumJsonValues(specialDetail).toDouble()
+          : _toNum(target['target_special']);
 
       summaries[promotorId] = {
         'promotor_id': promotorId,
         'name': _displayName(assignment['users']),
-        'target_all_month': _toNum(target['target_sell_out']),
+        'target_all_month': _toNum(target['target_omzet']) > 0
+            ? _toNum(target['target_omzet'])
+            : _toNum(target['target_sell_out']),
         'target_all_day': _toNum(dashboard['target_daily_all_type']),
         'actual_all_day': _toNum(dashboard['actual_daily_all_type']),
         'actual_all_month': 0.0,
-        'target_focus_month': _sumJsonValues(focusDetail).toDouble(),
+        'target_focus_month': focusMonthTarget,
         'target_focus_day':
             _computeDailyDetailTarget(
-              monthlyTotal: _sumJsonValues(focusDetail).toDouble(),
+              monthlyTotal: focusMonthTarget,
               monthlyFallback: _toNum(target['target_fokus_total']),
               weeklyTarget: _toNum(dashboard['target_weekly_focus']),
             ),
         'actual_focus_day': 0,
         'actual_focus_month': 0,
-        'target_special_month': _sumJsonValues(specialDetail).toDouble(),
+        'target_special_month': specialMonthTarget,
         'target_special_day': _computeDailyDetailTarget(
-          monthlyTotal: _sumJsonValues(specialDetail).toDouble(),
+          monthlyTotal: specialMonthTarget,
           monthlyFallback: _toNum(target['target_special']),
           weeklyTarget: null,
         ),
@@ -427,7 +445,7 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
     final salesRows = await _supabase
         .from('sales_sell_out')
         .select(
-          'transaction_date, product_variants(ram_rom, ram, storage, color, products(model_name))',
+          'transaction_date, product_variants(product_id, ram_rom, ram, storage, color, products(model_name, series))',
         )
         .eq('store_id', storeId)
         .gte('transaction_date', periodStart.toIso8601String().split('T').first)
@@ -435,41 +453,84 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
         .eq('is_chip_sale', false)
         .isFilter('deleted_at', null);
 
-    final dailyCounts = <String, int>{};
-    final monthlyCounts = <String, int>{};
+    final catalogRows = await _supabase
+        .from('product_variants')
+        .select(
+          'id, product_id, ram_rom, ram, storage, color, products(model_name, series)',
+        )
+        .order('created_at', ascending: true);
+
+    final orderedRows = <Map<String, dynamic>>[];
+    final indexByLabel = <String, int>{};
+    for (final raw in List<Map<String, dynamic>>.from(catalogRows)) {
+      final variant = Map<String, dynamic>.from(raw);
+      final labelData = _buildVivoTypeRow(variant);
+      final label = '${labelData['label'] ?? ''}'.trim();
+      if (label.isEmpty) continue;
+      if (indexByLabel.containsKey(label)) continue;
+      indexByLabel[label] = orderedRows.length;
+      orderedRows.add({
+        ...labelData,
+        'daily_qty': 0,
+        'monthly_qty': 0,
+      });
+    }
+
     for (final raw in List<Map<String, dynamic>>.from(salesRows)) {
       final dateKey = '${raw['transaction_date'] ?? ''}';
       final variant = raw['product_variants'] is Map
           ? Map<String, dynamic>.from(raw['product_variants'] as Map)
           : const <String, dynamic>{};
-      final label = _buildVivoTypeLabel(variant);
+      final rowData = _buildVivoTypeRow(variant);
+      final label = '${rowData['label'] ?? ''}'.trim();
       if (label.isEmpty) continue;
-      monthlyCounts[label] = (monthlyCounts[label] ?? 0) + 1;
+      final rowIndex = indexByLabel.putIfAbsent(label, () {
+        orderedRows.add({
+          ...rowData,
+          'daily_qty': 0,
+          'monthly_qty': 0,
+        });
+        return orderedRows.length - 1;
+      });
+      orderedRows[rowIndex]['monthly_qty'] =
+          _toInt(orderedRows[rowIndex]['monthly_qty']) + 1;
       if (dateKey == reportDateKey) {
-        dailyCounts[label] = (dailyCounts[label] ?? 0) + 1;
+        orderedRows[rowIndex]['daily_qty'] =
+            _toInt(orderedRows[rowIndex]['daily_qty']) + 1;
       }
     }
 
-    final monthlyRows = monthlyCounts.entries
-        .map((entry) => <String, dynamic>{
-              'label': entry.key,
-              'qty': entry.value,
-            })
-        .toList()
-      ..sort((a, b) => _toInt(b['qty']).compareTo(_toInt(a['qty'])));
+    final monthlyRows = orderedRows
+        .map(
+          (row) => <String, dynamic>{
+            'series': row['series'],
+            'model': row['model'],
+            'label': row['label'],
+            'qty': row['monthly_qty'],
+          },
+        )
+        .toList();
 
-    final dailyRows = dailyCounts.entries
-        .map((entry) => <String, dynamic>{
-              'label': entry.key,
-              'qty': entry.value,
-            })
-        .toList()
-      ..sort((a, b) => _toInt(b['qty']).compareTo(_toInt(a['qty'])));
+    final dailyRows = orderedRows
+        .map(
+          (row) => <String, dynamic>{
+            'series': row['series'],
+            'model': row['model'],
+            'label': row['label'],
+            'qty': row['daily_qty'],
+          },
+        )
+        .toList();
 
     return {
-      'daily_total': dailyCounts.values.fold<int>(0, (sum, value) => sum + value),
-      'monthly_total':
-          monthlyCounts.values.fold<int>(0, (sum, value) => sum + value),
+      'daily_total': dailyRows.fold<int>(
+        0,
+        (sum, row) => sum + _toInt(row['qty']),
+      ),
+      'monthly_total': monthlyRows.fold<int>(
+        0,
+        (sum, row) => sum + _toInt(row['qty']),
+      ),
       'daily_rows': dailyRows,
       'monthly_rows': monthlyRows,
     };
@@ -544,12 +605,52 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
       'TANGGAL : $reportDate',
       'INPUT   : $inputBy',
       '',
+    ];
+
+    if (promotorSummaries.isNotEmpty) {
+      lines.addAll([
+        sectionDivider,
+        'PENCAPAIAN PROMOTOR VIVO',
+        sectionDivider,
+      ]);
+      for (final row in promotorSummaries) {
+        lines.add(_displayPromotorAchievement(row));
+        lines.add('----------------------------------------');
+      }
+      lines.add('');
+    }
+
+    lines.addAll([
+      sectionDivider,
+      'VIVO PER TIPE',
+      sectionDivider,
+      '${_padRight('TIPE', 16)} ${_center('HARIAN', 7)} ${_center('BULAN', 7)}',
+      '----------------------------------------',
+    ]);
+    String currentSeries = '';
+    for (final row in monthlyVivoRows) {
+      final series = '${row['series'] ?? 'VIVO'}'.trim();
+      final label = '${row['label'] ?? ''}'.trim();
+      if (label.isEmpty) continue;
+      if (series != currentSeries) {
+        currentSeries = series;
+        lines.add('[${series.toUpperCase()}]');
+      }
+      final dailyQty = _findQty(dailyVivoRows, label);
+      final monthlyQty = _findQty(monthlyVivoRows, label);
+      lines.add(
+        '${_padRight(label, 16)} ${_center('$dailyQty', 7)} ${_center('$monthlyQty', 7)}',
+      );
+    }
+
+    lines.addAll([
+      '',
       sectionDivider,
       'BRAND STORE',
       sectionDivider,
       '${_padRight('BRAND', 9)} ${_center('<2', 5)} ${_center('2-4', 5)} ${_center('4-6', 5)} ${_center('>6', 5)} ${_center('PROM', 6)}',
       '----------------------------------------',
-    ];
+    ]);
 
     for (final brand in _brands) {
       final a = _safeMap(brandDaily[brand]);
@@ -603,42 +704,6 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
       if (a == 0 && b == 0) continue;
       lines.add('${_padRight(provider, 12)} ${_abCell(a, b)}');
     }
-    lines.add('');
-    lines.add(sectionDivider);
-    lines.add('VIVO PER TIPE');
-    lines.add(sectionDivider);
-    lines.add(
-      '${_padRight('TIPE', 16)} ${_center('HARIAN', 7)} ${_center('BULAN', 7)}',
-    );
-    lines.add('----------------------------------------');
-    final vivoLabels = <String>{
-      ...dailyVivoRows.map((row) => '${row['label']}'),
-      ...monthlyVivoRows.map((row) => '${row['label']}'),
-    }.toList()
-      ..sort((a, b) {
-        final aMonthly = _findQty(monthlyVivoRows, a);
-        final bMonthly = _findQty(monthlyVivoRows, b);
-        return bMonthly.compareTo(aMonthly);
-      });
-    for (final label in vivoLabels) {
-      final dailyQty = _findQty(dailyVivoRows, label);
-      final monthlyQty = _findQty(monthlyVivoRows, label);
-      lines.add(
-        '${_padRight(label, 16)} ${_center('$dailyQty', 7)} ${_center('$monthlyQty', 7)}',
-      );
-    }
-
-    if (promotorSummaries.isNotEmpty) {
-      lines.add('');
-      lines.add(sectionDivider);
-      lines.add('PENCAPAIAN PROMOTOR VIVO');
-      lines.add(sectionDivider);
-      for (final row in promotorSummaries) {
-        lines.add(_displayPromotorAchievement(row));
-        lines.add('----------------------------------------');
-      }
-    }
-
     if (notes.isNotEmpty) {
       lines.add('');
       lines.add(sectionDivider);
@@ -771,11 +836,12 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
     return 0;
   }
 
-  String _buildVivoTypeLabel(Map<String, dynamic> variant) {
+  Map<String, dynamic> _buildVivoTypeRow(Map<String, dynamic> variant) {
     final product =
         variant['products'] is Map
             ? Map<String, dynamic>.from(variant['products'] as Map)
             : const <String, dynamic>{};
+    final series = '${product['series'] ?? ''}'.trim();
     final model = '${product['model_name'] ?? ''}'.trim();
     final ramRom = '${variant['ram_rom'] ?? ''}'.trim();
     final ram = '${variant['ram'] ?? ''}'.trim();
@@ -783,10 +849,17 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
     final spec = ramRom.isNotEmpty
         ? ramRom
         : (ram.isNotEmpty && storage.isNotEmpty ? '$ram/$storage' : '');
-    if (model.isEmpty && spec.isEmpty) return '';
-    if (model.isEmpty) return spec;
-    if (spec.isEmpty) return model;
-    return '$model $spec';
+    if (model.isEmpty && spec.isEmpty) {
+      return const <String, dynamic>{};
+    }
+    final label = spec.isEmpty
+        ? (model.isEmpty ? '-' : model)
+        : (model.isEmpty ? spec : '$model $spec');
+    return <String, dynamic>{
+      'series': series.isEmpty ? 'VIVO' : series,
+      'model': model,
+      'label': label,
+    };
   }
 
   String _compactSpecialLabel(String label) {
@@ -894,6 +967,380 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
     );
   }
 
+  List<String> get _brandColumns => const <String>[
+    'under_2m',
+    '2m_4m',
+    '4m_6m',
+    'above_6m',
+  ];
+
+  String _rangeLabel(String key) {
+    switch (key) {
+      case 'under_2m':
+        return '< 2 Jt';
+      case '2m_4m':
+        return '2 - 4 Jt';
+      case '4m_6m':
+        return '4 - 6 Jt';
+      case 'above_6m':
+        return '> 6 Jt';
+      default:
+        return key;
+    }
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required Widget child,
+  }) {
+    final t = context.fieldTokens;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: t.surface3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: t.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoGrid(Map<String, dynamic> report) {
+    final storeName =
+        '${report['stores']?['store_name'] ?? widget.initialStoreName ?? '-'}';
+    final inputBy = _displayName(report['users']);
+    final items = <Map<String, String>>[
+      {'label': 'Toko', 'value': storeName},
+      {'label': 'Tanggal', 'value': _formatDate(report['report_date'])},
+      {'label': 'Input', 'value': inputBy},
+      {
+        'label': 'Catatan',
+        'value': '${report['notes'] ?? ''}'.trim().isEmpty
+            ? '-'
+            : '${report['notes']}',
+      },
+    ];
+
+    return Column(
+      children: items
+          .map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 78,
+                    child: Text(
+                      item['label']!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: context.fieldTokens.textMutedStrong,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item['value']!,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: context.fieldTokens.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildSimpleTable({
+    required List<String> headers,
+    required List<List<String>> rows,
+    Map<int, TableColumnWidth>? columnWidths,
+    double headerFontSize = 10.5,
+    double cellFontSize = 10.5,
+    EdgeInsetsGeometry cellPadding =
+        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+  }) {
+    final t = context.fieldTokens;
+    return Table(
+      columnWidths: columnWidths,
+      defaultColumnWidth: const FlexColumnWidth(),
+      border: TableBorder.all(color: t.surface3),
+      children: [
+        TableRow(
+          decoration: BoxDecoration(color: t.surface2),
+          children: headers
+              .asMap()
+              .entries
+              .map(
+                (entry) => Padding(
+                  padding: cellPadding,
+                  child: Text(
+                    entry.value,
+                    textAlign:
+                        entry.key == 0 ? TextAlign.left : TextAlign.center,
+                    softWrap: true,
+                    style: TextStyle(
+                      fontSize: headerFontSize,
+                      fontWeight: FontWeight.w800,
+                      color: t.textPrimary,
+                      height: 1.15,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        ...rows.map(
+          (row) => TableRow(
+            children: row.asMap().entries.map((entry) {
+              return Padding(
+                padding: cellPadding,
+                child: Text(
+                  entry.value,
+                  textAlign: entry.key == 0 ? TextAlign.left : TextAlign.center,
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
+                  style: TextStyle(
+                    fontSize: cellFontSize,
+                    fontWeight: FontWeight.w700,
+                    color: t.textMutedStrong,
+                    height: 1.2,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPromotorAchievementSection() {
+    if (_promotorSummaries.isEmpty) {
+      return _buildSectionCard(
+        title: 'Pencapaian Promotor Vivo',
+        child: Text(
+          'Belum ada data pencapaian promotor.',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: context.fieldTokens.textMutedStrong,
+          ),
+        ),
+      );
+    }
+
+    final rows = <List<String>>[];
+    for (final row in _promotorSummaries) {
+      rows.add([
+        '${row['name'] ?? '-'}',
+        '${_formatMoneyCompact(_toNum(row['actual_all_day']))} / ${_formatMoneyCompact(_toNum(row['target_all_day']))}',
+        '${_formatMoneyCompact(_toNum(row['actual_all_month']))} / ${_formatMoneyCompact(_toNum(row['target_all_month']))}',
+        '${_formatUnit(_toNum(row['actual_focus_day']))} / ${_formatUnit(_roundedUnitTarget(row['target_focus_day']))}',
+        '${_formatUnit(_toNum(row['actual_focus_month']))} / ${_formatUnit(_toNum(row['target_focus_month']))}',
+      ]);
+
+      final specialRows = List<Map<String, dynamic>>.from(
+        row['special_rows'] as List? ?? const [],
+      );
+      for (final specialRow in specialRows) {
+        rows.add([
+          '${specialRow['label'] ?? 'Tipe Khusus'}',
+          '${_formatUnit(_toNum(specialRow['actual_day']))} / ${_formatUnit(_roundedUnitTarget(specialRow['target_day']))}',
+          '${_formatUnit(_toNum(specialRow['actual_month']))} / ${_formatUnit(_toNum(specialRow['target_month']))}',
+          '-',
+          '-',
+        ]);
+      }
+    }
+
+    return _buildSectionCard(
+      title: 'Pencapaian Promotor Vivo',
+      child: _buildSimpleTable(
+        headers: const [
+          'Nama',
+          'All Type Harian',
+          'All Type Bulanan',
+          'Fokus Harian',
+          'Fokus Bulanan',
+        ],
+        rows: rows,
+        columnWidths: const <int, TableColumnWidth>{
+          0: FlexColumnWidth(1.8),
+          1: FlexColumnWidth(1.15),
+          2: FlexColumnWidth(1.15),
+          3: FlexColumnWidth(1.0),
+          4: FlexColumnWidth(1.0),
+        },
+        headerFontSize: 8.4,
+        cellFontSize: 8.8,
+        cellPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      ),
+    );
+  }
+
+  Widget _buildVivoTypeSection() {
+    final dailyRows = List<Map<String, dynamic>>.from(
+      (_vivoSummary['daily_rows'] as List?) ?? const [],
+    );
+    final monthlyRows = List<Map<String, dynamic>>.from(
+      (_vivoSummary['monthly_rows'] as List?) ?? const [],
+    );
+
+    final rows = <List<String>>[];
+    String currentSeries = '';
+    for (final row in monthlyRows) {
+      final series = '${row['series'] ?? 'VIVO'}'.trim();
+      final label = '${row['label'] ?? ''}'.trim();
+      if (label.isEmpty) continue;
+      if (series != currentSeries) {
+        currentSeries = series;
+        rows.add(['[${series.toUpperCase()}]', '-', '-']);
+      }
+      rows.add([
+        label,
+        '${_findQty(dailyRows, label)}',
+        '${_findQty(monthlyRows, label)}',
+      ]);
+    }
+
+    return _buildSectionCard(
+      title: 'Vivo Per Tipe',
+      child: _buildSimpleTable(
+        headers: const ['Tipe', 'Harian', 'Bulanan'],
+        rows: rows.isEmpty ? const [['-', '0', '0']] : rows,
+      ),
+    );
+  }
+
+  Widget _buildBrandSection(Map<String, dynamic> report) {
+    final brandDaily = _safeMap(report['brand_data_daily'] ?? report['brand_data']);
+    final brandTotal = _safeMap(report['brand_data']);
+    final vivo = _safeMap(report['vivo_auto_data']);
+    final rows = <List<String>>[];
+
+    for (final brand in _brands) {
+      final daily = _safeMap(brandDaily[brand]);
+      final total = _safeMap(brandTotal[brand]);
+      if (_sumBrandRow(daily) == 0 && _sumBrandRow(total) == 0) continue;
+      rows.add([
+        brand,
+        ..._brandColumns.map(
+          (column) => '${_toInt(daily[column])} / ${_toInt(total[column])}',
+        ),
+        '${_toInt(daily['promotor_count'])}',
+      ]);
+    }
+
+    rows.add([
+      'VIVO',
+      ..._brandColumns.map((column) => '${_toInt(vivo[column])}'),
+      '${_toInt(report['vivo_promotor_count'])}',
+    ]);
+
+    return _buildSectionCard(
+      title: 'Brand Store',
+      child: _buildSimpleTable(
+        headers: [
+          'Brand',
+          ..._brandColumns.map(_rangeLabel),
+          'Promotor',
+        ],
+        rows: rows,
+        columnWidths: const <int, TableColumnWidth>{
+          0: FlexColumnWidth(1.25),
+          1: FlexColumnWidth(1.0),
+          2: FlexColumnWidth(1.0),
+          3: FlexColumnWidth(1.0),
+          4: FlexColumnWidth(1.0),
+          5: FlexColumnWidth(0.9),
+        },
+        headerFontSize: 8.4,
+        cellFontSize: 8.8,
+        cellPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      ),
+    );
+  }
+
+  Widget _buildMarketShareSection(Map<String, dynamic> report) {
+    final brandDaily = _safeMap(report['brand_data_daily'] ?? report['brand_data']);
+    final brandTotal = _safeMap(report['brand_data']);
+    final dailyVivoTotal = _toInt(_vivoSummary['daily_total']);
+    final monthlyVivoTotal = _toInt(_vivoSummary['monthly_total']);
+    final dailyAllBrand = _toInt(report['daily_total_units']) + dailyVivoTotal;
+    final monthlyAllBrand =
+        _toInt(report['cumulative_total_units']) + monthlyVivoTotal;
+
+    final rows = _buildMarketShareRows(
+      brandDaily: brandDaily,
+      brandTotal: brandTotal,
+      dailyVivoTotal: dailyVivoTotal,
+      monthlyVivoTotal: monthlyVivoTotal,
+      dailyAllBrand: dailyAllBrand,
+      monthlyAllBrand: monthlyAllBrand,
+    ).map((row) {
+      return [
+        '${row['brand']}',
+        '${row['daily_units']} unit / ${row['daily_share']}%',
+        '${row['monthly_units']} unit / ${row['monthly_share']}%',
+      ];
+    }).toList();
+
+    return _buildSectionCard(
+      title: 'Market Share',
+      child: _buildSimpleTable(
+        headers: const ['Brand', 'Harian', 'Bulanan'],
+        rows: rows,
+      ),
+    );
+  }
+
+  Widget _buildLeasingSection(Map<String, dynamic> report) {
+    final leasingDaily = _safeMap(
+      report['leasing_sales_daily'] ?? report['leasing_sales'],
+    );
+    final leasingTotal = _safeMap(report['leasing_sales']);
+    final rows = _leasingProviders
+        .map((provider) => [
+              provider,
+              '${_toInt(leasingDaily[provider])}',
+              '${_toInt(leasingTotal[provider])}',
+            ])
+        .where((row) => row[1] != '0' || row[2] != '0')
+        .toList();
+
+    return _buildSectionCard(
+      title: 'Leasing',
+      child: _buildSimpleTable(
+        headers: const ['Leasing', 'Harian', 'Bulanan'],
+        rows: rows.isEmpty ? const [['-', '0', '0']] : rows,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.fieldTokens;
@@ -928,34 +1375,36 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Spacer(),
-              Container(
-                decoration: BoxDecoration(
-                  color: t.primaryAccentSoft.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: t.surface3),
-                ),
-                child: OutlinedButton.icon(
-                  onPressed: _copyText,
-                  icon: const Icon(Icons.copy_all_rounded, size: 16),
-                  label: const Text('Copy'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: t.textPrimary,
-                    side: BorderSide.none,
-                    backgroundColor: Colors.transparent,
-                    textStyle: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
+          if (widget.showCopyAction) ...[
+            Row(
+              children: [
+                const Spacer(),
+                Container(
+                  decoration: BoxDecoration(
+                    color: t.primaryAccentSoft.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: t.surface3),
+                  ),
+                  child: OutlinedButton.icon(
+                    onPressed: _copyText,
+                    icon: const Icon(Icons.copy_all_rounded, size: 16),
+                    label: const Text('Copy'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: t.textPrimary,
+                      side: BorderSide.none,
+                      backgroundColor: Colors.transparent,
+                      textStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      visualDensity: VisualDensity.compact,
                     ),
-                    visualDensity: VisualDensity.compact,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -980,46 +1429,13 @@ class _AllbrandReportDetailPanelState extends State<AllbrandReportDetailPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: t.textOnAccent.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: t.surface3),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: t.primaryAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Terminal View',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: t.textMutedStrong,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildInfoGrid(_report!),
                 const SizedBox(height: 12),
-                SelectableText(
-                  _messageText,
-                  style: TextStyle(
-                    color: t.textPrimary,
-                    fontSize: 12.5,
-                    height: 1.42,
-                    fontFamily: 'monospace',
-                  ),
-                ),
+                _buildPromotorAchievementSection(),
+                _buildVivoTypeSection(),
+                _buildBrandSection(_report!),
+                _buildMarketShareSection(_report!),
+                _buildLeasingSection(_report!),
               ],
             ),
           ),

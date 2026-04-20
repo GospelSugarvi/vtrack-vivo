@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../main.dart';
+import '../widgets/admin_dialog_sync.dart';
 
 class AdminAreasPage extends StatefulWidget {
   const AdminAreasPage({super.key});
@@ -24,9 +25,9 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
     try {
       final response = await supabase
           .from('areas')
-          .select('*')
+          .select('id, area_name, status')
           .order('area_name');
-      
+
       if (!mounted) return;
       setState(() {
         _areas = List<Map<String, dynamic>>.from(response);
@@ -36,7 +37,10 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.errorRed),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: AppTheme.errorRed,
+        ),
       );
     }
   }
@@ -57,9 +61,17 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isDesktop) Text('Area Management', style: Theme.of(context).textTheme.headlineMedium),
+            if (isDesktop)
+              Text(
+                'Area Management',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
             if (isDesktop) const SizedBox(height: 8),
-            if (isDesktop) Text('Kelola daftar Area untuk sistem', style: Theme.of(context).textTheme.bodyMedium),
+            if (isDesktop)
+              Text(
+                'Kelola daftar Area untuk sistem',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             const SizedBox(height: 24),
 
             if (_isLoading)
@@ -69,27 +81,42 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
             else
               Card(
                 child: Column(
-                  children: _areas.map((area) => ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                      child: const Icon(Icons.location_on, color: AppTheme.primaryBlue),
-                    ),
-                    title: Text(area['area_name'] ?? '-'),
-                    subtitle: Text('Status: ${area['status'] ?? 'active'}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => _showEditAreaDialog(area),
+                  children: _areas
+                      .map(
+                        (area) => ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.primaryBlue.withValues(
+                              alpha: 0.1,
+                            ),
+                            child: const Icon(
+                              Icons.location_on,
+                              color: AppTheme.primaryBlue,
+                            ),
+                          ),
+                          title: Text(area['area_name'] ?? '-'),
+                          subtitle: Text(
+                            'Status: ${area['status'] ?? 'active'}',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, size: 20),
+                                onPressed: () => _showEditAreaDialog(area),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  size: 20,
+                                  color: AppTheme.errorRed,
+                                ),
+                                onPressed: () => _confirmDelete(area),
+                              ),
+                            ],
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 20, color: AppTheme.errorRed),
-                          onPressed: () => _confirmDelete(area),
-                        ),
-                      ],
-                    ),
-                  )).toList(),
+                      )
+                      .toList(),
                 ),
               ),
           ],
@@ -99,11 +126,13 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
   }
 
   void _showAddAreaDialog() {
+    final messenger = ScaffoldMessenger.of(context);
     final nameController = TextEditingController();
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      onChanged: _loadAreas,
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Tambah Area Baru'),
         content: TextField(
           controller: nameController,
@@ -111,12 +140,18 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => closeAdminDialog(dialogContext),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Nama area wajib diisi'), backgroundColor: AppTheme.errorRed),
+                  const SnackBar(
+                    content: Text('Nama area wajib diisi'),
+                    backgroundColor: AppTheme.errorRed,
+                  ),
                 );
                 return;
               }
@@ -125,16 +160,21 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
                 await supabase.from('areas').insert({
                   'area_name': nameController.text.trim(),
                 });
-                if (!context.mounted) return;
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Area berhasil ditambahkan'), backgroundColor: AppTheme.successGreen),
+                if (!dialogContext.mounted) return;
+                closeAdminDialog(dialogContext, changed: true);
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Area berhasil ditambahkan'),
+                    backgroundColor: AppTheme.successGreen,
+                  ),
                 );
-                _loadAreas();
               } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.errorRed),
+                if (!dialogContext.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: AppTheme.errorRed,
+                  ),
                 );
               }
             },
@@ -146,36 +186,47 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
   }
 
   void _showEditAreaDialog(Map<String, dynamic> area) {
+    final messenger = ScaffoldMessenger.of(context);
     final nameController = TextEditingController(text: area['area_name']);
 
-    showDialog(
+    showAdminChangedDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      onChanged: _loadAreas,
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Edit Area'),
         content: TextField(
           controller: nameController,
           decoration: const InputDecoration(labelText: 'Nama Area *'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => closeAdminDialog(dialogContext),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) return;
 
               try {
-                await supabase.from('areas').update({
-                  'area_name': nameController.text.trim(),
-                }).eq('id', area['id']);
-                if (!context.mounted) return;
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Area berhasil diupdate'), backgroundColor: AppTheme.successGreen),
+                await supabase
+                    .from('areas')
+                    .update({'area_name': nameController.text.trim()})
+                    .eq('id', area['id']);
+                if (!dialogContext.mounted) return;
+                closeAdminDialog(dialogContext, changed: true);
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Area berhasil diupdate'),
+                    backgroundColor: AppTheme.successGreen,
+                  ),
                 );
-                _loadAreas();
               } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.errorRed),
+                if (!dialogContext.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: AppTheme.errorRed,
+                  ),
                 );
               }
             },
@@ -193,7 +244,10 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
         title: const Text('Hapus Area'),
         content: Text('Yakin ingin menghapus area "${area['area_name']}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
@@ -208,13 +262,19 @@ class _AdminAreasPageState extends State<AdminAreasPage> {
         await supabase.from('areas').delete().eq('id', area['id']);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Area berhasil dihapus'), backgroundColor: AppTheme.successGreen),
+          const SnackBar(
+            content: Text('Area berhasil dihapus'),
+            backgroundColor: AppTheme.successGreen,
+          ),
         );
         _loadAreas();
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.errorRed),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppTheme.errorRed,
+          ),
         );
       }
     }

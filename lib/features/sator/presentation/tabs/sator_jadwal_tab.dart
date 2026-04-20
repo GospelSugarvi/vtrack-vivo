@@ -14,11 +14,11 @@ class SatorJadwalTab extends StatefulWidget {
 class _SatorJadwalTabState extends State<SatorJadwalTab> {
   FieldThemeTokens get t => context.fieldTokens;
   final _supabase = Supabase.instance.client;
-  
+
   DateTime _selectedMonth = DateTime.now();
   List<Map<String, dynamic>> _schedules = [];
   bool _isLoading = false;
-  
+
   @override
   void initState() {
     super.initState();
@@ -29,86 +29,35 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
 
   Future<void> _loadSchedules() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final userId = _supabase.auth.currentUser!.id;
-      
-      debugPrint('🔍 Loading schedules for SATOR: $userId, month: $_monthYear');
-      
-      final response = await _supabase.rpc('get_sator_schedule_summary', params: {
-        'p_sator_id': userId,
-        'p_month_year': _monthYear,
-      });
-      
-      debugPrint('📊 Response type: ${response.runtimeType}');
-      debugPrint('📊 Response data: $response');
-      
+
+      final response = await _supabase.rpc(
+        'get_sator_schedule_summary',
+        params: {'p_sator_id': userId, 'p_month_year': _monthYear},
+      );
+
       if (response is List) {
         setState(() {
           _schedules = List<Map<String, dynamic>>.from(response);
           _isLoading = false;
         });
-        debugPrint('✅ Loaded ${_schedules.length} schedules');
-        
-        // Show success message in UI
-        if (mounted && _schedules.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Berhasil load ${_schedules.length} promotor'),
-              backgroundColor: t.success,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
       } else {
-        debugPrint('❌ Response is not a List');
         setState(() {
           _schedules = [];
           _isLoading = false;
         });
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Response bukan List: ${response.runtimeType}'),
-              backgroundColor: t.warning,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
       }
-    } catch (e, stackTrace) {
-      debugPrint('❌ Error loading schedules: $e');
-      debugPrint('Stack trace: $stackTrace');
+    } catch (e) {
       setState(() => _isLoading = false);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error: $e'),
+            content: Text('Gagal memuat jadwal: $e'),
             backgroundColor: t.danger,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Detail',
-              textColor: t.textPrimary,
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Error Detail'),
-                    content: SingleChildScrollView(
-                      child: Text('$e\n\n$stackTrace'),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -117,7 +66,7 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
 
   Future<void> _reviewSchedule(String promotorId, String action) async {
     String? rejectionReason;
-    
+
     if (action == 'reject') {
       rejectionReason = await showDialog<String>(
         context: context,
@@ -147,23 +96,26 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
           );
         },
       );
-      
+
       if (rejectionReason == null || rejectionReason.trim().isEmpty) return;
     }
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final userId = _supabase.auth.currentUser!.id;
-      
-      final result = await _supabase.rpc('review_monthly_schedule', params: {
-        'p_sator_id': userId,
-        'p_promotor_id': promotorId,
-        'p_month_year': _monthYear,
-        'p_action': action,
-        'p_rejection_reason': rejectionReason,
-      });
-      
+
+      final result = await _supabase.rpc(
+        'review_monthly_schedule',
+        params: {
+          'p_sator_id': userId,
+          'p_promotor_id': promotorId,
+          'p_month_year': _monthYear,
+          'p_action': action,
+          'p_rejection_reason': rejectionReason,
+        },
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -172,7 +124,7 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
           ),
         );
       }
-      
+
       await _loadSchedules();
     } catch (e) {
       setState(() => _isLoading = false);
@@ -227,11 +179,19 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
 
   @override
   Widget build(BuildContext context) {
-    final pendingCount = _schedules.where((s) => s['status'] == 'submitted').length;
-    final approvedCount = _schedules.where((s) => s['status'] == 'approved').length;
-    final rejectedCount = _schedules.where((s) => s['status'] == 'rejected').length;
-    final notSubmittedCount = _schedules.where((s) => s['status'] == 'belum_kirim').length;
-    
+    final pendingCount = _schedules
+        .where((s) => s['status'] == 'submitted')
+        .length;
+    final approvedCount = _schedules
+        .where((s) => s['status'] == 'approved')
+        .length;
+    final rejectedCount = _schedules
+        .where((s) => s['status'] == 'rejected')
+        .length;
+    final notSubmittedCount = _schedules
+        .where((s) => s['status'] == 'belum_kirim')
+        .length;
+
     return Column(
       children: [
         // Premium Header with Gradient
@@ -251,7 +211,10 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                 children: [
                   // Month Selector
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: t.textPrimary.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(12),
@@ -263,13 +226,19 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                           icon: Icon(Icons.chevron_left, color: t.textPrimary),
                           onPressed: () {
                             setState(() {
-                              _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+                              _selectedMonth = DateTime(
+                                _selectedMonth.year,
+                                _selectedMonth.month - 1,
+                              );
                             });
                             _loadSchedules();
                           },
                         ),
                         Text(
-                          DateFormat('MMMM yyyy', 'id_ID').format(_selectedMonth),
+                          DateFormat(
+                            'MMMM yyyy',
+                            'id_ID',
+                          ).format(_selectedMonth),
                           style: TextStyle(
                             fontSize: AppTypeScale.title,
                             fontWeight: FontWeight.bold,
@@ -280,7 +249,10 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                           icon: Icon(Icons.chevron_right, color: t.textPrimary),
                           onPressed: () {
                             setState(() {
-                              _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+                              _selectedMonth = DateTime(
+                                _selectedMonth.year,
+                                _selectedMonth.month + 1,
+                              );
                             });
                             _loadSchedules();
                           },
@@ -293,19 +265,35 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildSummaryCard('Pending', pendingCount, t.warning),
+                        child: _buildSummaryCard(
+                          'Pending',
+                          pendingCount,
+                          t.warning,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _buildSummaryCard('Approved', approvedCount, t.success),
+                        child: _buildSummaryCard(
+                          'Approved',
+                          approvedCount,
+                          t.success,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _buildSummaryCard('Rejected', rejectedCount, t.danger),
+                        child: _buildSummaryCard(
+                          'Rejected',
+                          rejectedCount,
+                          t.danger,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _buildSummaryCard('Belum', notSubmittedCount, t.textSecondary),
+                        child: _buildSummaryCard(
+                          'Belum',
+                          notSubmittedCount,
+                          t.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -314,40 +302,47 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
             ),
           ),
         ),
-        
+
         // List
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _schedules.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.calendar_today, size: 64, color: t.textSecondary),
-                          SizedBox(height: 16),
-                          Text('Tidak ada jadwal', style: TextStyle(color: t.textSecondary)),
-                        ],
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 64,
+                        color: t.textSecondary,
                       ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _loadSchedules,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _schedules.length,
-                        itemBuilder: (context, index) {
-                          final schedule = _schedules[index];
-                          return _buildScheduleCard(schedule);
-                        },
+                      SizedBox(height: 16),
+                      Text(
+                        'Tidak ada jadwal',
+                        style: TextStyle(color: t.textSecondary),
                       ),
-                    ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadSchedules,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _schedules.length,
+                    itemBuilder: (context, index) {
+                      final schedule = _schedules[index];
+                      return _buildScheduleCard(schedule);
+                    },
+                  ),
+                ),
         ),
       ],
     );
   }
 
   Widget _buildSummaryCard(String label, int count, Color color) {
-      return Container(
+    return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: t.surface1,
@@ -389,7 +384,7 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
     final promotorName = schedule['promotor_name'] ?? '';
     final storeName = schedule['store_name'] ?? '';
     final totalDays = schedule['total_days'] ?? 0;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -424,7 +419,9 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                   ),
                   child: Center(
                     child: Text(
-                      promotorName.isNotEmpty ? promotorName[0].toUpperCase() : 'P',
+                      promotorName.isNotEmpty
+                          ? promotorName[0].toUpperCase()
+                          : 'P',
                       style: TextStyle(
                         color: t.textPrimary,
                         fontSize: AppTypeScale.heading,
@@ -466,7 +463,10 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _getStatusColor(status),
                     borderRadius: BorderRadius.circular(20),
@@ -521,7 +521,8 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _reviewSchedule(schedule['promotor_id'], 'reject'),
+                      onPressed: () =>
+                          _reviewSchedule(schedule['promotor_id'], 'reject'),
                       icon: Icon(Icons.cancel, size: 18),
                       label: const Text('Tolak'),
                       style: OutlinedButton.styleFrom(
@@ -537,7 +538,8 @@ class _SatorJadwalTabState extends State<SatorJadwalTab> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _reviewSchedule(schedule['promotor_id'], 'approve'),
+                      onPressed: () =>
+                          _reviewSchedule(schedule['promotor_id'], 'approve'),
                       icon: Icon(Icons.check_circle, size: 18),
                       label: const Text('Setujui'),
                       style: ElevatedButton.styleFrom(

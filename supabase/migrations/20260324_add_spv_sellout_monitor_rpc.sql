@@ -23,6 +23,7 @@ DECLARE
   v_target_ratio NUMERIC := 0;
   v_spv_target_all NUMERIC := 0;
   v_spv_target_focus NUMERIC := 0;
+  v_spv_target_special NUMERIC := 0;
   v_result JSON;
 BEGIN
   IF p_spv_id IS NULL THEN
@@ -79,7 +80,7 @@ BEGIN
     SELECT
       hsp.sator_id,
       hsp.promotor_id,
-      COALESCE(NULLIF(pu.full_name, ''), 'Promotor') AS promotor_name
+      COALESCE(NULLIF(pu.nickname, ''), NULLIF(pu.full_name, ''), 'Promotor') AS promotor_name
     FROM public.hierarchy_sator_promotor hsp
     JOIN public.users pu ON pu.id = hsp.promotor_id
     JOIN linked_sators ls ON ls.sator_id = hsp.sator_id
@@ -114,6 +115,7 @@ BEGIN
       COALESCE(ut.target_sell_out, 0)::NUMERIC AS target_sell_out,
       COALESCE(ut.target_fokus_total, 0)::NUMERIC AS target_fokus_total,
       COALESCE(ut.target_fokus, 0)::NUMERIC AS target_fokus_legacy,
+      COALESCE(ut.target_special, 0)::NUMERIC AS target_special,
       COALESCE(ut.target_fokus_detail, '{}'::jsonb) AS target_fokus_detail,
       COALESCE(ut.target_special_detail, '{}'::jsonb) AS target_special_detail
     FROM public.user_targets ut
@@ -298,16 +300,21 @@ BEGIN
     COALESCE(tr.target_sell_out, 0)::NUMERIC * v_target_ratio,
     (
       CASE
-        WHEN COALESCE(tr.target_fokus_total, 0) > 0 THEN tr.target_fokus_total
-        WHEN COALESCE(tr.target_fokus_legacy, 0) > 0 THEN tr.target_fokus_legacy
-        ELSE (
-          COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(COALESCE(tr.target_fokus_detail, '{}'::jsonb))), 0)
-          +
-          COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(COALESCE(tr.target_special_detail, '{}'::jsonb))), 0)
-        )
+        WHEN COALESCE(tr.target_fokus_detail, '{}'::jsonb) <> '{}'::jsonb THEN
+          COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(tr.target_fokus_detail)), 0)
+        WHEN COALESCE(tr.target_fokus_total, 0) > 0 THEN GREATEST(tr.target_fokus_total - COALESCE(tr.target_special, 0), 0)
+        WHEN COALESCE(tr.target_fokus_legacy, 0) > 0 THEN GREATEST(tr.target_fokus_legacy - COALESCE(tr.target_special, 0), 0)
+        ELSE 0
+      END
+    ) * v_target_ratio,
+    (
+      CASE
+        WHEN COALESCE(tr.target_special_detail, '{}'::jsonb) <> '{}'::jsonb THEN
+          COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(tr.target_special_detail)), 0)
+        ELSE COALESCE(tr.target_special, 0)
       END
     ) * v_target_ratio
-  INTO v_spv_target_all, v_spv_target_focus
+  INTO v_spv_target_all, v_spv_target_focus, v_spv_target_special
   FROM target_rows tr
   WHERE tr.user_id = p_spv_id;
 
@@ -325,7 +332,7 @@ BEGIN
     SELECT
       hsp.sator_id,
       hsp.promotor_id,
-      COALESCE(NULLIF(pu.full_name, ''), 'Promotor') AS promotor_name
+      COALESCE(NULLIF(pu.nickname, ''), NULLIF(pu.full_name, ''), 'Promotor') AS promotor_name
     FROM public.hierarchy_sator_promotor hsp
     JOIN public.users pu ON pu.id = hsp.promotor_id
     JOIN linked_sators ls ON ls.sator_id = hsp.sator_id
@@ -360,6 +367,7 @@ BEGIN
       COALESCE(ut.target_sell_out, 0)::NUMERIC AS target_sell_out,
       COALESCE(ut.target_fokus_total, 0)::NUMERIC AS target_fokus_total,
       COALESCE(ut.target_fokus, 0)::NUMERIC AS target_fokus_legacy,
+      COALESCE(ut.target_special, 0)::NUMERIC AS target_special,
       COALESCE(ut.target_fokus_detail, '{}'::jsonb) AS target_fokus_detail,
       COALESCE(ut.target_special_detail, '{}'::jsonb) AS target_special_detail
     FROM public.user_targets ut
@@ -371,15 +379,20 @@ BEGIN
       COALESCE(tr.target_sell_out, 0)::NUMERIC * v_target_ratio AS target_all,
       (
         CASE
-          WHEN COALESCE(tr.target_fokus_total, 0) > 0 THEN tr.target_fokus_total
-          WHEN COALESCE(tr.target_fokus_legacy, 0) > 0 THEN tr.target_fokus_legacy
-          ELSE (
-            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(COALESCE(tr.target_fokus_detail, '{}'::jsonb))), 0)
-            +
-            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(COALESCE(tr.target_special_detail, '{}'::jsonb))), 0)
-          )
+          WHEN COALESCE(tr.target_fokus_detail, '{}'::jsonb) <> '{}'::jsonb THEN
+            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(tr.target_fokus_detail)), 0)
+          WHEN COALESCE(tr.target_fokus_total, 0) > 0 THEN GREATEST(tr.target_fokus_total - COALESCE(tr.target_special, 0), 0)
+          WHEN COALESCE(tr.target_fokus_legacy, 0) > 0 THEN GREATEST(tr.target_fokus_legacy - COALESCE(tr.target_special, 0), 0)
+          ELSE 0
         END
       ) * v_target_ratio AS target_focus,
+      (
+        CASE
+          WHEN COALESCE(tr.target_special_detail, '{}'::jsonb) <> '{}'::jsonb THEN
+            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(tr.target_special_detail)), 0)
+          ELSE COALESCE(tr.target_special, 0)
+        END
+      ) * v_target_ratio AS target_special,
       COALESCE(tr.target_fokus_detail, '{}'::jsonb) AS target_fokus_detail,
       COALESCE(tr.target_special_detail, '{}'::jsonb) AS target_special_detail
     FROM linked_sators ls
@@ -394,15 +407,20 @@ BEGIN
       COALESCE(tr.target_sell_out, 0)::NUMERIC * v_target_ratio AS target_all,
       (
         CASE
-          WHEN COALESCE(tr.target_fokus_total, 0) > 0 THEN tr.target_fokus_total
-          WHEN COALESCE(tr.target_fokus_legacy, 0) > 0 THEN tr.target_fokus_legacy
-          ELSE (
-            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(COALESCE(tr.target_fokus_detail, '{}'::jsonb))), 0)
-            +
-            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(COALESCE(tr.target_special_detail, '{}'::jsonb))), 0)
-          )
+          WHEN COALESCE(tr.target_fokus_detail, '{}'::jsonb) <> '{}'::jsonb THEN
+            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(tr.target_fokus_detail)), 0)
+          WHEN COALESCE(tr.target_fokus_total, 0) > 0 THEN GREATEST(tr.target_fokus_total - COALESCE(tr.target_special, 0), 0)
+          WHEN COALESCE(tr.target_fokus_legacy, 0) > 0 THEN GREATEST(tr.target_fokus_legacy - COALESCE(tr.target_special, 0), 0)
+          ELSE 0
         END
       ) * v_target_ratio AS target_focus,
+      (
+        CASE
+          WHEN COALESCE(tr.target_special_detail, '{}'::jsonb) <> '{}'::jsonb THEN
+            COALESCE((SELECT SUM((value::text)::NUMERIC) FROM jsonb_each(tr.target_special_detail)), 0)
+          ELSE COALESCE(tr.target_special, 0)
+        END
+      ) * v_target_ratio AS target_special,
       COALESCE(tr.target_fokus_detail, '{}'::jsonb) AS target_fokus_detail,
       COALESCE(tr.target_special_detail, '{}'::jsonb) AS target_special_detail
     FROM linked_promotors lp
@@ -443,7 +461,7 @@ BEGIN
                 FROM public.get_target_focus_product_ids(
                   v_period_id,
                   pt.target_fokus_detail,
-                  pt.target_special_detail
+                  '{}'::jsonb
                 ) tp
                 WHERE tp.product_id = sf.product_id
               )
@@ -467,7 +485,7 @@ BEGIN
                     FROM public.get_target_focus_product_ids(
                       v_period_id,
                       pt.target_fokus_detail,
-                      pt.target_special_detail
+                      '{}'::jsonb
                     ) tp
                     WHERE tp.product_id = sf.product_id
                   )
@@ -531,7 +549,74 @@ BEGIN
              AND sb.period_id = v_period_id
           ) x
         ), '[]'::json)
-      ) AS focus
+      ) AS focus,
+      json_build_object(
+        'target', pt.target_special,
+        'actual', COALESCE((
+          SELECT COUNT(*)
+          FROM sales_flat sf
+          JOIN public.special_focus_bundle_products sbp
+            ON sbp.product_id = sf.product_id
+          WHERE sf.promotor_id = pt.promotor_id
+            AND EXISTS (
+              SELECT 1
+              FROM jsonb_each(pt.target_special_detail) d
+              WHERE d.key = sbp.bundle_id::TEXT
+            )
+        ), 0),
+        'achievement_pct', CASE
+          WHEN pt.target_special > 0 THEN ROUND((
+            COALESCE((
+              SELECT COUNT(*)
+              FROM sales_flat sf
+              JOIN public.special_focus_bundle_products sbp
+                ON sbp.product_id = sf.product_id
+              WHERE sf.promotor_id = pt.promotor_id
+                AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_each(pt.target_special_detail) d
+                  WHERE d.key = sbp.bundle_id::TEXT
+                )
+            ), 0)::NUMERIC / pt.target_special
+          ) * 100, 1)
+          ELSE 0
+        END,
+        'details', COALESCE((
+          SELECT json_agg(
+            json_build_object(
+              'bundle_id', sb.id::TEXT,
+              'bundle_name', sb.bundle_name,
+              'target_qty', ROUND((d.value::TEXT)::NUMERIC * v_target_ratio, 1),
+              'actual_qty', (
+                SELECT COUNT(*)
+                FROM sales_flat sf
+                JOIN public.special_focus_bundle_products sbp
+                  ON sbp.product_id = sf.product_id
+                WHERE sf.promotor_id = pt.promotor_id
+                  AND sbp.bundle_id = sb.id
+              )::INTEGER,
+              'achievement_pct', CASE
+                WHEN (d.value::TEXT)::NUMERIC * v_target_ratio > 0 THEN ROUND((
+                  (
+                    SELECT COUNT(*)
+                    FROM sales_flat sf
+                    JOIN public.special_focus_bundle_products sbp
+                      ON sbp.product_id = sf.product_id
+                    WHERE sf.promotor_id = pt.promotor_id
+                      AND sbp.bundle_id = sb.id
+                  )::NUMERIC / ((d.value::TEXT)::NUMERIC * v_target_ratio)
+                ) * 100, 1)
+                ELSE 0
+              END
+            )
+            ORDER BY sb.bundle_name
+          )
+          FROM jsonb_each(pt.target_special_detail) d
+          JOIN public.special_focus_bundles sb
+            ON sb.id::TEXT = d.key
+           AND sb.period_id = v_period_id
+        ), '[]'::json)
+      ) AS special
     FROM promotor_targets pt
   ),
   sator_metrics AS (
@@ -562,7 +647,7 @@ BEGIN
                 FROM public.get_target_focus_product_ids(
                   v_period_id,
                   st.target_fokus_detail,
-                  st.target_special_detail
+                  '{}'::jsonb
                 ) tp
                 WHERE tp.product_id = sf.product_id
               )
@@ -586,7 +671,7 @@ BEGIN
                     FROM public.get_target_focus_product_ids(
                       v_period_id,
                       st.target_fokus_detail,
-                      st.target_special_detail
+                      '{}'::jsonb
                     ) tp
                     WHERE tp.product_id = sf.product_id
                   )
@@ -600,7 +685,39 @@ BEGIN
           ) * 100, 1)
           ELSE 0
         END
-      ) AS focus
+      ) AS focus,
+      json_build_object(
+        'target', COALESCE(st.target_special, 0),
+        'actual', COALESCE((
+          SELECT COUNT(*)
+          FROM sales_flat sf
+          JOIN public.special_focus_bundle_products sbp
+            ON sbp.product_id = sf.product_id
+          WHERE sf.sator_id = ls.sator_id
+            AND EXISTS (
+              SELECT 1
+              FROM jsonb_each(st.target_special_detail) d
+              WHERE d.key = sbp.bundle_id::TEXT
+            )
+        ), 0),
+        'achievement_pct', CASE
+          WHEN COALESCE(st.target_special, 0) > 0 THEN ROUND((
+            COALESCE((
+              SELECT COUNT(*)
+              FROM sales_flat sf
+              JOIN public.special_focus_bundle_products sbp
+                ON sbp.product_id = sf.product_id
+              WHERE sf.sator_id = ls.sator_id
+                AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_each(st.target_special_detail) d
+                  WHERE d.key = sbp.bundle_id::TEXT
+                )
+            ), 0)::NUMERIC / st.target_special
+          ) * 100, 1)
+          ELSE 0
+        END
+      ) AS special
     FROM linked_sators ls
     LEFT JOIN sator_targets st ON st.sator_id = ls.sator_id
   ),
@@ -609,7 +726,9 @@ BEGIN
       COALESCE(SUM((sm.all_type->>'target')::NUMERIC), 0)::NUMERIC AS sator_target_all,
       COALESCE(SUM((sm.all_type->>'actual')::NUMERIC), 0)::NUMERIC AS actual_all,
       COALESCE(SUM((sm.focus->>'target')::NUMERIC), 0)::NUMERIC AS sator_target_focus,
-      COALESCE(SUM((sm.focus->>'actual')::NUMERIC), 0)::NUMERIC AS actual_focus
+      COALESCE(SUM((sm.focus->>'actual')::NUMERIC), 0)::NUMERIC AS actual_focus,
+      COALESCE(SUM((sm.special->>'target')::NUMERIC), 0)::NUMERIC AS sator_target_special,
+      COALESCE(SUM((sm.special->>'actual')::NUMERIC), 0)::NUMERIC AS actual_special
     FROM sator_metrics sm
   )
   SELECT json_build_object(

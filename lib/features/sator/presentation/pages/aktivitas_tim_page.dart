@@ -8,7 +8,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../ui/promotor/promotor.dart';
 
 class AktivitasTimPage extends StatefulWidget {
-  const AktivitasTimPage({super.key});
+  final String? scopeSatorId;
+  final bool embedded;
+  final String title;
+  final bool showBackButton;
+
+  const AktivitasTimPage({
+    super.key,
+    this.scopeSatorId,
+    this.embedded = false,
+    this.title = 'Aktivitas Tim',
+    this.showBackButton = true,
+  });
 
   @override
   State<AktivitasTimPage> createState() => _AktivitasTimPageState();
@@ -25,6 +36,7 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
     'promotion',
     'follower',
     'allbrand',
+    'vast',
   ];
   static const _taskMeta = [
     ('clock_in', 'Absen', Icons.access_time_rounded),
@@ -34,6 +46,7 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
     ('promotion', 'Promo', Icons.campaign_rounded),
     ('follower', 'Follower', Icons.group_add_rounded),
     ('allbrand', 'AllBrand', Icons.analytics_rounded),
+    ('vast', 'VAST', Icons.account_balance_wallet_rounded),
   ];
 
   DateTime _selectedDate = DateTime.now();
@@ -42,7 +55,12 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
   bool _isLoading = true;
   String? _errorMessage;
   String _viewFilter = 'all';
-  Map<String, dynamic> _summary = const {};
+
+  String? get _targetSatorId {
+    final scoped = widget.scopeSatorId?.trim();
+    if (scoped != null && scoped.isNotEmpty) return scoped;
+    return _supabase.auth.currentUser?.id;
+  }
 
   @override
   void initState() {
@@ -56,7 +74,7 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
       _errorMessage = null;
     });
     try {
-      final userId = _supabase.auth.currentUser?.id;
+      final userId = _targetSatorId;
       if (userId == null) {
         if (!mounted) return;
         setState(() {
@@ -81,16 +99,12 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
               'summary': const <String, dynamic>{},
               'stores': data ?? const [],
             };
-      final summary = Map<String, dynamic>.from(
-        response['summary'] ?? const {},
-      );
       final storeList = List<Map<String, dynamic>>.from(
         response['stores'] ?? const [],
       );
       setState(() {
-        _summary = summary;
         _storeData = storeList;
-        _expandedStoreIds = storeList.take(2).map(_storeIdOf).toSet();
+        _expandedStoreIds = <String>{};
         _isLoading = false;
       });
     } catch (e) {
@@ -98,7 +112,6 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _summary = const {};
         _storeData = [];
         _errorMessage =
             'Aktivitas tim gagal dimuat. Tarik ke bawah atau coba lagi beberapa saat lagi.';
@@ -227,20 +240,11 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
     return int.tryParse('${store['completion_percent'] ?? ''}') ?? 0;
   }
 
-  int _attentionStoresCount() {
-    return int.tryParse('${_summary['attention_stores'] ?? ''}') ?? 0;
-  }
-
   Color _progressColor(int percent) {
     if (percent >= 100) return t.success;
     if (percent >= 70) return t.primaryAccent;
     if (percent >= 40) return t.warning;
     return t.danger;
-  }
-
-  String _formatPercent(int completed, int total) {
-    if (total == 0) return '0%';
-    return '${((completed / total) * 100).round()}%';
   }
 
   Future<void> _pickDate() async {
@@ -261,50 +265,58 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
     final t = context.fieldTokens;
     final filteredStores = _filteredStores();
 
+    if (widget.embedded) {
+      return _buildBody(filteredStores);
+    }
+
     return Scaffold(
-      backgroundColor: t.textOnAccent,
+      backgroundColor: t.background,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadData,
-          color: t.primaryAccent,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(0, 18, 0, 120),
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 8),
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 96),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (_errorMessage != null)
-                _buildStateCard(
-                  title: 'Aktivitas Tim Belum Bisa Dimuat',
-                  message: _errorMessage!,
-                  icon: Icons.error_outline_rounded,
-                  accent: t.danger,
-                  showRetry: true,
-                )
-              else if (filteredStores.isEmpty)
-                _buildStateCard(
-                  title: 'Belum Ada Aktivitas',
-                  message: _storeData.isEmpty
-                      ? 'Tidak ada aktivitas tim pada tanggal ini.'
-                      : 'Tidak ada toko yang cocok dengan filter saat ini.',
-                  icon: Icons.inbox_outlined,
-                  accent: t.warning,
-                )
-              else ...[
-                _buildSummaryStrip(filteredStores),
-                const SizedBox(height: 8),
-                _buildFilterBar(filteredStores.length),
-                const SizedBox(height: 10),
-                ...filteredStores.map(_buildStoreCard),
-              ],
-            ],
-          ),
-        ),
+        child: _buildBody(filteredStores),
+      ),
+    );
+  }
+
+  Widget _buildBody(List<Map<String, dynamic>> filteredStores) {
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: t.primaryAccent,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(0, widget.embedded ? 10 : 18, 0, 120),
+        children: [
+          if (!widget.embedded) ...[
+            _buildHeader(),
+            const SizedBox(height: 8),
+          ],
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.only(top: 96),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_errorMessage != null)
+            _buildStateCard(
+              title: 'Aktivitas Tim Belum Bisa Dimuat',
+              message: _errorMessage!,
+              icon: Icons.error_outline_rounded,
+              accent: t.danger,
+              showRetry: true,
+            )
+          else if (filteredStores.isEmpty)
+            _buildStateCard(
+              title: 'Belum Ada Aktivitas',
+              message: _storeData.isEmpty
+                  ? 'Tidak ada aktivitas tim pada tanggal ini.'
+                  : 'Tidak ada toko yang cocok dengan filter saat ini.',
+              icon: Icons.inbox_outlined,
+              accent: t.warning,
+            )
+          else ...[
+            _buildFilterBar(filteredStores.length),
+            const SizedBox(height: 10),
+            ...filteredStores.map(_buildStoreCard),
+          ],
+        ],
       ),
     );
   }
@@ -326,30 +338,32 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: t.surface1,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: t.surface3),
-                ),
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: t.textSecondary,
+              if (widget.showBackButton) ...[
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: t.surface1,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: t.surface3),
+                  ),
+                  child: IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 16,
+                      color: t.textSecondary,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Aktivitas Tim',
+                      widget.title,
                       style: PromotorText.outfit(
                         size: 18,
                         weight: FontWeight.w800,
@@ -513,79 +527,6 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
     );
   }
 
-  Widget _buildSummaryStrip(List<Map<String, dynamic>> stores) {
-    final totalPromotors =
-        int.tryParse('${_summary['total_promotors'] ?? ''}') ?? 0;
-    final activePromotors =
-        int.tryParse('${_summary['active_promotors'] ?? ''}') ?? 0;
-    final completedTasks =
-        int.tryParse('${_summary['completed_tasks'] ?? ''}') ?? 0;
-    final totalTasks = int.tryParse('${_summary['total_tasks'] ?? ''}') ?? 0;
-    final completionPercent = totalTasks == 0
-        ? 0
-        : ((completedTasks / totalTasks) * 100).round();
-    final attentionStores = _attentionStoresCount();
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: t.surface1,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: t.surface3),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _summaryChip('Toko', '${stores.length}', t.primaryAccent),
-          _summaryChip(
-            'Promotor',
-            '$activePromotors/$totalPromotors aktif',
-            t.success,
-          ),
-          _summaryChip(
-            'Tugas',
-            '$completedTasks/$totalTasks · ${_formatPercent(completedTasks, totalTasks)}',
-            _progressColor(completionPercent),
-          ),
-          _summaryChip('Perhatian', '$attentionStores toko', t.danger),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryChip(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label ',
-            style: PromotorText.outfit(
-              size: 9,
-              weight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          Text(
-            value,
-            style: PromotorText.outfit(
-              size: 10,
-              weight: FontWeight.w700,
-              color: t.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFilterBar(int visibleCount) {
     final filters = [
       ('all', 'Semua'),
@@ -657,14 +598,6 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
     final percent = _storeCompletionPct(store);
     final accent = _progressColor(percent);
     final isExpanded = _expandedStoreIds.contains(storeId);
-    final activePromotors =
-        int.tryParse('${store['active_promotors'] ?? ''}') ?? 0;
-    final attentionPromotors =
-        int.tryParse('${store['attention_promotors'] ?? ''}') ?? 0;
-    final totalPromotors =
-        int.tryParse('${store['total_promotors'] ?? ''}') ?? promotors.length;
-    final completedTasks =
-        int.tryParse('${store['completed_tasks'] ?? ''}') ?? 0;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -720,24 +653,7 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            _miniTag(
-                              '$activePromotors/$totalPromotors aktif',
-                              t.success,
-                            ),
-                            _miniTag(
-                              '$attentionPromotors perhatian',
-                              attentionPromotors == 0
-                                  ? t.textMutedStrong
-                                  : t.danger,
-                            ),
-                            _miniTag('$completedTasks tugas', accent),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(999),
                           child: LinearProgressIndicator(
@@ -859,7 +775,7 @@ class _AktivitasTimPageState extends State<AktivitasTimPage> {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        _miniTag('$completed/7 tugas', accent),
+                        _miniTag('$completed/${_taskKeys.length} tugas', accent),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 7,

@@ -72,52 +72,32 @@ class _SatorSalesTabState extends State<SatorSalesTab>
     }
 
     try {
-      final now = DateTime.now();
-      final today = DateFormat('yyyy-MM-dd').format(now);
-      final monthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
-      final results = await Future.wait([
-        _supabase.from('users').select('full_name, area').eq('id', userId).maybeSingle(),
-        _supabase
-            .from('hierarchy_spv_sator')
-            .select('users!hierarchy_spv_sator_spv_id_fkey(full_name)')
-            .eq('sator_id', userId)
-            .eq('active', true)
-            .limit(1),
-        _supabase
-            .from('assignments_sator_store')
-            .select('store_id, stores(store_name, area)')
-            .eq('sator_id', userId)
-            .eq('active', true),
-        _supabase.rpc(
-          'get_users_with_hierarchy',
-          params: {'p_user_id': userId, 'p_role': 'sator'},
-        ),
-        _supabase
-            .from('vast_agg_daily_promotor')
-            .select()
-            .eq('metric_date', today),
-        _supabase
-            .from('vast_agg_monthly_promotor')
-            .select()
-            .eq('month_key', monthKey),
-      ]);
-
-      final profile = results[0] as Map<String, dynamic>?;
-      final spvRows = List<Map<String, dynamic>>.from(results[1] as List);
-      final stores = List<Map<String, dynamic>>.from(results[2] as List);
-      final teamMembers = List<Map<String, dynamic>>.from(results[3] as List? ?? const []);
+      final snapshotRaw = await _supabase.rpc(
+        'get_sator_sales_snapshot',
+        params: {
+          'p_sator_id': userId,
+          'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        },
+      );
+      final snapshot = snapshotRaw is Map
+          ? Map<String, dynamic>.from(snapshotRaw)
+          : <String, dynamic>{};
+      final profile = Map<String, dynamic>.from(
+        snapshot['profile'] as Map? ?? const {},
+      );
+      final stores = _parseMapList(snapshot['stores']);
+      final teamMembers = _parseMapList(snapshot['team_members']);
 
       if (!mounted) return;
       setState(() {
-        _satorName = '${profile?['full_name'] ?? 'SATOR'}';
-        _satorArea = '${profile?['area'] ?? '-'}';
-        _spvName = spvRows.isEmpty
-            ? '-'
-            : '${spvRows.first['users']?['full_name'] ?? '-'}';
+        _satorName = '${profile['full_name'] ?? 'SATOR'}';
+        _satorArea = '${profile['area'] ?? '-'}';
+        _spvName = '${snapshot['spv_name'] ?? '-'}';
         _stores = stores;
-        _teamMembers = teamMembers.where((row) => '${row['role'] ?? ''}' == 'promotor').toList();
-        _dailyFeed = List<Map<String, dynamic>>.from(results[4] as List);
-        _monthlyFeed = List<Map<String, dynamic>>.from(results[5] as List);
+        _teamMembers =
+            teamMembers.where((row) => '${row['role'] ?? ''}' == 'promotor').toList();
+        _dailyFeed = _parseMapList(snapshot['daily_feed']);
+        _monthlyFeed = _parseMapList(snapshot['monthly_feed']);
         _isLoading = false;
       });
     } catch (_) {
@@ -291,5 +271,10 @@ class _SatorSalesTabState extends State<SatorSalesTab>
         ),
       ),
     );
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+    return value.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 }

@@ -102,23 +102,7 @@ class _CariStokPageState extends State<CariStokPage>
         return;
       }
 
-      List<Map<String, dynamic>> results = [];
-      try {
-        final rpcResults = await Supabase.instance.client.rpc(
-          'get_promotor_my_stock',
-          params: {'p_promotor_id': userId},
-        );
-        results = List<Map<String, dynamic>>.from(rpcResults ?? []);
-      } catch (rpcError) {
-        debugPrint(
-          'RPC get_promotor_my_stock failed, fallback to direct query: $rpcError',
-        );
-      }
-
-      // Fallback: if RPC is unavailable or returns empty, query stock directly by assigned store.
-      if (results.isEmpty) {
-        results = await _loadMyStockFallback(userId);
-      }
+      final results = await _loadMyStockFallback(userId);
 
       setState(() {
         _myStockList = results;
@@ -136,17 +120,7 @@ class _CariStokPageState extends State<CariStokPage>
   }
 
   Future<List<Map<String, dynamic>>> _loadMyStockFallback(String userId) async {
-    final assignedStores = await Supabase.instance.client
-        .from('assignments_promotor_store')
-        .select('store_id')
-        .eq('promotor_id', userId)
-        .eq('active', true);
-
-    final storeIds = List<Map<String, dynamic>>.from(assignedStores)
-        .map((row) => row['store_id']?.toString())
-        .whereType<String>()
-        .toSet()
-        .toList();
+    final storeIds = await _loadScopedStoreIds(userId);
 
     const stockSelect = '''
       product_id,
@@ -216,6 +190,70 @@ class _CariStokPageState extends State<CariStokPage>
     });
 
     return results;
+  }
+
+  Future<List<String>> _loadScopedStoreIds(String userId) async {
+    try {
+      final rpcResult = await Supabase.instance.client.rpc(
+        'get_promotor_stock_scope',
+        params: {'p_promotor_id': userId},
+      );
+      final rpcMap = rpcResult is Map<String, dynamic>
+          ? rpcResult
+          : Map<String, dynamic>.from(rpcResult as Map);
+      final rpcScope = (rpcMap['stock_scope_store_ids'] as List? ?? const [])
+          .map((item) => '${item ?? ''}'.trim())
+          .where((id) => id.isNotEmpty)
+          .toList();
+      if (rpcScope.isNotEmpty) {
+        return rpcScope;
+      }
+    } catch (_) {}
+
+    final assignedStores = await Supabase.instance.client
+        .from('assignments_promotor_store')
+        .select('store_id, stores(group_id)')
+        .eq('promotor_id', userId)
+        .eq('active', true);
+
+    final scopedStoreIds = <String>{};
+    for (final row in List<Map<String, dynamic>>.from(assignedStores)) {
+      final storeId = row['store_id']?.toString().trim() ?? '';
+      if (storeId.isEmpty) continue;
+
+      final store = _asMap(row['stores']);
+      final groupId = '${store['group_id'] ?? ''}'.trim();
+      Map<String, dynamic> group = <String, dynamic>{};
+      if (groupId.isNotEmpty) {
+        final groupRow = await Supabase.instance.client
+            .from('store_groups')
+            .select('stock_handling_mode')
+            .eq('id', groupId)
+            .isFilter('deleted_at', null)
+            .maybeSingle();
+        if (groupRow != null) {
+          group = Map<String, dynamic>.from(groupRow);
+        }
+      }
+      final groupMode = '${group['stock_handling_mode'] ?? ''}'.trim();
+
+      if (groupId.isEmpty || groupMode != 'shared_group') {
+        scopedStoreIds.add(storeId);
+        continue;
+      }
+
+      final groupedStores = await Supabase.instance.client
+          .from('stores')
+          .select('id')
+          .eq('group_id', groupId)
+          .isFilter('deleted_at', null);
+      final expandedIds = List<Map<String, dynamic>>.from(groupedStores)
+          .map((item) => '${item['id'] ?? ''}'.trim())
+          .where((id) => id.isNotEmpty);
+      scopedStoreIds.addAll(expandedIds);
+    }
+
+    return scopedStoreIds.toList();
   }
 
   Map<String, dynamic> _asMap(dynamic value) {
@@ -309,7 +347,10 @@ class _CariStokPageState extends State<CariStokPage>
             children: [
               const Text(
                 'Cari stok di toko lain dalam tim SATOR Anda',
-                style: TextStyle(fontSize: AppTypeScale.bodyStrong, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: AppTypeScale.bodyStrong,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -447,7 +488,8 @@ class _CariStokPageState extends State<CariStokPage>
                                               item['store_name'],
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: AppTypeScale.bodyStrong,
+                                                fontSize:
+                                                    AppTypeScale.bodyStrong,
                                               ),
                                             ),
                                           ),
@@ -472,7 +514,8 @@ class _CariStokPageState extends State<CariStokPage>
                                               child: Text(
                                                 'Toko Saya',
                                                 style: TextStyle(
-                                                  fontSize: AppTypeScale.support,
+                                                  fontSize:
+                                                      AppTypeScale.support,
                                                   color: t.info,
                                                   fontWeight: FontWeight.bold,
                                                 ),
@@ -580,11 +623,7 @@ class _CariStokPageState extends State<CariStokPage>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 64,
-                    color: t.surface4,
-                  ),
+                  Icon(Icons.inventory_2_outlined, size: 64, color: t.surface4),
                   const SizedBox(height: 16),
                   Text(
                     'Belum ada stok yang tercatat',

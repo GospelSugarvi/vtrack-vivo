@@ -48,41 +48,22 @@ class _LaporanKinerjaPageState extends State<LaporanKinerjaPage> {
         throw Exception('Sesi login tidak ditemukan.');
       }
 
-      final summaryRaw = await _supabase.rpc(
-        'get_sator_home_summary',
+      final snapshotRaw = await _supabase.rpc(
+        'get_sator_laporan_kinerja_snapshot',
         params: {'p_sator_id': userId},
       );
-      final summary = summaryRaw is Map
-          ? Map<String, dynamic>.from(summaryRaw)
+      final snapshot = snapshotRaw is Map
+          ? Map<String, dynamic>.from(snapshotRaw)
           : <String, dynamic>{};
-      final weekly = summary['weekly'] as Map<String, dynamic>? ?? {};
-      final weekStart = _parseDate(weekly['week_start']);
-      final weekEnd = _parseDate(weekly['week_end']);
-      if (weekStart == null || weekEnd == null) {
-        throw Exception('Rentang minggu aktif tidak ditemukan.');
-      }
-
-      final promotorRows = await _loadPromotorWeeklyRows(
-        userId: userId,
-        weekStart: weekStart,
-        weekEnd: weekEnd,
-      );
-      final storeRows = await _loadStoreWeeklyRows(
-        userId: userId,
-        weekStart: weekStart,
-        weekEnd: weekEnd,
-      );
-      final alerts = _buildAlerts(
-        promotorRows: promotorRows,
-        storeRows: storeRows,
-      );
 
       if (!mounted) return;
       setState(() {
-        _summary = summary;
-        _promotorRows = promotorRows;
-        _storeRows = storeRows;
-        _alerts = alerts;
+        _summary = Map<String, dynamic>.from(
+          snapshot['summary'] as Map? ?? const {},
+        );
+        _promotorRows = _parseMapList(snapshot['promotor_rows']);
+        _storeRows = _parseMapList(snapshot['store_rows']);
+        _alerts = _parseMapList(snapshot['alerts']);
         _isLoading = false;
       });
     } catch (e) {
@@ -94,279 +75,14 @@ class _LaporanKinerjaPageState extends State<LaporanKinerjaPage> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _loadPromotorWeeklyRows({
-    required String userId,
-    required DateTime weekStart,
-    required DateTime weekEnd,
-  }) async {
-    final linkRows = await _supabase
-        .from('hierarchy_sator_promotor')
-        .select('promotor_id')
-        .eq('sator_id', userId)
-        .eq('active', true);
-    final promotorIds = List<Map<String, dynamic>>.from(linkRows)
-        .map((row) => row['promotor_id']?.toString() ?? '')
-        .where((id) => id.isNotEmpty)
-        .toList();
-    if (promotorIds.isEmpty) return [];
-
-    final profileRows = await _supabase
-        .from('users')
-        .select('id, full_name')
-        .inFilter('id', promotorIds);
-    final nameById = {
-      for (final row in List<Map<String, dynamic>>.from(profileRows))
-        row['id'].toString(): row['full_name']?.toString() ?? '-',
-    };
-
-    final storeRows = await _supabase
-        .from('assignments_promotor_store')
-        .select('promotor_id, created_at, stores(store_name)')
-        .inFilter('promotor_id', promotorIds)
-        .eq('active', true)
-        .order('created_at', ascending: false);
-    final storeByPromotor = <String, String>{};
-    for (final row in List<Map<String, dynamic>>.from(storeRows)) {
-      final promotorId = row['promotor_id']?.toString() ?? '';
-      if (promotorId.isEmpty || storeByPromotor.containsKey(promotorId)) {
-        continue;
-      }
-      storeByPromotor[promotorId] =
-          row['stores']?['store_name']?.toString() ?? '-';
-    }
-
-    final start = DateFormat('yyyy-MM-dd').format(weekStart);
-    final end = DateFormat('yyyy-MM-dd').format(weekEnd);
-    final dailyDashboardByPromotor = <String, Map<String, dynamic>>{};
-    for (final promotorId in promotorIds) {
-      final result = await _supabase.rpc(
-        'get_daily_target_dashboard',
-        params: {'p_user_id': promotorId, 'p_date': start},
-      );
-      if (result is List && result.isNotEmpty && result.first is Map) {
-        dailyDashboardByPromotor[promotorId] = Map<String, dynamic>.from(
-          result.first as Map,
-        );
-      } else if (result is Map && result.isNotEmpty) {
-        dailyDashboardByPromotor[promotorId] = Map<String, dynamic>.from(
-          result,
-        );
-      }
-    }
-
-    final salesRows = await _supabase
-        .from('sales_sell_out')
-        .select(
-          'promotor_id, store_id, price_at_transaction, variant_id, transaction_date, '
-          'product_variants(product_id, products(is_focus)), stores(store_name)',
-        )
-        .inFilter('promotor_id', promotorIds)
-        .gte('transaction_date', start)
-        .lte('transaction_date', end)
-        .eq('is_chip_sale', false)
-        .isFilter('deleted_at', null);
-
-    final omzetByPromotor = <String, double>{};
-    final focusByPromotor = <String, int>{};
-    for (final row in List<Map<String, dynamic>>.from(salesRows)) {
-      final promotorId = row['promotor_id']?.toString() ?? '';
-      if (promotorId.isEmpty) continue;
-      omzetByPromotor[promotorId] =
-          (omzetByPromotor[promotorId] ?? 0) +
-          _toDouble(row['price_at_transaction']);
-      final isFocus = row['product_variants']?['products']?['is_focus'] == true;
-      if (isFocus) {
-        focusByPromotor[promotorId] = (focusByPromotor[promotorId] ?? 0) + 1;
-      }
-    }
-
-    final rows = <Map<String, dynamic>>[];
-    for (final promotorId in promotorIds) {
-      final dashboard = dailyDashboardByPromotor[promotorId] ?? {};
-      final targetOmzet = _toDouble(dashboard['target_weekly_all_type']);
-      final actualOmzet = omzetByPromotor[promotorId] ?? 0;
-      final targetFocus = _toDouble(dashboard['target_weekly_focus']);
-      final actualFocus = _toInt(dashboard['actual_weekly_focus']) > 0
-          ? _toInt(dashboard['actual_weekly_focus'])
-          : (focusByPromotor[promotorId] ?? 0);
-      final achievement = targetOmzet > 0
-          ? (actualOmzet * 100 / targetOmzet)
-          : 0;
-
-      rows.add({
-        'promotor_id': promotorId,
-        'name': nameById[promotorId] ?? '-',
-        'store_name': storeByPromotor[promotorId] ?? '-',
-        'target_weekly_omzet': targetOmzet,
-        'actual_weekly_omzet': actualOmzet,
-        'target_weekly_focus': targetFocus,
-        'actual_weekly_focus': actualFocus,
-        'achievement_pct': achievement,
-      });
-    }
-
-    rows.sort(
-      (a, b) => _toDouble(
-        b['actual_weekly_omzet'],
-      ).compareTo(_toDouble(a['actual_weekly_omzet'])),
-    );
-    return rows;
-  }
-
-  Future<List<Map<String, dynamic>>> _loadStoreWeeklyRows({
-    required String userId,
-    required DateTime weekStart,
-    required DateTime weekEnd,
-  }) async {
-    final linkRows = await _supabase
-        .from('hierarchy_sator_promotor')
-        .select('promotor_id')
-        .eq('sator_id', userId)
-        .eq('active', true);
-    final promotorIds = List<Map<String, dynamic>>.from(linkRows)
-        .map((row) => row['promotor_id']?.toString() ?? '')
-        .where((id) => id.isNotEmpty)
-        .toList();
-    if (promotorIds.isEmpty) return [];
-
-    final storeRows = await _supabase
-        .from('assignments_promotor_store')
-        .select('promotor_id, store_id, created_at, stores(store_name)')
-        .inFilter('promotor_id', promotorIds)
-        .eq('active', true)
-        .order('created_at', ascending: false);
-
-    final storeInfoByPromotor = <String, Map<String, dynamic>>{};
-    for (final row in List<Map<String, dynamic>>.from(storeRows)) {
-      final promotorId = row['promotor_id']?.toString() ?? '';
-      if (promotorId.isEmpty || storeInfoByPromotor.containsKey(promotorId)) {
-        continue;
-      }
-      storeInfoByPromotor[promotorId] = {
-        'store_id': row['store_id']?.toString() ?? '',
-        'store_name': row['stores']?['store_name']?.toString() ?? '-',
-      };
-    }
-
-    final start = DateFormat('yyyy-MM-dd').format(weekStart);
-    final end = DateFormat('yyyy-MM-dd').format(weekEnd);
-    final salesRows = await _supabase
-        .from('sales_sell_out')
-        .select(
-          'promotor_id, price_at_transaction, variant_id, transaction_date, '
-          'product_variants(product_id, products(is_focus))',
-        )
-        .inFilter('promotor_id', promotorIds)
-        .gte('transaction_date', start)
-        .lte('transaction_date', end)
-        .eq('is_chip_sale', false)
-        .isFilter('deleted_at', null);
-
-    final storeAggregate = <String, Map<String, dynamic>>{};
-    for (final row in List<Map<String, dynamic>>.from(salesRows)) {
-      final promotorId = row['promotor_id']?.toString() ?? '';
-      final storeInfo = storeInfoByPromotor[promotorId];
-      if (storeInfo == null) continue;
-      final storeId = storeInfo['store_id']?.toString() ?? '';
-      if (storeId.isEmpty) continue;
-      final current = storeAggregate.putIfAbsent(
-        storeId,
-        () => {
-          'store_id': storeId,
-          'store_name': storeInfo['store_name'] ?? '-',
-          'omzet': 0.0,
-          'focus_units': 0,
-          'promotor_count': 0,
-        },
-      );
-      current['omzet'] =
-          _toDouble(current['omzet']) + _toDouble(row['price_at_transaction']);
-      final isFocus = row['product_variants']?['products']?['is_focus'] == true;
-      if (isFocus) {
-        current['focus_units'] = _toInt(current['focus_units']) + 1;
-      }
-    }
-
-    final uniquePromotorCountByStore = <String, int>{};
-    for (final storeInfo in storeInfoByPromotor.values) {
-      final storeId = storeInfo['store_id']?.toString() ?? '';
-      if (storeId.isEmpty) continue;
-      uniquePromotorCountByStore[storeId] =
-          (uniquePromotorCountByStore[storeId] ?? 0) + 1;
-      storeAggregate.putIfAbsent(
-        storeId,
-        () => {
-          'store_id': storeId,
-          'store_name': storeInfo['store_name'] ?? '-',
-          'omzet': 0.0,
-          'focus_units': 0,
-          'promotor_count': 0,
-        },
-      );
-    }
-
-    for (final entry in storeAggregate.entries) {
-      entry.value['promotor_count'] =
-          uniquePromotorCountByStore[entry.key] ?? 0;
-    }
-
-    final rows = storeAggregate.values.toList()
-      ..sort((a, b) => _toDouble(b['omzet']).compareTo(_toDouble(a['omzet'])));
-    return rows;
-  }
-
-  List<Map<String, dynamic>> _buildAlerts({
-    required List<Map<String, dynamic>> promotorRows,
-    required List<Map<String, dynamic>> storeRows,
-  }) {
-    final alerts = <Map<String, dynamic>>[];
-
-    final noSales = promotorRows
-        .where((row) => _toDouble(row['actual_weekly_omzet']) <= 0)
-        .toList();
-    if (noSales.isNotEmpty) {
-      alerts.add({
-        'title': 'Promotor Belum Bergerak',
-        'count': noSales.length,
-        'note':
-            '${noSales.first['name']} dan lainnya belum ada sell out minggu ini',
-        'color': t.danger,
-      });
-    }
-
-    final lowAchievement = promotorRows
-        .where((row) => _toDouble(row['achievement_pct']) > 0)
-        .where((row) => _toDouble(row['achievement_pct']) < 40)
-        .toList();
-    if (lowAchievement.isNotEmpty) {
-      alerts.add({
-        'title': 'Promotor Tertinggal',
-        'count': lowAchievement.length,
-        'note':
-            '${lowAchievement.first['name']} masih jauh di bawah target minggu ini',
-        'color': t.warning,
-      });
-    }
-
-    final quietStores = storeRows
-        .where((row) => _toDouble(row['omzet']) <= 0)
-        .toList();
-    if (quietStores.isNotEmpty) {
-      alerts.add({
-        'title': 'Toko Perlu Atensi',
-        'count': quietStores.length,
-        'note':
-            '${quietStores.first['store_name']} belum ada penjualan pada minggu aktif',
-        'color': t.primaryAccent,
-      });
-    }
-
-    return alerts;
-  }
-
   double _toDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse('${value ?? ''}') ?? 0;
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+    return value.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   int _toInt(dynamic value) {
@@ -863,7 +579,12 @@ class _LaporanKinerjaPageState extends State<LaporanKinerjaPage> {
   }
 
   Widget _buildAlertRow(Map<String, dynamic> alert) {
-    final color = alert['color'] as Color? ?? t.primaryAccent;
+    final color = switch ('${alert['tone'] ?? ''}') {
+      'danger' => t.danger,
+      'warning' => t.warning,
+      'primary' => t.primaryAccent,
+      _ => t.primaryAccent,
+    };
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),

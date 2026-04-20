@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/utils/chat_unread_refresh_bus.dart';
 import '../models/chat_message.dart';
 import '../models/chat_room.dart';
 import '../models/store_daily_data.dart';
@@ -65,6 +66,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   RealtimeChannel? _readReceiptSubscription;
   RealtimeChannel? _reactionSubscription;
   Timer? _refreshDebounce;
+  Timer? _roomSyncTimer;
   bool _isRefreshing = false;
 
   static const int _messagesPerPage = 50;
@@ -116,6 +118,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       // Mark messages as read
       try {
         await _repository.markMessagesRead(roomId: _room.id);
+        await _repository.markRoomMentionNotificationsRead(roomId: _room.id);
+        notifyChatUnreadRefresh();
       } catch (e) {
         debugPrint('Failed to mark messages as read: $e');
         // Continue without marking as read
@@ -124,6 +128,12 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       // Subscribe to real-time updates
       try {
         _subscribeToUpdates();
+        _roomSyncTimer?.cancel();
+        _roomSyncTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+          if (!isClosed) {
+            _refreshMessages();
+          }
+        });
       } catch (e) {
         debugPrint('Failed to subscribe to updates: $e');
         // Continue without real-time updates
@@ -212,30 +222,57 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     }
   }
 
-  Future<void> addReaction({
+  Future<void> refreshNow() async {
+    await _refreshMessages();
+  }
+
+  Future<Map<String, dynamic>> addReaction({
     required String messageId,
     required String emoji,
   }) async {
     try {
-      await _repository.addReaction(messageId: messageId, emoji: emoji);
-      // Reaction will be updated via real-time subscription
+      return await _repository.addReaction(messageId: messageId, emoji: emoji);
     } catch (e) {
-      // Handle error
       rethrow;
     }
   }
 
-  Future<void> removeReaction({
+  Future<Map<String, dynamic>> removeReaction({
     required String messageId,
     required String emoji,
   }) async {
     try {
-      await _repository.removeReaction(messageId: messageId, emoji: emoji);
-      // Reaction will be updated via real-time subscription
+      return await _repository.removeReaction(
+        messageId: messageId,
+        emoji: emoji,
+      );
     } catch (e) {
-      // Handle error
       rethrow;
     }
+  }
+
+  Future<void> refreshMessagesNow() async {
+    await _refreshMessages();
+  }
+
+  Future<void> deleteMyMessagesInRoom() async {
+    await _repository.deleteMyMessagesInRoom(roomId: _room.id);
+    await _refreshMessages();
+  }
+
+  void replaceMessageReactions({
+    required String messageId,
+    required Map<String, dynamic> reactions,
+  }) {
+    final currentState = state;
+    if (currentState is! ChatRoomLoaded) return;
+
+    final updatedMessages = currentState.messages.map((message) {
+      if (message.id != messageId) return message;
+      return message.copyWith(reactions: reactions);
+    }).toList();
+
+    emit(currentState.copyWith(messages: updatedMessages));
   }
 
   Future<void> toggleMute() async {
@@ -280,13 +317,17 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
 
                   // Mark as read if message is not from current user
                   if (!message.isOwnMessage) {
-                    _repository.markMessagesRead(roomId: _room.id).onError((
-                      error,
-                      stackTrace,
-                    ) {
-                      debugPrint('Failed to mark message as read: $error');
-                      return 0;
-                    });
+                    _repository
+                        .markMessagesRead(roomId: _room.id)
+                        .then((_) async {
+                          await _repository.markRoomMentionNotificationsRead(
+                            roomId: _room.id,
+                          );
+                          notifyChatUnreadRefresh();
+                        })
+                        .onError((error, stackTrace) {
+                          debugPrint('Failed to mark message as read: $error');
+                        });
                   }
                 }
               });
@@ -300,8 +341,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       // Subscribe to reactions
       _reactionSubscription = _repository.subscribeToReactions(
         roomId: _room.id,
-        onReactionUpdate: () {
-          if (!isClosed) {
+        onReactionUpdate: (messageId) {
+          if (!isClosed && _hasLoadedMessage(messageId)) {
             _scheduleRefresh(const Duration(milliseconds: 180));
           }
         },
@@ -310,8 +351,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       // Subscribe to read receipts
       _readReceiptSubscription = _repository.subscribeToReadReceipts(
         roomId: _room.id,
-        onReadReceiptUpdate: () {
-          if (!isClosed) {
+        onReadReceiptUpdate: (messageId) {
+          if (!isClosed && _hasLoadedMessage(messageId)) {
             _scheduleRefresh(const Duration(milliseconds: 420));
           }
         },
@@ -346,9 +387,16 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     _refreshDebounce = Timer(delay, _refreshMessages);
   }
 
+  bool _hasLoadedMessage(String messageId) {
+    final currentState = state;
+    if (currentState is! ChatRoomLoaded) return false;
+    return currentState.messages.any((message) => message.id == messageId);
+  }
+
   @override
   Future<void> close() {
     _refreshDebounce?.cancel();
+    _roomSyncTimer?.cancel();
     _messageSubscription?.unsubscribe();
     _readReceiptSubscription?.unsubscribe();
     _reactionSubscription?.unsubscribe();

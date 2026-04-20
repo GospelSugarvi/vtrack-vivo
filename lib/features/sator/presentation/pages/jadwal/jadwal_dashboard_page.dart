@@ -29,6 +29,10 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!mounted) return;
+      setState(() {});
+    });
     _loadData();
   }
 
@@ -173,7 +177,7 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
   Widget build(BuildContext context) {
     final t = context.fieldTokens;
     return Scaffold(
-      backgroundColor: t.textOnAccent,
+      backgroundColor: t.background,
       body: SafeArea(
         child: _isLoading
             ? Center(child: CircularProgressIndicator(color: t.primaryAccent))
@@ -186,18 +190,18 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
                   slivers: [
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildTopBar(context),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             if (_errorMessage != null)
                               _buildErrorCard()
                             else ...[
-                              _buildStatsRow(),
-                              const SizedBox(height: 12),
                               _buildTabShell(),
+                              const SizedBox(height: 8),
+                              _buildStatsRow(),
                             ],
                           ],
                         ),
@@ -207,7 +211,7 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
                       SliverFillRemaining(
                         hasScrollBody: true,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                           child: TabBarView(
                             controller: _tabController,
                             children: [
@@ -228,14 +232,14 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
     return Row(
       children: [
         InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           onTap: () => context.pop(),
           child: Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: t.surface1,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: t.surface3),
             ),
             child: Icon(Icons.arrow_back_rounded, color: t.textPrimary),
@@ -246,7 +250,7 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
           child: Text(
             'Jadwal Tim',
             style: PromotorText.outfit(
-              size: 18,
+              size: 17,
               weight: FontWeight.w800,
               color: t.textPrimary,
             ),
@@ -261,10 +265,10 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
   Widget _buildMonthCompactSwitch() {
     final monthLabel = DateFormat('MMM yyyy', 'id_ID').format(_selectedMonth);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
       decoration: BoxDecoration(
         color: t.surface1,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: t.surface3),
       ),
       child: Row(
@@ -284,12 +288,13 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
             },
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
             child: Text(
               monthLabel,
               style: PromotorText.outfit(
-                size: 13,
+                size: 12,
                 weight: FontWeight.w800,
+                color: t.textPrimary,
               ),
             ),
           ),
@@ -323,16 +328,16 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
       borderRadius: BorderRadius.circular(16),
       onTap: enabled ? onTap : null,
       child: Container(
-        width: compact ? 30 : 48,
-        height: compact ? 30 : 48,
+        width: compact ? 28 : 44,
+        height: compact ? 28 : 44,
         decoration: BoxDecoration(
           color: enabled ? t.surface1 : t.surface1.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(compact ? 10 : 16),
+          borderRadius: BorderRadius.circular(compact ? 9 : 14),
           border: Border.all(color: t.surface3),
         ),
         child: Icon(
           icon,
-          size: compact ? 18 : 24,
+          size: compact ? 16 : 22,
           color: enabled ? t.textPrimary : t.textMutedStrong,
         ),
       ),
@@ -375,29 +380,31 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
     required Color tone,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         color: t.surface2,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: t.surface3),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            title.toUpperCase(),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             style: PromotorText.outfit(
-              size: 12,
-              weight: FontWeight.w700,
-              color: t.textMuted,
-              letterSpacing: 0.6,
+                size: 9.5,
+                weight: FontWeight.w700,
+                color: t.textMuted,
+              ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(width: 6),
           Text(
             value,
             style: PromotorText.outfit(
-              size: 17,
+              size: 13.5,
               weight: FontWeight.w800,
               color: tone,
             ),
@@ -409,32 +416,104 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
 
   Widget _buildTabShell() {
     return Container(
-      padding: const EdgeInsets.all(4),
+      height: 34,
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: t.surface1,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: t.surface3),
       ),
       child: TabBar(
         controller: _tabController,
+        indicatorSize: TabBarIndicatorSize.tab,
+        splashBorderRadius: BorderRadius.circular(9),
         indicator: BoxDecoration(
-          color: t.primaryAccentSoft,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: t.primaryAccentGlow),
+          color: t.primaryAccent.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: t.primaryAccent.withValues(alpha: 0.22),
+          ),
         ),
         dividerColor: t.surface1.withValues(alpha: 0),
-        labelStyle: PromotorText.outfit(size: 13, weight: FontWeight.w800),
+        padding: EdgeInsets.zero,
+        labelPadding: EdgeInsets.zero,
+        indicatorPadding: EdgeInsets.zero,
+        tabAlignment: TabAlignment.fill,
+        labelStyle: PromotorText.outfit(size: 10, weight: FontWeight.w800),
         unselectedLabelStyle: PromotorText.outfit(
-          size: 13,
+          size: 10,
           weight: FontWeight.w700,
           color: t.textSecondary,
         ),
-        labelColor: t.primaryAccentLight,
+        labelColor: t.primaryAccent,
         unselectedLabelColor: t.textSecondary,
         tabs: [
-          Tab(text: 'Approval ($_pendingCount)'),
-          const Tab(text: 'Overview'),
+          _buildCompactTab(
+            label: 'Approval',
+            count: _pendingCount,
+            selectedTone: t.primaryAccent,
+            idleTone: t.textMutedStrong,
+          ),
+          _buildCompactTab(
+            label: 'Overview',
+            count: null,
+            selectedTone: t.primaryAccent,
+            idleTone: t.textMutedStrong,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompactTab({
+    required String label,
+    required int? count,
+    required Color selectedTone,
+    required Color idleTone,
+  }) {
+    final hasCount = count != null;
+    final isApproval = label == 'Approval';
+    final selected = _tabController.index == (isApproval ? 0 : 1);
+
+    return Tab(
+      height: 28,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (hasCount) ...[
+              const SizedBox(width: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: (selected ? selectedTone : idleTone).withValues(
+                    alpha: selected ? 0.14 : 0.1,
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$count',
+                  style: PromotorText.outfit(
+                    size: 8.5,
+                    weight: FontWeight.w800,
+                    color: selected ? selectedTone : idleTone,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -446,18 +525,18 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        const SizedBox(height: 12),
-        _buildSectionTitle('Menunggu Review'),
         const SizedBox(height: 10),
+        _buildSectionTitle('Pending Review', pendingRows.length),
+        const SizedBox(height: 8),
         if (pendingRows.isEmpty)
-          _buildEmptyCard('Tidak ada jadwal yang menunggu approval bulan ini.')
+          _buildEmptyCard('Belum ada jadwal yang menunggu review.')
         else
           ...pendingRows.map(
             (row) => _buildScheduleCard(row, actionable: true),
           ),
-        const SizedBox(height: 16),
-        _buildSectionTitle('Belum Kirim'),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
+        _buildSectionTitle('Belum Kirim', notSubmittedRows.length),
+        const SizedBox(height: 8),
         if (notSubmittedRows.isEmpty)
           _buildEmptyCard('Semua promotor sudah punya draft atau jadwal aktif.')
         else
@@ -478,41 +557,71 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         for (final section in sections) ...[
           _buildSectionTitle(
             section.$1,
+            _statusRows(section.$2).length,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           if (_statusRows(section.$2).isEmpty)
             _buildEmptyCard('Tidak ada jadwal ${section.$1.toLowerCase()}.')
           else
             ..._statusRows(
               section.$2,
             ).map((row) => _buildScheduleCard(row, actionable: true)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ],
       ],
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: PromotorText.outfit(
-        size: 15,
-        weight: FontWeight.w800,
-        color: t.textPrimary,
-      ),
+  Widget _buildSectionTitle(String title, int count) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: PromotorText.outfit(
+              size: 14,
+              weight: FontWeight.w800,
+              color: t.textPrimary,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: t.surface2,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: t.surface3),
+          ),
+          child: Text(
+            '$count',
+            style: PromotorText.outfit(
+              size: 11,
+              weight: FontWeight.w800,
+              color: t.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildEmptyCard(String message) {
-    return PromotorCard(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: t.surface3),
+      ),
       child: Text(
         message,
         style: PromotorText.outfit(
-          size: 13,
+          size: 12,
           weight: FontWeight.w600,
           color: t.textSecondary,
         ),
@@ -527,74 +636,113 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
     final status = '${schedule['status'] ?? 'belum_kirim'}';
     final statusColor = _statusColor(status);
     final lastUpdated = DateTime.tryParse('${schedule['last_updated'] ?? ''}');
+    final promotorName = '${schedule['promotor_name'] ?? ''}'.trim();
+    final storeName = '${schedule['store_name'] ?? '-'}';
+    final initial = promotorName.isEmpty ? 'P' : promotorName.substring(0, 1).toUpperCase();
 
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       onTap: actionable ? () => _openDetail(schedule) : null,
-      child: PromotorCard(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: t.surface1,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: t.surface3),
+        ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
                 color: t.surface2,
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: t.surface3),
               ),
               alignment: Alignment.center,
               child: Text(
-                ('${schedule['promotor_name'] ?? 'P'}')
-                    .trim()
-                    .substring(0, 1)
-                    .toUpperCase(),
+                initial,
                 style: PromotorText.outfit(
-                  size: 15,
+                  size: 10,
                   weight: FontWeight.w800,
                   color: t.primaryAccentLight,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${schedule['promotor_name'] ?? ''}',
-                    style: PromotorText.outfit(
-                      size: 15,
-                      weight: FontWeight.w800,
-                      color: t.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${schedule['store_name'] ?? '-'}',
-                    style: PromotorText.outfit(
-                      size: 12,
-                      weight: FontWeight.w700,
-                      color: t.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildTonePill(_statusLabel(status), statusColor),
-                      if (lastUpdated != null)
-                        _buildTonePill(
-                          DateFormat('dd MMM', 'id_ID').format(lastUpdated),
-                          t.textMuted,
+                      Expanded(
+                        child: RichText(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: promotorName,
+                                style: PromotorText.outfit(
+                                  size: 11,
+                                  weight: FontWeight.w800,
+                                  color: t.textPrimary,
+                                ),
+                              ),
+                              TextSpan(
+                                text: storeName.isEmpty ? '' : '  •  $storeName',
+                                style: PromotorText.outfit(
+                                  size: 9,
+                                  weight: FontWeight.w700,
+                                  color: t.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildTonePill(_statusLabel(status), statusColor),
                     ],
                   ),
+                  if (lastUpdated != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 10,
+                          color: t.textMutedStrong,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Update ${DateFormat('dd MMM', 'id_ID').format(lastUpdated)}',
+                          style: PromotorText.outfit(
+                            size: 8.8,
+                            weight: FontWeight.w700,
+                            color: t.textMutedStrong,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
             if (actionable)
-              Icon(Icons.arrow_forward_rounded, color: t.textSecondary),
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 11,
+                  color: t.textMutedStrong,
+                ),
+              ),
           ],
         ),
       ),
@@ -603,7 +751,7 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
 
   Widget _buildTonePill(String label, Color tone) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
@@ -612,7 +760,7 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
       child: Text(
         label,
         style: PromotorText.outfit(
-          size: 12,
+          size: 9,
           weight: FontWeight.w700,
           color: tone,
         ),
@@ -621,7 +769,13 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
   }
 
   Widget _buildErrorCard() {
-    return PromotorCard(
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: t.surface3),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -630,7 +784,7 @@ class _JadwalDashboardPageState extends State<JadwalDashboardPage>
           Text(
             _errorMessage ?? 'Terjadi kesalahan.',
             style: PromotorText.outfit(
-              size: 15,
+              size: 13,
               weight: FontWeight.w600,
               color: t.textSecondary,
             ),

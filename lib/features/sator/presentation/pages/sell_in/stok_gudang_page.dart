@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vtrack/ui/foundation/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:vtrack/core/utils/device_image_saver.dart';
 import 'package:vtrack/core/utils/success_dialog.dart';
 
 class StokGudangPage extends StatefulWidget {
@@ -21,13 +21,51 @@ class StokGudangPage extends StatefulWidget {
 class _StokGudangPageState extends State<StokGudangPage> {
   FieldThemeTokens get t => context.fieldTokens;
   final _supabase = Supabase.instance.client;
-  final _screenshotController = ScreenshotController();
   List<Map<String, dynamic>> _stockList = [];
   bool _isLoading = true;
   bool _isExporting = false;
   String _searchQuery = '';
   String _userArea = 'Gudang';
   DateTime _selectedDate = DateTime.now(); // Add selected date
+  String? _errorMessage;
+
+  int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('${value ?? ''}') ?? 0;
+  }
+
+  double _toDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse('${value ?? ''}') ?? 0;
+  }
+
+  String _statusLabelForQty(int qty) {
+    if (qty >= 10) return 'Aman';
+    if (qty >= 5) return 'Cukup';
+    return 'Tipis';
+  }
+
+  Color _statusColorForQty(int qty) {
+    if (qty >= 10) return t.success;
+    if (qty >= 5) return t.warning;
+    return t.danger;
+  }
+
+  double _marginPct(Map<String, dynamic> item) {
+    final modal = _toDouble(item['modal'] ?? item['price']);
+    final srp = _toDouble(item['srp']);
+    if (srp <= 0 || srp <= modal) return 0;
+    return ((srp - modal) / srp) * 100;
+  }
+
+  int _profitValue(Map<String, dynamic> item) {
+    final modal = _toInt(item['modal'] ?? item['price']);
+    final srp = _toInt(item['srp']);
+    if (srp <= modal) return 0;
+    return srp - modal;
+  }
 
   @override
   void initState() {
@@ -40,12 +78,11 @@ class _StokGudangPageState extends State<StokGudangPage> {
     try {
       final userId = _supabase.auth.currentUser!.id;
 
-      final userData = await _supabase
-          .from('users')
-          .select('area')
-          .eq('id', userId)
-          .single();
-      _userArea = userData['area'] ?? 'Gudang';
+      final profileRaw = await _supabase.rpc('get_my_profile_snapshot');
+      final profile = Map<String, dynamic>.from(
+        (profileRaw as Map?) ?? const <String, dynamic>{},
+      );
+      _userArea = '${profile['area'] ?? 'Gudang'}';
 
       final dateStr = _selectedDate.toIso8601String().split('T')[0];
 
@@ -61,10 +98,11 @@ class _StokGudangPageState extends State<StokGudangPage> {
           final List<Map<String, dynamic>> sortedList =
               List<Map<String, dynamic>>.from(data ?? []);
           for (var item in sortedList) {
-            // Ensure numbers are int
-            item['qty'] = (item['qty'] as num?)?.toInt() ?? 0;
-            item['otw'] = (item['otw'] as num?)?.toInt() ?? 0;
-            item['price'] = (item['price'] as num?)?.toInt() ?? 0;
+            item['qty'] = _toInt(item['qty']);
+            item['otw'] = _toInt(item['otw']);
+            item['price'] = _toInt(item['price']);
+            item['modal'] = _toInt(item['modal'] ?? item['price']);
+            item['srp'] = _toInt(item['srp']);
           }
 
           sortedList.sort((a, b) {
@@ -88,11 +126,18 @@ class _StokGudangPageState extends State<StokGudangPage> {
           );
           _stockList = hasSnapshot ? sortedList : [];
           _isLoading = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
       debugPrint('Error loading stock: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _stockList = [];
+          _isLoading = false;
+          _errorMessage = 'Tidak bisa memuat stok gudang.';
+        });
+      }
     }
   }
 
@@ -196,17 +241,20 @@ class _StokGudangPageState extends State<StokGudangPage> {
   }
 
   Future<void> _checkAndNavigateToScan(DateTime selectedDate) async {
+    var loadingShown = false;
     try {
       final userId = _supabase.auth.currentUser!.id;
 
-      // Show loading
       showDialog(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
+        builder: (context) {
+          loadingShown = true;
+          return const Center(child: CircularProgressIndicator());
+        },
       );
 
-      // Check if stock exists for selected date
       final data = await _supabase.rpc(
         'get_stok_gudang_status_for_date',
         params: {
@@ -215,7 +263,10 @@ class _StokGudangPageState extends State<StokGudangPage> {
         },
       );
 
-      if (mounted) Navigator.pop(context); // Close loading
+      if (loadingShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingShown = false;
+      }
 
       final hasData = data['has_data'] == true;
       final createdBy = data['created_by'] as String?;
@@ -241,8 +292,10 @@ class _StokGudangPageState extends State<StokGudangPage> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Close loading
-        showErrorDialog(context, title: 'Gagal', message: 'Error: $e');
+        if (loadingShown) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        await showErrorDialog(context, title: 'Gagal', message: 'Error: $e');
       }
     }
   }
@@ -293,6 +346,15 @@ class _StokGudangPageState extends State<StokGudangPage> {
     });
 
     return grouped;
+  }
+
+  String _variantDescriptor(Map<String, dynamic> item) {
+    final parts = <String>[
+      '${item['variant'] ?? ''}'.trim(),
+      '${item['color'] ?? ''}'.trim(),
+    ].where((part) => part.isNotEmpty).toList();
+    if (parts.isEmpty) return '-';
+    return parts.join(' • ');
   }
 
   @override
@@ -398,6 +460,39 @@ class _StokGudangPageState extends State<StokGudangPage> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                ? RefreshIndicator(
+                    onRefresh: _loadData,
+                    color: t.primaryAccent,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: t.surface1,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: t.surface3),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Data stok gudang belum bisa dimuat',
+                                style: AppTextStyle.titleMd(t.textPrimary),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _errorMessage!,
+                                style: AppTextStyle.bodySm(t.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : _visibleList.isEmpty
                 ? _buildEmptyState()
                 : RefreshIndicator(
@@ -451,19 +546,10 @@ class _StokGudangPageState extends State<StokGudangPage> {
     final first = items.first;
     final productName = (first['product_name'] ?? '').toString();
     final networkType = (first['network_type'] ?? '').toString();
-
     final totalQty = items.fold<int>(
       0,
-      (sum, item) => sum + ((item['qty'] as num?)?.toInt() ?? 0),
+      (sum, item) => sum + _toInt(item['qty']),
     );
-    final readyVariants = items
-        .where((item) => ((item['qty'] as num?)?.toInt() ?? 0) > 0)
-        .length;
-    final totalVariants = items.length;
-
-    final qtyColor = totalQty >= 20
-        ? t.success
-        : (totalQty >= 8 ? t.warning : t.danger);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -473,8 +559,8 @@ class _StokGudangPageState extends State<StokGudangPage> {
         side: BorderSide(color: t.surface3),
       ),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        childrenPadding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
+        tilePadding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
         collapsedShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
         ),
@@ -510,92 +596,75 @@ class _StokGudangPageState extends State<StokGudangPage> {
           ],
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.only(top: 4),
           child: Text(
-            '$readyVariants/$totalVariants varian ready • total $totalQty unit',
-            style: AppTextStyle.bodySm(t.textPrimary),
+            'Total stok: $totalQty unit',
+            style: AppTextStyle.bodySm(
+              t.textSecondary,
+              weight: FontWeight.w600,
+            ),
           ),
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: qtyColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$totalQty',
-            style: AppTextStyle.bodySm(qtyColor, weight: FontWeight.bold),
-          ),
-        ),
-        children: items.map(_buildVariantRow).toList(),
+        children: items.asMap().entries.map((entry) {
+          return Column(
+            children: [
+              if (entry.key == 0) Divider(height: 1, color: t.surface3),
+              if (entry.key > 0) Divider(height: 10, color: t.surface3),
+              _buildVariantRow(entry.value),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildVariantRow(Map<String, dynamic> stock) {
-    final qty = (stock['qty'] as num?)?.toInt() ?? 0;
-    final qtyColor = qty >= 10
-        ? t.success
-        : (qty >= 5 ? t.warning : (qty > 0 ? t.danger : t.textSecondary));
-    final formatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
+    final qty = _toInt(stock['qty']);
+    final statusColor = _statusColorForQty(qty);
+    final statusLabel = _statusLabelForQty(qty);
+    final descriptor = _variantDescriptor(stock);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: t.surface3),
-          color: t.surface1,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${stock['variant'] ?? ''}',
-                    style: AppTextStyle.bodySm(
-                      t.textPrimary,
-                      weight: FontWeight.w800,
-                    ),
-                  ),
-                  if ('${stock['color'] ?? ''}'.trim().isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '${stock['color'] ?? ''}',
-                      style: AppTextStyle.bodySm(
-                        t.textSecondary,
-                        weight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              descriptor,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyle.bodySm(
+                t.textPrimary,
+                weight: FontWeight.w800,
               ),
             ),
-            Text(
-              formatter.format(stock['price'] ?? 0),
-              style: AppTextStyle.bodyMd(t.textSecondary),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: qtyColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                '$qty',
-                style: AppTextStyle.bodySm(qtyColor, weight: FontWeight.bold),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 72,
+            child: Text(
+              '$qty unit',
+              textAlign: TextAlign.right,
+              style: AppTextStyle.bodySm(
+                t.textSecondary,
+                weight: FontWeight.w700,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              statusLabel,
+              style: AppTextStyle.bodySm(statusColor, weight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -674,33 +743,56 @@ class _StokGudangPageState extends State<StokGudangPage> {
   }
 
   Future<void> _showPreviewAndSave() async {
+    if (!mounted) return;
     setState(() => _isExporting = true);
 
     try {
-      // 1. Capture Image
-      final imageBytes = await _screenshotController.captureFromLongWidget(
+      final imageBytes = await ScreenshotController().captureFromLongWidget(
         InheritedTheme.captureAll(
           context,
-          Material(child: _buildExportWidget()),
+          Material(
+            color: Colors.transparent,
+            child: Center(child: _buildExportWidget()),
+          ),
         ),
-        pixelRatio: 2.0,
+        pixelRatio: 2.2,
         context: context,
-        delay: const Duration(milliseconds: 100),
+        delay: const Duration(milliseconds: 120),
       );
 
       if (!mounted) return;
+      setState(() => _isExporting = false);
 
-      // 2. Show Preview Dialog
-      showDialog(
+      await showDialog<void>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           title: const Text('Preview Gambar Stok'),
-          content: SingleChildScrollView(
+          content: SizedBox(
+            width: 920,
+            height: 620,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Image.memory(imageBytes),
-                const SizedBox(height: 16),
+                Text(
+                  'Preview utuh. Zoom bila perlu.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: t.textMutedStrong,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: InteractiveViewer(
+                    minScale: 0.4,
+                    maxScale: 5,
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: Image.memory(imageBytes, fit: BoxFit.contain),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   'Pastikan data sudah benar sebelum dikirim ke toko.',
                   style: AppTextStyle.bodySm(t.textSecondary),
@@ -711,15 +803,17 @@ class _StokGudangPageState extends State<StokGudangPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Batal'),
             ),
             ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                _saveImageToGallery(imageBytes);
+              onPressed: () async {
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                }
+                await _saveImageToGallery(imageBytes);
               },
-              icon: Icon(Icons.download),
+              icon: const Icon(Icons.download),
               label: const Text('Simpan ke Galeri'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: t.primaryAccent,
@@ -732,10 +826,9 @@ class _StokGudangPageState extends State<StokGudangPage> {
     } catch (e) {
       debugPrint('❌ Capture error: $e');
       if (mounted) {
-        showErrorDialog(context, title: 'Gagal', message: 'Error: $e');
+        setState(() => _isExporting = false);
+        await showErrorDialog(context, title: 'Gagal', message: 'Error: $e');
       }
-    } finally {
-      if (mounted) setState(() => _isExporting = false);
     }
   }
 
@@ -745,14 +838,10 @@ class _StokGudangPageState extends State<StokGudangPage> {
           'stok_gudang_${DateFormat('yyyyMMdd_HHmm').format(_selectedDate)}.png';
 
       if (!kIsWeb) {
-        final result = await ImageGallerySaverPlus.saveImage(
-          bytes,
-          quality: 100,
-          name: fileName,
-        );
+        final success = await DeviceImageSaver.saveImage(bytes, name: fileName);
 
         if (mounted) {
-          if (result['isSuccess'] == true) {
+          if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('✅ Gambar tersimpan di Gallery'),
@@ -779,104 +868,81 @@ class _StokGudangPageState extends State<StokGudangPage> {
       'EEEE, dd MMMM yyyy',
       'id_ID',
     ).format(_selectedDate);
-    final currency = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
+    final amount = NumberFormat.decimalPattern('id_ID');
+    final yearText = DateTime.now().year.toString();
 
-    final list = List<Map<String, dynamic>>.from(_filteredList);
+    final list = List<Map<String, dynamic>>.from(_visibleList);
     list.sort((a, b) {
-      final qtyA = (a['qty'] as num?)?.toInt() ?? 0;
-      final qtyB = (b['qty'] as num?)?.toInt() ?? 0;
-      if (qtyA == 0 && qtyB > 0) return 1;
-      if (qtyA > 0 && qtyB == 0) return -1;
+      final qtyA = _toInt(a['qty']);
+      final qtyB = _toInt(b['qty']);
       if (qtyA != qtyB) return qtyB.compareTo(qtyA);
-      return ((a['price'] as num?) ?? 0).compareTo((b['price'] as num?) ?? 0);
+      return _toInt(
+        a['modal'] ?? a['price'],
+      ).compareTo(_toInt(b['modal'] ?? b['price']));
     });
 
-    final totalQty = list.fold<int>(
-      0,
-      (sum, item) => sum + ((item['qty'] as num?)?.toInt() ?? 0),
-    );
-    final readyCount = list
-        .where((item) => ((item['qty'] as num?)?.toInt() ?? 0) > 0)
-        .length;
-
     return Container(
-      width: 720,
-      padding: const EdgeInsets.all(22),
-      color: const Color(0xFFF5F1EA),
+      width: 860,
+      color: const Color(0xFFFAF8F3),
+      padding: const EdgeInsets.all(10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFAF8F3),
-              border: Border(
-                left: BorderSide(color: Color(0xFFD8D2C4)),
-                right: BorderSide(color: Color(0xFFD8D2C4)),
-                top: BorderSide(color: Color(0xFFD8D2C4)),
-              ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAF8F3),
+              border: Border.all(color: const Color(0xFFD8D2C4)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'STOK GUDANG',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF9A9080),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _userArea.toUpperCase(),
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '$dateStr\nDokumen stok gudang harian',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF7A7060),
-                          height: 1.6,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(26, 20, 26, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'STOK VIVO ${_userArea.toUpperCase()}',
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
                       color: const Color(0xFF1C1A16),
-                      child: Text(
-                        'STOK',
-                        style: GoogleFonts.spaceMono(
-                          fontSize: 7.5,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFFAF8F3),
-                          letterSpacing: 1,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          dateStr,
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF7A7060),
+                            height: 1.6,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        color: const Color(0xFF1C1A16),
+                        child: Text(
+                          'STOK',
+                          style: GoogleFonts.spaceMono(
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFAF8F3),
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           Container(height: 2, color: const Color(0xFF1C1A16)),
@@ -893,35 +959,8 @@ class _StokGudangPageState extends State<StokGudangPage> {
                   (entry) => _buildStockExportTableRow(
                     entry.key + 1,
                     entry.value,
-                    currency,
+                    amount,
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFAF8F3),
-              border: Border(
-                left: BorderSide(color: Color(0xFFD8D2C4)),
-                right: BorderSide(color: Color(0xFFD8D2C4)),
-                bottom: BorderSide(color: Color(0xFFD8D2C4)),
-                top: BorderSide(color: Color(0xFF1C1A16), width: 2),
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildStockExportTotalLine(
-                  'Total Varian',
-                  '${list.length} item',
-                ),
-                _buildStockExportTotalLine('Varian Ready', '$readyCount item'),
-                _buildStockExportTotalLine(
-                  'Total Unit',
-                  '$totalQty unit',
-                  emphasize: true,
                 ),
               ],
             ),
@@ -940,17 +979,7 @@ class _StokGudangPageState extends State<StokGudangPage> {
             child: Row(
               children: [
                 Text(
-                  '$_userArea © ${_selectedDate.year}',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF8E836F),
-                    letterSpacing: 0.9,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'DOKUMEN INTERNAL',
+                  'STOK VIVO ${_userArea.toUpperCase()} © $yearText',
                   style: GoogleFonts.spaceMono(
                     fontSize: 8,
                     fontWeight: FontWeight.w700,
@@ -972,10 +1001,14 @@ class _StokGudangPageState extends State<StokGudangPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       child: Row(
         children: [
-          _stockExportHeaderCell('Item', flex: 10, align: TextAlign.left),
-          _stockExportHeaderCell('Qty', flex: 2, align: TextAlign.center),
-          _stockExportHeaderCell('Harga', flex: 4, align: TextAlign.right),
-          _stockExportHeaderCell('Status', flex: 4, align: TextAlign.right),
+          _stockExportHeaderCell('Item', flex: 9, align: TextAlign.left),
+          _stockExportHeaderCell(
+            'Harga Modal',
+            flex: 4,
+            align: TextAlign.right,
+          ),
+          _stockExportHeaderCell('Profit', flex: 5, align: TextAlign.right),
+          _stockExportHeaderCell('Status', flex: 3, align: TextAlign.center),
         ],
       ),
     );
@@ -984,10 +1017,12 @@ class _StokGudangPageState extends State<StokGudangPage> {
   Widget _buildStockExportTableRow(
     int index,
     Map<String, dynamic> item,
-    NumberFormat currency,
+    NumberFormat amount,
   ) {
-    final qty = (item['qty'] as num?)?.toInt() ?? 0;
-    final price = (item['price'] as num?)?.toInt() ?? 0;
+    final qty = _toInt(item['qty']);
+    final modal = _toInt(item['modal'] ?? item['price']);
+    final profit = _profitValue(item);
+    final marginPct = _marginPct(item);
     final specs = [
       '${item['network_type'] ?? ''}'.trim(),
       '${item['variant'] ?? ''}'.trim(),
@@ -997,13 +1032,7 @@ class _StokGudangPageState extends State<StokGudangPage> {
         ? '${item['product_name'] ?? 'Produk'}'
         : '${item['product_name'] ?? 'Produk'} ($color)';
 
-    final statusText = qty >= 10
-        ? 'BANYAK'
-        : qty >= 5
-        ? 'CUKUP'
-        : qty > 0
-        ? 'KRITIS'
-        : 'HABIS';
+    final statusText = _statusLabelForQty(qty).toUpperCase();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1017,7 +1046,7 @@ class _StokGudangPageState extends State<StokGudangPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 10,
+            flex: 9,
             child: Padding(
               padding: const EdgeInsets.only(right: 10),
               child: Column(
@@ -1051,15 +1080,7 @@ class _StokGudangPageState extends State<StokGudangPage> {
             ),
           ),
           _stockExportValueCell(
-            '$qty',
-            flex: 2,
-            align: TextAlign.center,
-            weight: FontWeight.w700,
-            fontFamily: GoogleFonts.spaceMono().fontFamily,
-            fontSize: 14.5,
-          ),
-          _stockExportValueCell(
-            currency.format(price),
+            amount.format(modal),
             flex: 4,
             align: TextAlign.right,
             scaleDown: true,
@@ -1067,9 +1088,21 @@ class _StokGudangPageState extends State<StokGudangPage> {
             color: const Color(0xFF7A7060),
           ),
           _stockExportValueCell(
-            statusText,
-            flex: 4,
+            profit > 0
+                ? '${amount.format(profit)} (${marginPct.toStringAsFixed(1)}%)'
+                : '-',
+            flex: 5,
             align: TextAlign.right,
+            scaleDown: true,
+            fontSize: 14.5,
+            weight: FontWeight.w700,
+            color: const Color(0xFF7A7060),
+            fontFamily: GoogleFonts.spaceMono().fontFamily,
+          ),
+          _stockExportValueCell(
+            statusText,
+            flex: 3,
+            align: TextAlign.center,
             fontSize: 13.5,
             weight: FontWeight.w700,
             color: const Color(0xFF1C1A16),
@@ -1153,54 +1186,6 @@ class _StokGudangPageState extends State<StokGudangPage> {
                   height: 1.2,
                 ),
               ),
-      ),
-    );
-  }
-
-  Widget _buildStockExportTotalLine(
-    String label,
-    String value, {
-    bool emphasize = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: emphasize ? Colors.transparent : const Color(0xFFDDD8CE),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: GoogleFonts.spaceMono(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF9A9080),
-              letterSpacing: 0.8,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: emphasize
-                ? GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                    height: 1.05,
-                  )
-                : GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                  ),
-          ),
-        ],
       ),
     );
   }

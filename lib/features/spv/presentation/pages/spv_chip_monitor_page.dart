@@ -25,15 +25,17 @@ class _SpvChipMonitorPageState extends State<SpvChipMonitorPage> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final rows = await Supabase.instance.client
-          .from('stock_chip_requests')
-          .select('id, status, requested_at, promotor:promotor_id(full_name), stores(store_name)')
-          .order('requested_at', ascending: false)
-          .limit(100);
+      final snapshotRaw = await Supabase.instance.client.rpc(
+        'get_spv_chip_monitor_snapshot',
+      );
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      final rows = _parseMapList(snapshot['rows']);
 
       if (!mounted) return;
       setState(() {
-        _rows = List<Map<String, dynamic>>.from(rows);
+        _rows = rows;
         _isLoading = false;
       });
     } catch (_) {
@@ -43,6 +45,14 @@ class _SpvChipMonitorPageState extends State<SpvChipMonitorPage> {
         _isLoading = false;
       });
     }
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   @override
@@ -69,8 +79,8 @@ class _SpvChipMonitorPageState extends State<SpvChipMonitorPage> {
                 ..._rows.map(
                   (row) => Card(
                     child: ListTile(
-                      title: Text('${row['promotor']?['full_name'] ?? '-'}'),
-                      subtitle: Text('${row['stores']?['store_name'] ?? '-'}'),
+                      title: Text('${row['promotor_name'] ?? '-'}'),
+                      subtitle: Text('${row['store_name'] ?? '-'}'),
                       trailing: Text('${row['status'] ?? '-'}'),
                     ),
                   ),

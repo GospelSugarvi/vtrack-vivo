@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../main.dart';
 import '../../../../ui/foundation/app_colors.dart';
+import '../widgets/admin_dialog_sync.dart';
 
 class AdminActivityPage extends StatefulWidget {
   const AdminActivityPage({super.key});
@@ -10,13 +11,14 @@ class AdminActivityPage extends StatefulWidget {
   State<AdminActivityPage> createState() => _AdminActivityPageState();
 }
 
-class _AdminActivityPageState extends State<AdminActivityPage> with SingleTickerProviderStateMixin {
+class _AdminActivityPageState extends State<AdminActivityPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   List<Map<String, dynamic>> _activities = [];
   List<Map<String, dynamic>> _todayRecords = [];
   List<Map<String, dynamic>> _promotors = [];
-  
+
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now();
 
@@ -38,20 +40,22 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
     setState(() => _isLoading = true);
     try {
       // Load activity types
-      final activities = await supabase.from('activity_types')
+      final activities = await supabase
+          .from('activity_types')
           .select('*')
           .order('display_order');
       if (!mounted) return;
       _activities = List<Map<String, dynamic>>.from(activities);
-      
+
       // Load promotors for tracking
-      final promotors = await supabase.from('users')
+      final promotors = await supabase
+          .from('users')
           .select('id, full_name')
           .eq('role', 'promotor')
           .isFilter('deleted_at', null);
       if (!mounted) return;
       _promotors = List<Map<String, dynamic>>.from(promotors);
-      
+
       await _loadDailyRecords();
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -63,8 +67,10 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
   }
 
   Future<void> _loadDailyRecords() async {
-    final dateStr = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-    final records = await supabase.from('activity_records')
+    final dateStr =
+        '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+    final records = await supabase
+        .from('activity_records')
         .select(
           '*, activity_types(name), users!activity_records_user_id_fkey(full_name)',
         )
@@ -86,10 +92,14 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
       ),
       body: Column(
         children: [
-          if (isDesktop) Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text('📋 Activity Management', style: Theme.of(context).textTheme.headlineMedium),
-          ),
+          if (isDesktop)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                '📋 Activity Management',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
           TabBar(
             controller: _tabController,
             tabs: const [
@@ -102,10 +112,7 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
                 ? const Center(child: CircularProgressIndicator())
                 : TabBarView(
                     controller: _tabController,
-                    children: [
-                      _buildManageTab(),
-                      _buildMonitorTab(),
-                    ],
+                    children: [_buildManageTab(), _buildMonitorTab()],
                   ),
           ),
         ],
@@ -124,7 +131,10 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
             children: [
               const Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Daftar Aktivitas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Daftar Aktivitas',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               if (_activities.isEmpty)
                 const Padding(
@@ -143,15 +153,20 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
   Widget _buildActivityTile(Map<String, dynamic> activity) {
     final isActive = activity['is_active'] == true;
     final isRequired = activity['is_required'] == true;
-    
+
     return ListTile(
       leading: Container(
-        width: 40, height: 40,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: (isActive ? AppTheme.successGreen : AppColors.textSecondary).withValues(alpha: 0.1),
+          color: (isActive ? AppTheme.successGreen : AppColors.textSecondary)
+              .withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(_getIcon(activity['icon_name']), color: isActive ? AppTheme.successGreen : AppColors.textSecondary),
+        child: Icon(
+          _getIcon(activity['icon_name']),
+          color: isActive ? AppTheme.successGreen : AppColors.textSecondary,
+        ),
       ),
       title: Text(activity['name'] ?? 'Unknown'),
       subtitle: Row(
@@ -164,9 +179,15 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
                 color: AppTheme.primaryBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text('Wajib', style: TextStyle(fontSize: 12, color: AppTheme.primaryBlue)),
+              child: const Text(
+                'Wajib',
+                style: TextStyle(fontSize: 12, color: AppTheme.primaryBlue),
+              ),
             ),
-          Text(activity['schedule'] ?? 'daily', style: const TextStyle(fontSize: 12)),
+          Text(
+            activity['schedule'] ?? 'daily',
+            style: const TextStyle(fontSize: 12),
+          ),
         ],
       ),
       trailing: Row(
@@ -188,20 +209,35 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
 
   IconData _getIcon(String? iconName) {
     switch (iconName) {
-      case 'access_time': return Icons.access_time;
-      case 'shopping_cart': return Icons.shopping_cart;
-      case 'inventory': return Icons.inventory;
-      case 'campaign': return Icons.campaign;
-      case 'attach_money': return Icons.attach_money;
-      case 'all_inclusive': return Icons.all_inclusive;
-      case 'fact_check': return Icons.fact_check;
-      case 'logout': return Icons.logout;
-      default: return Icons.check_circle;
+      case 'access_time':
+        return Icons.access_time;
+      case 'shopping_cart':
+        return Icons.shopping_cart;
+      case 'inventory':
+        return Icons.inventory;
+      case 'campaign':
+        return Icons.campaign;
+      case 'attach_money':
+        return Icons.attach_money;
+      case 'all_inclusive':
+        return Icons.all_inclusive;
+      case 'fact_check':
+        return Icons.fact_check;
+      case 'logout':
+        return Icons.logout;
+      default:
+        return Icons.check_circle;
     }
   }
 
-  Future<void> _toggleActivity(Map<String, dynamic> activity, bool value) async {
-    await supabase.from('activity_types').update({'is_active': value}).eq('id', activity['id']);
+  Future<void> _toggleActivity(
+    Map<String, dynamic> activity,
+    bool value,
+  ) async {
+    await supabase
+        .from('activity_types')
+        .update({'is_active': value})
+        .eq('id', activity['id']);
     _loadData();
   }
 
@@ -217,7 +253,7 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
         completionMap[userId]![activityId] = true;
       }
     }
-    
+
     return Column(
       children: [
         // Date selector
@@ -225,10 +261,15 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text('Tanggal: ', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Tanggal: ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               TextButton.icon(
                 icon: const Icon(Icons.calendar_today, size: 16),
-                label: Text('${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
+                label: Text(
+                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                ),
                 onPressed: () async {
                   final picked = await showDatePicker(
                     context: context,
@@ -263,25 +304,42 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
                   child: DataTable(
                     columns: [
                       const DataColumn(label: Text('Promotor')),
-                      ..._activities.where((a) => a['is_active'] == true).map((a) => 
-                        DataColumn(label: Text(a['name'] ?? '', style: const TextStyle(fontSize: 13)))),
+                      ..._activities
+                          .where((a) => a['is_active'] == true)
+                          .map(
+                            (a) => DataColumn(
+                              label: Text(
+                                a['name'] ?? '',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          ),
                     ],
                     rows: _promotors.map((p) {
                       final userId = p['id'] as String;
-                      return DataRow(cells: [
-                        DataCell(Text(p['full_name'] ?? 'Unknown')),
-                        ..._activities.where((a) => a['is_active'] == true).map((a) {
-                          final activityId = a['id'] as String;
-                          final completed = completionMap[userId]?[activityId] == true;
-                          return DataCell(
-                            Icon(
-                              completed ? Icons.check_circle : Icons.radio_button_unchecked,
-                              color: completed ? AppColors.success : AppColors.border,
-                              size: 20,
-                            ),
-                          );
-                        }),
-                      ]);
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(p['full_name'] ?? 'Unknown')),
+                          ..._activities
+                              .where((a) => a['is_active'] == true)
+                              .map((a) {
+                                final activityId = a['id'] as String;
+                                final completed =
+                                    completionMap[userId]?[activityId] == true;
+                                return DataCell(
+                                  Icon(
+                                    completed
+                                        ? Icons.check_circle
+                                        : Icons.radio_button_unchecked,
+                                    color: completed
+                                        ? AppColors.success
+                                        : AppColors.border,
+                                    size: 20,
+                                  ),
+                                );
+                              }),
+                        ],
+                      );
                     }).toList(),
                   ),
                 ),
@@ -297,9 +355,10 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
     String schedule = 'daily';
     bool isRequired = false;
     String iconName = 'check_circle';
-    
-    showDialog(
+
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Tambah Aktivitas'),
@@ -307,9 +366,17 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Nama Aktivitas')),
+                TextField(
+                  controller: nameC,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama Aktivitas',
+                  ),
+                ),
                 const SizedBox(height: 12),
-                TextField(controller: descC, decoration: const InputDecoration(labelText: 'Deskripsi')),
+                TextField(
+                  controller: descC,
+                  decoration: const InputDecoration(labelText: 'Deskripsi'),
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: schedule,
@@ -318,9 +385,13 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
                     DropdownMenuItem(value: 'morning', child: Text('Pagi')),
                     DropdownMenuItem(value: 'daily', child: Text('Harian')),
                     DropdownMenuItem(value: 'evening', child: Text('Malam')),
-                    DropdownMenuItem(value: 'on_demand', child: Text('Jika ada')),
+                    DropdownMenuItem(
+                      value: 'on_demand',
+                      child: Text('Jika ada'),
+                    ),
                   ],
-                  onChanged: (v) => setDialogState(() => schedule = v ?? 'daily'),
+                  onChanged: (v) =>
+                      setDialogState(() => schedule = v ?? 'daily'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
@@ -332,7 +403,10 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (nameC.text.isEmpty) return;
@@ -346,8 +420,7 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
                   'display_order': _activities.length + 1,
                 });
                 if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                _loadData();
+                closeAdminDialog(ctx, changed: true);
               },
               child: const Text('Simpan'),
             ),
@@ -362,9 +435,10 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
     final descC = TextEditingController(text: activity['description'] ?? '');
     String schedule = activity['schedule'] ?? 'daily';
     bool isRequired = activity['is_required'] == true;
-    
-    showDialog(
+
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Edit Aktivitas'),
@@ -372,9 +446,15 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Nama')),
+                TextField(
+                  controller: nameC,
+                  decoration: const InputDecoration(labelText: 'Nama'),
+                ),
                 const SizedBox(height: 12),
-                TextField(controller: descC, decoration: const InputDecoration(labelText: 'Deskripsi')),
+                TextField(
+                  controller: descC,
+                  decoration: const InputDecoration(labelText: 'Deskripsi'),
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: schedule,
@@ -383,9 +463,13 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
                     DropdownMenuItem(value: 'morning', child: Text('Pagi')),
                     DropdownMenuItem(value: 'daily', child: Text('Harian')),
                     DropdownMenuItem(value: 'evening', child: Text('Malam')),
-                    DropdownMenuItem(value: 'on_demand', child: Text('Jika ada')),
+                    DropdownMenuItem(
+                      value: 'on_demand',
+                      child: Text('Jika ada'),
+                    ),
                   ],
-                  onChanged: (v) => setDialogState(() => schedule = v ?? 'daily'),
+                  onChanged: (v) =>
+                      setDialogState(() => schedule = v ?? 'daily'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
@@ -399,25 +483,35 @@ class _AdminActivityPageState extends State<AdminActivityPage> with SingleTicker
           actions: [
             TextButton(
               onPressed: () async {
-                await supabase.from('activity_types').delete().eq('id', activity['id']);
+                await supabase
+                    .from('activity_types')
+                    .delete()
+                    .eq('id', activity['id']);
                 if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                _loadData();
+                closeAdminDialog(ctx, changed: true);
               },
-              child: const Text('Hapus', style: TextStyle(color: AppColors.danger)),
+              child: const Text(
+                'Hapus',
+                style: TextStyle(color: AppColors.danger),
+              ),
             ),
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            TextButton(
+              onPressed: () => closeAdminDialog(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               onPressed: () async {
-                await supabase.from('activity_types').update({
-                  'name': nameC.text,
-                  'description': descC.text,
-                  'schedule': schedule,
-                  'is_required': isRequired,
-                }).eq('id', activity['id']);
+                await supabase
+                    .from('activity_types')
+                    .update({
+                      'name': nameC.text,
+                      'description': descC.text,
+                      'schedule': schedule,
+                      'is_required': isRequired,
+                    })
+                    .eq('id', activity['id']);
                 if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                _loadData();
+                closeAdminDialog(ctx, changed: true);
               },
               child: const Text('Update'),
             ),

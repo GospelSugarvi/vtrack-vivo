@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../main.dart';
 import '../../../../ui/foundation/app_colors.dart';
+import '../widgets/admin_dialog_sync.dart';
 
 class AdminStockPage extends StatefulWidget {
   const AdminStockPage({super.key});
@@ -11,9 +12,10 @@ class AdminStockPage extends StatefulWidget {
   State<AdminStockPage> createState() => _AdminStockPageState();
 }
 
-class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProviderStateMixin {
+class _AdminStockPageState extends State<AdminStockPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   // Data
   List<Map<String, dynamic>> _stores = [];
   List<Map<String, dynamic>> _stockSummary = [];
@@ -21,7 +23,7 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
   List<Map<String, dynamic>> _transfers = [];
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _variants = [];
-  
+
   bool _isLoading = true;
   String? _selectedStoreId;
   String _searchImei = '';
@@ -43,24 +45,26 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
     setState(() => _isLoading = true);
     try {
       // Load stores
-      final stores = await supabase.from('stores')
+      final stores = await supabase
+          .from('stores')
           .select('id, store_name, area')
           .isFilter('deleted_at', null)
           .order('store_name');
       _stores = List<Map<String, dynamic>>.from(stores);
-      
+
       // Load products for dropdown
-      final products = await supabase.from('products')
+      final products = await supabase
+          .from('products')
           .select('id, model_name, network_type')
           .isFilter('deleted_at', null);
       _products = List<Map<String, dynamic>>.from(products);
-      
+
       // Load stock summary (aggregate by store)
       await _loadStockSummary();
-      
+
       // Load pending transfers
       await _loadTransfers();
-      
+
       setState(() => _isLoading = false);
     } catch (e) {
       debugPrint('Error loading stock data: $e');
@@ -75,23 +79,27 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
 
   Future<void> _loadStockDetail() async {
     if (_selectedStoreId == null) return;
-    
-    dynamic query = supabase.from('stok')
+
+    dynamic query = supabase
+        .from('stok')
         .select('*, products(model_name), product_variants(ram_rom, color)')
         .eq('store_id', _selectedStoreId!)
         .eq('is_sold', false);
-    
+
     if (_searchImei.isNotEmpty) {
       query = query.ilike('imei', '%$_searchImei%');
     }
-    
+
     final detail = await query.order('created_at', ascending: false);
     setState(() => _stockDetail = List<Map<String, dynamic>>.from(detail));
   }
 
   Future<void> _loadTransfers() async {
-    final transfers = await supabase.from('stock_transfer_requests')
-        .select('*, from_store:stores!stock_transfer_requests_from_store_id_fkey(store_name), to_store:stores!stock_transfer_requests_to_store_id_fkey(store_name), requester:users!stock_transfer_requests_requested_by_fkey(full_name)')
+    final transfers = await supabase
+        .from('stock_transfer_requests')
+        .select(
+          '*, from_store:stores!stock_transfer_requests_from_store_id_fkey(store_name), to_store:stores!stock_transfer_requests_to_store_id_fkey(store_name), requester:users!stock_transfer_requests_requested_by_fkey(full_name)',
+        )
         .order('requested_at', ascending: false)
         .limit(50);
     _transfers = List<Map<String, dynamic>>.from(transfers);
@@ -110,20 +118,24 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
       ),
       body: Column(
         children: [
-          if (isDesktop) Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                Text('📦 Stock Management (IMEI)', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: _loadData,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Refresh'),
-                ),
-              ],
+          if (isDesktop)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                children: [
+                  Text(
+                    '📦 Stock Management (IMEI)',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: _loadData,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Refresh'),
+                  ),
+                ],
+              ),
             ),
-          ),
           TabBar(
             controller: _tabController,
             tabs: const [
@@ -158,7 +170,7 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
       totalChip += (s['chip_count'] ?? 0) as int;
       totalDisplay += (s['display_count'] ?? 0) as int;
     }
-    
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -167,14 +179,24 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
           spacing: 16,
           runSpacing: 16,
           children: [
-            _buildStatCard('Fresh', totalFresh, AppColors.success, Icons.check_circle),
+            _buildStatCard(
+              'Fresh',
+              totalFresh,
+              AppColors.success,
+              Icons.check_circle,
+            ),
             _buildStatCard('Chip', totalChip, AppColors.warning, Icons.memory),
             _buildStatCard('Display', totalDisplay, AppColors.info, Icons.tv),
-            _buildStatCard('Total', totalFresh + totalChip + totalDisplay, Colors.purple, Icons.inventory_2),
+            _buildStatCard(
+              'Total',
+              totalFresh + totalChip + totalDisplay,
+              Colors.purple,
+              Icons.inventory_2,
+            ),
           ],
         ),
         const SizedBox(height: 24),
-        
+
         // Per Store Summary
         Card(
           child: Column(
@@ -182,12 +204,20 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
             children: [
               const Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Stok per Toko', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Stok per Toko',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               if (_stockSummary.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(32),
-                  child: Center(child: Text('Belum ada data stok', style: TextStyle(color: AppColors.textSecondary))),
+                  child: Center(
+                    child: Text(
+                      'Belum ada data stok',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
                 )
               else
                 DataTable(
@@ -198,13 +228,23 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
                     DataColumn(label: Text('Display'), numeric: true),
                     DataColumn(label: Text('Total'), numeric: true),
                   ],
-                  rows: _stockSummary.map((s) => DataRow(cells: [
-                    DataCell(Text(s['store_name'] ?? 'Unknown')),
-                    DataCell(Text('${s['fresh_count'] ?? 0}')),
-                    DataCell(Text('${s['chip_count'] ?? 0}')),
-                    DataCell(Text('${s['display_count'] ?? 0}')),
-                    DataCell(Text('${(s['fresh_count'] ?? 0) + (s['chip_count'] ?? 0) + (s['display_count'] ?? 0)}')),
-                  ])).toList(),
+                  rows: _stockSummary
+                      .map(
+                        (s) => DataRow(
+                          cells: [
+                            DataCell(Text(s['store_name'] ?? 'Unknown')),
+                            DataCell(Text('${s['fresh_count'] ?? 0}')),
+                            DataCell(Text('${s['chip_count'] ?? 0}')),
+                            DataCell(Text('${s['display_count'] ?? 0}')),
+                            DataCell(
+                              Text(
+                                '${(s['fresh_count'] ?? 0) + (s['chip_count'] ?? 0) + (s['display_count'] ?? 0)}',
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      .toList(),
                 ),
             ],
           ),
@@ -222,7 +262,14 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
           children: [
             Icon(icon, color: color, size: 32),
             const SizedBox(height: 8),
-            Text('$value', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              '$value',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
             Text(label, style: const TextStyle(color: AppColors.textSecondary)),
           ],
         ),
@@ -242,11 +289,18 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: _selectedStoreId,
-                  decoration: const InputDecoration(labelText: 'Pilih Toko', border: OutlineInputBorder()),
-                  items: _stores.map((s) => DropdownMenuItem(
-                    value: s['id'] as String,
-                    child: Text(s['store_name'] ?? 'Unknown'),
-                  )).toList(),
+                  decoration: const InputDecoration(
+                    labelText: 'Pilih Toko',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _stores
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s['id'] as String,
+                          child: Text(s['store_name'] ?? 'Unknown'),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) {
                     setState(() => _selectedStoreId = v);
                     _loadStockDetail();
@@ -274,14 +328,16 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
         ),
         Expanded(
           child: _selectedStoreId == null
-              ? const Center(child: Text('Pilih toko untuk melihat detail stok'))
+              ? const Center(
+                  child: Text('Pilih toko untuk melihat detail stok'),
+                )
               : _stockDetail.isEmpty
-                  ? const Center(child: Text('Tidak ada stok di toko ini'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _stockDetail.length,
-                      itemBuilder: (ctx, i) => _buildStockItem(_stockDetail[i]),
-                    ),
+              ? const Center(child: Text('Tidak ada stok di toko ini'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _stockDetail.length,
+                  itemBuilder: (ctx, i) => _buildStockItem(_stockDetail[i]),
+                ),
         ),
       ],
     );
@@ -292,7 +348,7 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
     final variant = item['product_variants'] as Map<String, dynamic>?;
     final tipe = item['tipe_stok'] ?? 'fresh';
     final bonusPaid = item['bonus_paid'] == true;
-    
+
     Color statusColor;
     IconData statusIcon;
     switch (tipe) {
@@ -308,7 +364,7 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
         statusColor = AppColors.success;
         statusIcon = Icons.check_circle;
     }
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -321,16 +377,34 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('${variant?['ram_rom'] ?? ''} • ${variant?['color'] ?? ''}'),
-            Text('IMEI: ${item['imei']}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-            if (bonusPaid) const Text('💰 Bonus sudah dibayar', style: TextStyle(color: AppColors.success, fontSize: 13)),
+            Text(
+              'IMEI: ${item['imei']}',
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+            if (bonusPaid)
+              const Text(
+                '💰 Bonus sudah dibayar',
+                style: TextStyle(color: AppColors.success, fontSize: 13),
+              ),
           ],
         ),
         trailing: PopupMenuButton(
           itemBuilder: (ctx) => [
-            if (tipe == 'fresh') const PopupMenuItem(value: 'chip', child: Text('🔄 Chip Activation')),
-            if (tipe == 'fresh') const PopupMenuItem(value: 'sell', child: Text('💰 Mark as Sold')),
+            if (tipe == 'fresh')
+              const PopupMenuItem(
+                value: 'chip',
+                child: Text('🔄 Chip Activation'),
+              ),
+            if (tipe == 'fresh')
+              const PopupMenuItem(
+                value: 'sell',
+                child: Text('💰 Mark as Sold'),
+              ),
             const PopupMenuItem(value: 'transfer', child: Text('📦 Transfer')),
-            const PopupMenuItem(value: 'history', child: Text('📋 Lihat History')),
+            const PopupMenuItem(
+              value: 'history',
+              child: Text('📋 Lihat History'),
+            ),
           ],
           onSelected: (v) => _handleStockAction(v, item),
         ),
@@ -389,7 +463,7 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
       default:
         statusColor = AppColors.warning;
     }
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -397,10 +471,17 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
           backgroundColor: statusColor.withValues(alpha: 0.2),
           child: Icon(Icons.swap_horiz, color: statusColor),
         ),
-        title: Text('${transfer['from_store']?['store_name']} → ${transfer['to_store']?['store_name']}'),
-        subtitle: Text('${transfer['qty_requested']} unit • Oleh: ${transfer['requester']?['full_name']}'),
+        title: Text(
+          '${transfer['from_store']?['store_name']} → ${transfer['to_store']?['store_name']}',
+        ),
+        subtitle: Text(
+          '${transfer['qty_requested']} unit • Oleh: ${transfer['requester']?['full_name']}',
+        ),
         trailing: Chip(
-          label: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 13)),
+          label: Text(
+            status.toUpperCase(),
+            style: TextStyle(color: statusColor, fontSize: 13),
+          ),
           backgroundColor: statusColor.withValues(alpha: 0.1),
         ),
       ),
@@ -409,14 +490,16 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
 
   // ============ DIALOGS ============
   void _showAddStockDialog() {
+    final messenger = ScaffoldMessenger.of(context);
     String? selectedProductId;
     String? selectedVariantId;
     String? selectedStoreId;
     final imeiController = TextEditingController();
     String tipeStok = 'fresh';
-    
-    showDialog(
+
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Input Stok Baru'),
@@ -426,27 +509,45 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: selectedStoreId,
-                  decoration: const InputDecoration(labelText: 'Toko', border: OutlineInputBorder()),
-                  items: _stores.map((s) => DropdownMenuItem(
-                    value: s['id'] as String,
-                    child: Text(s['store_name'] ?? 'Unknown'),
-                  )).toList(),
+                  decoration: const InputDecoration(
+                    labelText: 'Toko',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _stores
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s['id'] as String,
+                          child: Text(s['store_name'] ?? 'Unknown'),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setDialogState(() => selectedStoreId = v),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedProductId,
-                  decoration: const InputDecoration(labelText: 'Produk', border: OutlineInputBorder()),
-                  items: _products.map((p) => DropdownMenuItem(
-                    value: p['id'] as String,
-                    child: Text('${p['model_name']} (${p['network_type'] ?? '4G'})'),
-                  )).toList(),
+                  decoration: const InputDecoration(
+                    labelText: 'Produk',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _products
+                      .map(
+                        (p) => DropdownMenuItem(
+                          value: p['id'] as String,
+                          child: Text(
+                            '${p['model_name']} (${p['network_type'] ?? '4G'})',
+                          ),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) async {
                     setDialogState(() => selectedProductId = v);
                     if (v != null) {
-                      final vars = await supabase.from('product_variants')
+                      final vars = await supabase
+                          .from('product_variants')
                           .select('id, ram_rom, color')
-                          .eq('product_id', v);
+                          .eq('product_id', v)
+                          .isFilter('deleted_at', null);
                       setDialogState(() {
                         _variants = List<Map<String, dynamic>>.from(vars);
                         selectedVariantId = null;
@@ -457,11 +558,18 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedVariantId,
-                  decoration: const InputDecoration(labelText: 'Varian', border: OutlineInputBorder()),
-                  items: _variants.map((v) => DropdownMenuItem(
-                    value: v['id'] as String,
-                    child: Text('${v['ram_rom']} - ${v['color']}'),
-                  )).toList(),
+                  decoration: const InputDecoration(
+                    labelText: 'Varian',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _variants
+                      .map(
+                        (v) => DropdownMenuItem(
+                          value: v['id'] as String,
+                          child: Text('${v['ram_rom']} - ${v['color']}'),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setDialogState(() => selectedVariantId = v),
                 ),
                 const SizedBox(height: 12),
@@ -477,29 +585,50 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: tipeStok,
-                  decoration: const InputDecoration(labelText: 'Kondisi', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Kondisi',
+                    border: OutlineInputBorder(),
+                  ),
                   items: const [
-                    DropdownMenuItem(value: 'fresh', child: Text('🟢 Fresh (Baru)')),
-                    DropdownMenuItem(value: 'chip', child: Text('🟠 Chip (Sudah aktif)')),
-                    DropdownMenuItem(value: 'display', child: Text('🔵 Display (Demo)')),
+                    DropdownMenuItem(
+                      value: 'fresh',
+                      child: Text('🟢 Fresh (Baru)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'chip',
+                      child: Text('🟠 Chip (Sudah aktif)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'display',
+                      child: Text('🔵 Display (Demo)'),
+                    ),
                   ],
-                  onChanged: (v) => setDialogState(() => tipeStok = v ?? 'fresh'),
+                  onChanged: (v) =>
+                      setDialogState(() => tipeStok = v ?? 'fresh'),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               onPressed: () async {
-                if (selectedStoreId == null || selectedProductId == null || 
-                    selectedVariantId == null || imeiController.text.isEmpty) {
+                if (selectedStoreId == null ||
+                    selectedProductId == null ||
+                    selectedVariantId == null ||
+                    imeiController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Lengkapi semua field'), backgroundColor: AppColors.danger),
+                    const SnackBar(
+                      content: Text('Lengkapi semua field'),
+                      backgroundColor: AppColors.danger,
+                    ),
                   );
                   return;
                 }
-                
+
                 try {
                   await supabase.from('stok').insert({
                     'store_id': selectedStoreId,
@@ -509,7 +638,7 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
                     'tipe_stok': tipeStok,
                     'created_by': supabase.auth.currentUser?.id,
                   });
-                  
+
                   // Log movement
                   await supabase.from('stock_movement_log').insert({
                     'imei': imeiController.text,
@@ -520,16 +649,21 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
                   });
 
                   if (!ctx.mounted) return;
-                  
-                  Navigator.pop(ctx);
-                  _loadData();
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Stok berhasil ditambahkan!'), backgroundColor: AppColors.success),
+
+                  closeAdminDialog(ctx, changed: true);
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Stok berhasil ditambahkan!'),
+                      backgroundColor: AppColors.success,
+                    ),
                   );
                 } catch (e) {
                   if (!ctx.mounted) return;
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppColors.danger,
+                    ),
                   );
                 }
               },
@@ -542,10 +676,12 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
   }
 
   void _showChipDialog(Map<String, dynamic> item) {
+    final messenger = ScaffoldMessenger.of(context);
     final reasonController = TextEditingController();
-    
-    showDialog(
+
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (ctx) => AlertDialog(
         title: const Text('Chip Activation'),
         content: Column(
@@ -564,20 +700,26 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               try {
-                await supabase.from('stok').update({
-                  'tipe_stok': 'chip',
-                  'chip_reason': reasonController.text,
-                  'chip_approved_by': supabase.auth.currentUser?.id,
-                  'chip_approved_at': DateTime.now().toIso8601String(),
-                  'bonus_paid': true,
-                  'bonus_paid_at': DateTime.now().toIso8601String(),
-                  'bonus_paid_to': item['promotor_id'],
-                }).eq('id', item['id']);
-                
+                await supabase
+                    .from('stok')
+                    .update({
+                      'tipe_stok': 'chip',
+                      'chip_reason': reasonController.text,
+                      'chip_approved_by': supabase.auth.currentUser?.id,
+                      'chip_approved_at': DateTime.now().toIso8601String(),
+                      'bonus_paid': true,
+                      'bonus_paid_at': DateTime.now().toIso8601String(),
+                      'bonus_paid_to': item['promotor_id'],
+                    })
+                    .eq('id', item['id']);
+
                 await supabase.from('stock_movement_log').insert({
                   'stok_id': item['id'],
                   'imei': item['imei'],
@@ -587,16 +729,21 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
                 });
 
                 if (!ctx.mounted) return;
-                
-                Navigator.pop(ctx);
-                _loadStockDetail();
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Chip activation berhasil!'), backgroundColor: AppColors.success),
+
+                closeAdminDialog(ctx, changed: true);
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Chip activation berhasil!'),
+                    backgroundColor: AppColors.success,
+                  ),
                 );
               } catch (e) {
                 if (!ctx.mounted) return;
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: AppColors.danger,
+                  ),
                 );
               }
             },
@@ -608,24 +755,31 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
   }
 
   void _showSellDialog(Map<String, dynamic> item) {
-    showDialog(
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (ctx) => AlertDialog(
         title: const Text('Mark as Sold'),
         content: Text('Tandai IMEI ${item['imei']} sebagai terjual?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               try {
-                await supabase.from('stok').update({
-                  'is_sold': true,
-                  'sold_at': DateTime.now().toIso8601String(),
-                  'bonus_paid': true,
-                  'bonus_paid_at': DateTime.now().toIso8601String(),
-                  'bonus_paid_to': item['promotor_id'],
-                }).eq('id', item['id']);
-                
+                await supabase
+                    .from('stok')
+                    .update({
+                      'is_sold': true,
+                      'sold_at': DateTime.now().toIso8601String(),
+                      'bonus_paid': true,
+                      'bonus_paid_at': DateTime.now().toIso8601String(),
+                      'bonus_paid_to': item['promotor_id'],
+                    })
+                    .eq('id', item['id']);
+
                 await supabase.from('stock_movement_log').insert({
                   'stok_id': item['id'],
                   'imei': item['imei'],
@@ -634,13 +788,15 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
                 });
 
                 if (!ctx.mounted) return;
-                
-                Navigator.pop(ctx);
-                _loadStockDetail();
+
+                closeAdminDialog(ctx, changed: true);
               } catch (e) {
                 if (!ctx.mounted) return;
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: AppColors.danger,
+                  ),
                 );
               }
             },
@@ -652,10 +808,12 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
   }
 
   void _showTransferDialog(Map<String, dynamic> item) {
+    final messenger = ScaffoldMessenger.of(context);
     String? toStoreId;
-    
-    showDialog(
+
+    showAdminChangedDialog(
       context: context,
+      onChanged: _loadData,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Transfer Stock'),
@@ -666,51 +824,70 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: toStoreId,
-                decoration: const InputDecoration(labelText: 'Toko Tujuan', border: OutlineInputBorder()),
-                items: _stores.where((s) => s['id'] != item['store_id']).map((s) => DropdownMenuItem(
-                  value: s['id'] as String,
-                  child: Text(s['store_name'] ?? 'Unknown'),
-                )).toList(),
+                decoration: const InputDecoration(
+                  labelText: 'Toko Tujuan',
+                  border: OutlineInputBorder(),
+                ),
+                items: _stores
+                    .where((s) => s['id'] != item['store_id'])
+                    .map(
+                      (s) => DropdownMenuItem(
+                        value: s['id'] as String,
+                        child: Text(s['store_name'] ?? 'Unknown'),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (v) => setDialogState(() => toStoreId = v),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
-              onPressed: toStoreId == null ? null : () async {
-                try {
-                  final fromStoreId = item['store_id'];
-                  
-                  // Update stock location
-                  await supabase.from('stok').update({
-                    'store_id': toStoreId,
-                  }).eq('id', item['id']);
-                  
-                  // Log movement
-                  await supabase.from('stock_movement_log').insert({
-                    'stok_id': item['id'],
-                    'imei': item['imei'],
-                    'from_store_id': fromStoreId,
-                    'to_store_id': toStoreId,
-                    'movement_type': 'transfer_direct',
-                    'moved_by': supabase.auth.currentUser?.id,
-                  });
+              onPressed: toStoreId == null
+                  ? null
+                  : () async {
+                      try {
+                        final fromStoreId = item['store_id'];
 
-                  if (!ctx.mounted) return;
-                  
-                  Navigator.pop(ctx);
-                  _loadStockDetail();
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Transfer berhasil!'), backgroundColor: AppColors.success),
-                  );
-                } catch (e) {
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
-                  );
-                }
-              },
+                        // Update stock location
+                        await supabase
+                            .from('stok')
+                            .update({'store_id': toStoreId})
+                            .eq('id', item['id']);
+
+                        // Log movement
+                        await supabase.from('stock_movement_log').insert({
+                          'stok_id': item['id'],
+                          'imei': item['imei'],
+                          'from_store_id': fromStoreId,
+                          'to_store_id': toStoreId,
+                          'movement_type': 'transfer_direct',
+                          'moved_by': supabase.auth.currentUser?.id,
+                        });
+
+                        if (!ctx.mounted) return;
+
+                        closeAdminDialog(ctx, changed: true);
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Transfer berhasil!'),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      } catch (e) {
+                        if (!ctx.mounted) return;
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: AppColors.danger,
+                          ),
+                        );
+                      }
+                    },
               child: const Text('Transfer'),
             ),
           ],
@@ -720,13 +897,14 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
   }
 
   void _showHistoryDialog(Map<String, dynamic> item) async {
-    final history = await supabase.from('stock_movement_log')
+    final history = await supabase
+        .from('stock_movement_log')
         .select('*, mover:users!stock_movement_log_moved_by_fkey(full_name)')
         .eq('imei', item['imei'])
         .order('moved_at', ascending: false);
-    
+
     if (!mounted) return;
-    
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -741,13 +919,18 @@ class _AdminStockPageState extends State<AdminStockPage> with SingleTickerProvid
               return ListTile(
                 leading: const Icon(Icons.history),
                 title: Text(h['movement_type'] ?? 'Unknown'),
-                subtitle: Text('${h['mover']?['full_name'] ?? 'Unknown'}\n${h['moved_at']}'),
+                subtitle: Text(
+                  '${h['mover']?['full_name'] ?? 'Unknown'}\n${h['moved_at']}',
+                ),
               );
             },
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tutup')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
         ],
       ),
     );

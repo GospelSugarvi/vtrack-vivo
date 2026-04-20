@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
 
 import '../../../../core/theme/app_font_preference_provider.dart';
@@ -25,9 +24,6 @@ class SpvProfilePage extends StatefulWidget {
 }
 
 class _SpvProfilePageState extends State<SpvProfilePage> {
-  static final Uri _latestReleaseUri = Uri.parse(
-    'https://github.com/GospelSugarvi/vtrack-vivo/releases/latest',
-  );
   FieldThemeTokens get t => context.fieldTokens;
   final _supabase = Supabase.instance.client;
 
@@ -742,13 +738,6 @@ class _SpvProfilePageState extends State<SpvProfilePage> {
   }
 
   Future<void> _openLatestRelease() async {
-    final launched = await launchUrl(
-      _latestReleaseUri,
-      mode: LaunchMode.externalApplication,
-    );
-    if (launched || !mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link update tidak bisa dibuka')),
-    );
+    await openLatestAppDownload(context);
   }
 }

@@ -26,6 +26,7 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
   DateTime? _selectedDate;
   num _previousMonthBonus = 0;
   num _personalBonusTarget = 0;
+  num _baseSalary = 0;
   Set<String> _ratioProductNames = <String>{};
   final Set<String> _expandedRatioItems = <String>{};
   String _displayName = '';
@@ -126,7 +127,7 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
         Supabase.instance.client
             .from('users')
             .select(
-              'personal_bonus_target, full_name, nickname, area, avatar_url',
+              'personal_bonus_target, full_name, nickname, area, avatar_url, base_salary',
             )
             .eq('id', userId)
             .maybeSingle(),
@@ -201,6 +202,8 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
       final satorUser = hierarchyRow?['users'] is Map
           ? Map<String, dynamic>.from(hierarchyRow!['users'] as Map)
           : null;
+      final satorNickname = (satorUser?['nickname'] ?? '').toString().trim();
+      final satorFullName = (satorUser?['full_name'] ?? '').toString().trim();
       final ratioProductNames = <String>{
         for (final row in ratioRuleRows)
           if (row['products'] is Map)
@@ -210,9 +213,6 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
               '${row['products']?['model_name'] ?? ''}'.trim(),
             }.where((value) => value.isNotEmpty),
       };
-      final satorNickname = (satorUser?['nickname'] ?? '').toString().trim();
-      final satorFullName = (satorUser?['full_name'] ?? '').toString().trim();
-
       if (!mounted) return;
       setState(() {
         _bonusSummary = summary is Map<String, dynamic>
@@ -227,6 +227,7 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
           prevSummary is Map<String, dynamic> ? prevSummary['total_bonus'] : 0,
         );
         _personalBonusTarget = _toNum(userRow?['personal_bonus_target']);
+        _baseSalary = _toNum(userRow?['base_salary']);
         _ratioProductNames = ratioProductNames;
         _displayName =
             [
@@ -385,28 +386,41 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
                   ),
                 ],
                 if (satorLine.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.center,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 10,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: t.surface1,
+                        color: t.primaryAccentSoft,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: t.surface3),
-                      ),
-                      child: Text(
-                        satorLine,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: PromotorText.outfit(
-                          size: 11,
-                          weight: FontWeight.w700,
-                          color: t.textSecondary,
+                        border: Border.all(
+                          color: t.primaryAccent.withValues(alpha: 0.18),
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_pin_circle_rounded,
+                            size: 14,
+                            color: t.primaryAccent,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            satorLine,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: PromotorText.outfit(
+                              size: 11,
+                              weight: FontWeight.w700,
+                              color: t.primaryAccent,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -422,144 +436,133 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
   Widget _buildMonthRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 7,
-            child: Container(
-              decoration: BoxDecoration(
-                color: t.surface1,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: t.surface3),
+      child: Container(
+        decoration: BoxDecoration(
+          color: t.surface1,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: t.surface3),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedMonth = DateTime(
+                      _selectedMonth.year,
+                      _selectedMonth.month - 1,
+                      1,
+                    );
+                    _selectedDate = null;
+                  });
+                  _loadData();
+                },
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.chevron_left,
+                  color: t.textSecondary,
+                  size: 18,
+                ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Row(
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedMonth = DateTime(
-                            _selectedMonth.year,
-                            _selectedMonth.month - 1,
-                            1,
-                          );
-                          _selectedDate = null;
-                        });
-                        _loadData();
-                      },
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.chevron_left,
-                        color: t.textSecondary,
-                        size: 18,
+                    Text(
+                      DateFormat('MMMM yyyy', 'id_ID').format(_selectedMonth),
+                      textAlign: TextAlign.center,
+                      style: PromotorText.outfit(
+                        size: 13,
+                        weight: FontWeight.w700,
+                        color: t.textPrimary,
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        DateFormat('MMMM yyyy', 'id_ID').format(_selectedMonth),
-                        textAlign: TextAlign.center,
-                        style: PromotorText.outfit(
-                          size: 13,
-                          weight: FontWeight.w700,
-                          color: t.textPrimary,
+                    const SizedBox(height: 2),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: _pickDateFilter,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
                         ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedMonth = DateTime(
-                            _selectedMonth.year,
-                            _selectedMonth.month + 1,
-                            1,
-                          );
-                          _selectedDate = null;
-                        });
-                        _loadData();
-                      },
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.chevron_right,
-                        color: t.textSecondary,
-                        size: 18,
+                        decoration: BoxDecoration(
+                          color: t.surface2,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: t.surface3),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_month_rounded,
+                              size: 14,
+                              color: t.primaryAccent,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                _selectedDate == null
+                                    ? 'Semua tanggal'
+                                    : DateFormat(
+                                        'd MMMM yyyy',
+                                        'id_ID',
+                                      ).format(_selectedDate!),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: PromotorText.outfit(
+                                  size: 11,
+                                  weight: FontWeight.w700,
+                                  color: _selectedDate == null
+                                      ? t.textSecondary
+                                      : t.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (_selectedDate != null) ...[
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() => _selectedDate = null);
+                                  _loadData();
+                                },
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 14,
+                                  color: t.textMuted,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 5,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: _pickDateFilter,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: t.surface1,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: t.surface3),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_month_rounded,
-                      size: 16,
-                      color: t.primaryAccent,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _selectedDate == null
-                            ? 'Semua Tanggal'
-                            : DateFormat(
-                                'd MMM',
-                                'id_ID',
-                              ).format(_selectedDate!),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: PromotorText.outfit(
-                          size: 12,
-                          weight: FontWeight.w700,
-                          color: _selectedDate == null
-                              ? t.textSecondary
-                              : t.textPrimary,
-                        ),
-                      ),
-                    ),
-                    if (_selectedDate != null)
-                      GestureDetector(
-                        onTap: () {
-                          setState(() => _selectedDate = null);
-                          _loadData();
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 6),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 16,
-                            color: t.textMuted,
-                          ),
-                        ),
-                      )
-                    else
-                      Icon(
-                        Icons.expand_more_rounded,
-                        size: 18,
-                        color: t.textMuted,
-                      ),
-                  ],
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedMonth = DateTime(
+                      _selectedMonth.year,
+                      _selectedMonth.month + 1,
+                      1,
+                    );
+                    _selectedDate = null;
+                  });
+                  _loadData();
+                },
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: t.textSecondary,
+                  size: 18,
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -584,6 +587,7 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
   Widget _buildHeroCard() {
     final summary = _bonusSummary ?? <String, dynamic>{};
     final totalBonus = _toNum(summary['total_bonus']);
+    final totalIncome = _baseSalary + totalBonus;
     final totalUnits = _toNum(summary['total_sales']).toInt();
     final achievementPct = _personalBonusTarget > 0
         ? (totalBonus / _personalBonusTarget) * 100
@@ -591,16 +595,42 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
     final remainingBonus = (_personalBonusTarget - totalBonus) > 0
         ? (_personalBonusTarget - totalBonus)
         : 0;
+    final metaItems = <Map<String, String>>[
+      {
+        'label': 'Gaji Tetap',
+        'value': _currencyFormat.format(_baseSalary),
+      },
+      {
+        'label': 'Total Pendapatan',
+        'value': _currencyFormat.format(totalIncome),
+      },
+      {
+        'label': 'Persentase',
+        'value': '${achievementPct.toStringAsFixed(1)}%',
+      },
+      {
+        'label': 'Kekurangan',
+        'value': _currencyFormat.format(remainingBonus),
+      },
+      {
+        'label': 'Target Bonus',
+        'value': _currencyFormat.format(_personalBonusTarget),
+      },
+      {
+        'label': 'Unit Terjual',
+        'value': NumberFormat.decimalPattern('id_ID').format(totalUnits),
+      },
+      {
+        'label': 'Bulan Lalu',
+        'value': _currencyFormat.format(_previousMonthBonus),
+      },
+    ];
+
     return PromotorCard(
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Bonus Bulan Ini',
-            style: PromotorText.outfit(size: 11, color: t.primaryAccent),
-          ),
-          const SizedBox(height: 6),
           Text(
             _currencyFormat.format(totalBonus),
             style: PromotorText.display(size: 28, color: t.textPrimary),
@@ -615,56 +645,24 @@ class _BonusDetailPageState extends State<BonusDetailPage> {
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final itemWidth = (constraints.maxWidth - 16) / 3;
+                const spacing = 8.0;
+                final itemWidth = (constraints.maxWidth - spacing) / 2;
                 return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    SizedBox(
-                      width: itemWidth,
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: metaItems.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    final isLastOddItem =
+                        metaItems.length.isOdd && index == metaItems.length - 1;
+                    return SizedBox(
+                      width: isLastOddItem ? constraints.maxWidth : itemWidth,
                       child: _buildHeroMeta(
-                        'Persentase',
-                        '${achievementPct.toStringAsFixed(1)}%',
+                        item['label'] ?? '-',
+                        item['value'] ?? '-',
                       ),
-                    ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _buildHeroMeta(
-                        'Kekurangan',
-                        _currencyFormat.format(remainingBonus),
-                      ),
-                    ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _buildHeroMeta(
-                        'Target Bonus',
-                        _currencyFormat.format(_personalBonusTarget),
-                      ),
-                    ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _buildHeroMeta(
-                        'Unit Terjual',
-                        NumberFormat.decimalPattern('id_ID').format(totalUnits),
-                      ),
-                    ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _buildHeroMeta(
-                        'Transaksi',
-                        NumberFormat.decimalPattern(
-                          'id_ID',
-                        ).format(_transactions.length),
-                      ),
-                    ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _buildHeroMeta(
-                        'Bulan Lalu',
-                        _currencyFormat.format(_previousMonthBonus),
-                      ),
-                    ),
-                  ],
+                    );
+                  }).toList(),
                 );
               },
             ),

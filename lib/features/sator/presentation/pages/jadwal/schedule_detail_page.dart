@@ -39,7 +39,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
   String? _errorMessage;
   String? _rejectionReason;
   String _currentUserRole = '';
-  String _currentUserName = '';
   String _currentStatus = '';
 
   @override
@@ -63,11 +62,62 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
     });
 
     try {
-      await Future.wait([
-        _loadCurrentUser(),
-        _loadScheduleDetail(),
-        _loadComments(),
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) {
+        throw Exception('Session user tidak ditemukan.');
+      }
+
+      final monthDate = DateTime.parse('${widget.monthYear}-01');
+      final monthStart = DateTime(monthDate.year, monthDate.month, 1);
+      final nextMonth = DateTime(monthDate.year, monthDate.month + 1, 1);
+
+      final results = await Future.wait([
+        _supabase.from('users').select('role').eq('id', currentUserId).single(),
+        _supabase
+            .from('schedules')
+            .select(
+              'schedule_date, shift_type, status, rejection_reason, '
+              'break_start, break_end, peak_start, peak_end, shift_start, shift_end, month_year',
+            )
+            .eq('promotor_id', widget.promotorId)
+            .eq('month_year', widget.monthYear)
+            .order('schedule_date'),
+        _supabase
+            .from('schedule_review_comments')
+            .select(
+              'id, author_id, author_name, author_role, message, created_at, month_year',
+            )
+            .eq('promotor_id', widget.promotorId)
+            .eq('month_year', widget.monthYear)
+            .order('created_at'),
       ]);
+
+      final currentUser = Map<String, dynamic>.from(
+        (results[0] as Map?) ?? const <String, dynamic>{},
+      );
+      final schedules = List<Map<String, dynamic>>.from(results[1] as List)
+          .where((row) {
+            final rowMonthYear = '${row['month_year'] ?? ''}'.trim();
+            final rowDate = DateTime.tryParse('${row['schedule_date'] ?? ''}');
+            if (rowMonthYear == widget.monthYear) return true;
+            if (rowDate == null) return false;
+            return !rowDate.isBefore(monthStart) && rowDate.isBefore(nextMonth);
+          })
+          .toList();
+      final comments = List<Map<String, dynamic>>.from(results[2] as List)
+          .where((row) {
+            final monthYear = '${row['month_year'] ?? ''}'.trim();
+            return monthYear == widget.monthYear;
+          })
+          .toList();
+
+      _currentUserRole = '${currentUser['role'] ?? ''}';
+      _schedules = schedules;
+      _comments = comments;
+      if (_schedules.isNotEmpty) {
+        _rejectionReason = _schedules.first['rejection_reason']?.toString();
+        _currentStatus = '${_schedules.first['status'] ?? _currentStatus}';
+      }
       if (!mounted) return;
       setState(() => _isLoading = false);
     } catch (e) {
@@ -79,69 +129,29 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
     }
   }
 
-  Future<void> _loadCurrentUser() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
-      _currentUserRole = '';
-      _currentUserName = '';
-      return;
-    }
-
-    final profile = await _supabase
-        .from('users')
-        .select('full_name, role')
-        .eq('id', userId)
-        .single();
-
-    _currentUserName = '${profile['full_name'] ?? ''}';
-    _currentUserRole = '${profile['role'] ?? ''}';
-  }
-
-  Future<void> _loadScheduleDetail() async {
-    final response = await _supabase.rpc(
-      'get_promotor_schedule_detail',
-      params: {
-        'p_promotor_id': widget.promotorId,
-        'p_month_year': widget.monthYear,
-      },
-    );
-
-    _schedules = List<Map<String, dynamic>>.from(response ?? const []);
-    if (_schedules.isNotEmpty) {
-      _rejectionReason = _schedules.first['rejection_reason']?.toString();
-      _currentStatus = '${_schedules.first['status'] ?? _currentStatus}';
-    }
-  }
-
-  Future<void> _loadComments() async {
-    final response = await _supabase
-        .from('schedule_review_comments')
-        .select('id, author_id, author_name, author_role, message, created_at')
-        .eq('promotor_id', widget.promotorId)
-        .eq('month_year', widget.monthYear)
-        .order('created_at');
-
-    _comments = List<Map<String, dynamic>>.from(response);
-  }
-
   Future<void> _sendComment() async {
     final message = _commentController.text.trim();
-    final userId = _supabase.auth.currentUser?.id;
-    if (message.isEmpty || userId == null) return;
+    if (message.isEmpty) return;
 
     setState(() => _isSendingComment = true);
     try {
-      await _supabase.from('schedule_review_comments').insert({
-        'promotor_id': widget.promotorId,
-        'month_year': widget.monthYear,
-        'author_id': userId,
-        'author_name': _currentUserName.isEmpty ? 'User' : _currentUserName,
-        'author_role': _currentUserRole.isEmpty ? 'user' : _currentUserRole,
-        'message': message,
-      });
+      final result = await _supabase.rpc(
+        'add_schedule_review_comment',
+        params: {
+          'p_promotor_id': widget.promotorId,
+          'p_month_year': widget.monthYear,
+          'p_message': message,
+        },
+      );
+      final payload = Map<String, dynamic>.from(
+        (result as Map?) ?? const <String, dynamic>{},
+      );
+      if (payload['success'] != true) {
+        throw Exception('${payload['message'] ?? 'Gagal kirim komentar.'}');
+      }
 
       _commentController.clear();
-      await _loadComments();
+      await _loadPageData();
       if (!mounted) return;
       setState(() {});
     } catch (e) {
@@ -215,48 +225,27 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
       if (!confirmed) return;
     }
 
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
-      _showNotice(
-        'Session tidak ditemukan. Silakan login ulang.',
-        isError: true,
-      );
-      return;
-    }
-
     setState(() => _isReviewing = true);
     try {
       final result = await _supabase.rpc(
-        'review_monthly_schedule',
+        'review_monthly_schedule_with_comment',
         params: {
-          'p_sator_id': userId,
           'p_promotor_id': widget.promotorId,
           'p_month_year': widget.monthYear,
           'p_action': action,
           'p_rejection_reason': reason,
         },
       );
-
-      final rows = List<Map<String, dynamic>>.from(result ?? const []);
-      final first = rows.isNotEmpty ? rows.first : const <String, dynamic>{};
-      final success = first['success'] == true;
-      final message = '${first['message'] ?? 'Proses review selesai.'}';
+      final payload = Map<String, dynamic>.from(
+        (result as Map?) ?? const <String, dynamic>{},
+      );
+      final success = payload['success'] == true;
+      final message = '${payload['message'] ?? 'Proses review selesai.'}';
 
       if (!success) {
         _showNotice(message, isError: true);
         if (mounted) setState(() => _isReviewing = false);
         return;
-      }
-
-      if (reason != null && reason.trim().isNotEmpty) {
-        await _supabase.from('schedule_review_comments').insert({
-          'promotor_id': widget.promotorId,
-          'month_year': widget.monthYear,
-          'author_id': userId,
-          'author_name': _currentUserName.isEmpty ? 'SATOR' : _currentUserName,
-          'author_role': _currentUserRole.isEmpty ? 'sator' : _currentUserRole,
-          'message': reason.trim(),
-        });
       }
 
       await _loadPageData();
@@ -300,19 +289,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
     }
   }
 
-  DateTime _normalizeDate(DateTime date) => DateTime(date.year, date.month, date.day);
-
-  List<DateTime> _monthCellsForCalendar() {
-    final month = DateTime.parse('${widget.monthYear}-01');
-    final firstDay = DateTime(month.year, month.month, 1);
-    final startOffset = firstDay.weekday - 1;
-    final gridStart = firstDay.subtract(Duration(days: startOffset));
-    return List<DateTime>.generate(
-      42,
-      (index) => gridStart.add(Duration(days: index)),
-    );
-  }
-
   String _shiftShortLabel(String shiftType) {
     switch (shiftType.toLowerCase()) {
       case 'pagi':
@@ -328,6 +304,37 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
       default:
         return '-';
     }
+  }
+
+  String _shiftTimeText(Map<String, dynamic> row) {
+    final shiftType = '${row['shift_type'] ?? ''}'.toLowerCase();
+    if (shiftType == 'libur') return '-';
+    final start = '${row['shift_start'] ?? ''}'.trim();
+    final end = '${row['shift_end'] ?? ''}'.trim();
+    if (start.isNotEmpty && end.isNotEmpty) {
+      return '${start.substring(0, 5)}-${end.substring(0, 5)}';
+    }
+    return '-';
+  }
+
+  String _breakTimeText(Map<String, dynamic> row) {
+    final shiftType = '${row['shift_type'] ?? ''}'.toLowerCase();
+    if (shiftType == 'libur') return '-';
+    final start = '${row['break_start'] ?? ''}'.trim();
+    final end = '${row['break_end'] ?? ''}'.trim();
+    if (start.isNotEmpty && end.isNotEmpty) {
+      return '${start.substring(0, 5)}-${end.substring(0, 5)}';
+    }
+    return '-';
+  }
+
+  String _peakTimeText(Map<String, dynamic> row) {
+    final start = '${row['peak_start'] ?? ''}'.trim();
+    final end = '${row['peak_end'] ?? ''}'.trim();
+    if (start.isNotEmpty && end.isNotEmpty) {
+      return '${start.substring(0, 5)}-${end.substring(0, 5)}';
+    }
+    return '-';
   }
 
   bool get _canReview =>
@@ -438,7 +445,10 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
         ),
         const SizedBox(width: 8),
         _buildTonePill(
-          DateFormat('MMMM yyyy', 'id_ID').format(DateTime.parse('${widget.monthYear}-01')),
+          DateFormat(
+            'MMMM yyyy',
+            'id_ID',
+          ).format(DateTime.parse('${widget.monthYear}-01')),
           t.primaryAccent,
         ),
       ],
@@ -457,7 +467,10 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTonePill(_statusLabel(_currentStatus), _statusTone(_currentStatus)),
+            _buildTonePill(
+              _statusLabel(_currentStatus),
+              _statusTone(_currentStatus),
+            ),
             if (_rejectionReason != null &&
                 _rejectionReason!.trim().isNotEmpty) ...[
               const SizedBox(height: 14),
@@ -534,28 +547,70 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
   }
 
   Widget _buildCalendarSection() {
-    final cells = _monthCellsForCalendar();
-    const weekdays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-    final month = DateTime.parse('${widget.monthYear}-01');
-    final workingDays = _schedules
-        .where((row) => '${row['shift_type'] ?? ''}' != 'libur')
+    final rows = List<Map<String, dynamic>>.from(_schedules)
+      ..sort(
+        (a, b) => '${a['schedule_date']}'.compareTo('${b['schedule_date']}'),
+      );
+    final workingDays = rows
+        .where((row) => '${row['shift_type'] ?? ''}'.toLowerCase() != 'libur')
         .length;
-    final offDays = _schedules.length - workingDays;
-    final scheduleByDate = <DateTime, Map<String, dynamic>>{
-      for (final row in _schedules)
-        _normalizeDate(DateTime.parse('${row['schedule_date']}')): row,
-    };
+    final offDays = rows.length - workingDays;
+    const dateColumnWidth = 124.0;
+    const shiftColumnWidth = 78.0;
+    const shiftTimeColumnWidth = 88.0;
+    const breakColumnWidth = 88.0;
+    const peakColumnWidth = 88.0;
+
+    Widget buildCell(
+      String text, {
+      required double width,
+      bool header = false,
+      Color? color,
+    }) {
+      return Container(
+        width: width,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(
+            right: BorderSide(color: t.surface3),
+            bottom: BorderSide(color: t.surface3),
+          ),
+          color: header ? t.surface2 : null,
+        ),
+        child: Text(
+          text,
+          style: PromotorText.outfit(
+            size: 12,
+            weight: header ? FontWeight.w800 : FontWeight.w700,
+            color: color ?? (header ? t.textPrimary : t.textSecondary),
+          ),
+        ),
+      );
+    }
 
     return PromotorCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Kalender',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          Row(
+            children: [
+              const Text(
+                'Preview Jadwal',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+              const Spacer(),
+              Text(
+                '${rows.length} hari',
+                style: PromotorText.outfit(
+                  size: 12,
+                  weight: FontWeight.w700,
+                  color: t.textSecondary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          if (_schedules.isEmpty)
+          if (rows.isEmpty)
             Text(
               'Belum ada jadwal untuk bulan ini.',
               style: PromotorText.outfit(
@@ -565,158 +620,123 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
               ),
             )
           else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final textScale = MediaQuery.textScalerOf(context).scale(1);
-                final contentWidth = constraints.maxWidth;
-                final spacing = contentWidth < 340 ? 6.0 : 8.0;
-                final cellWidth = (contentWidth - (spacing * 6)) / 7;
-                final compact = cellWidth < 52 || textScale > 1.05;
-                final veryCompact = cellWidth < 44 || textScale > 1.15;
-                final weekdayFont = compact ? 11.0 : 13.0;
-                final cellPadding = compact ? 6.0 : 8.0;
-                final aspectRatio = veryCompact ? 0.74 : (compact ? 0.82 : 0.9);
-                final labelFont = compact ? 6.5 : 7.4;
-
-                return Column(
+            Container(
+              decoration: BoxDecoration(
+                color: t.surface1,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: t.surface3),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: weekdays
-                          .map(
-                            (label) => Expanded(
-                              child: Center(
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    label,
-                                    maxLines: 1,
-                                    style: PromotorText.outfit(
-                                      size: weekdayFont,
-                                      weight: FontWeight.w700,
-                                      color: t.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 10),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: cells.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 7,
-                        childAspectRatio: aspectRatio,
-                        crossAxisSpacing: spacing,
-                        mainAxisSpacing: spacing,
-                      ),
-                      itemBuilder: (context, index) {
-                        final day = cells[index];
-                        final inMonth = day.month == month.month;
-                        final schedule = scheduleByDate[_normalizeDate(day)];
-                        final shift = '${schedule?['shift_type'] ?? 'libur'}';
-                        final tone = _shiftColor(shift);
-
-                        if (!inMonth) {
-                          return IgnorePointer(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(compact ? 14 : 18),
-                              ),
-                            ),
-                          );
-                        }
-
-                        return Container(
-                          padding: EdgeInsets.all(cellPadding),
-                          decoration: BoxDecoration(
-                            color: schedule == null
-                                ? t.surface2
-                                : tone.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(compact ? 14 : 18),
-                            border: Border.all(
-                              color: schedule == null
-                                  ? t.surface3
-                                  : tone.withValues(alpha: 0.35),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: compact ? 24 : 28,
-                                height: compact ? 24 : 28,
-                                decoration: BoxDecoration(
-                                  color: t.textOnAccent,
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '${day.day}',
-                                  maxLines: 1,
-                                  style: PromotorText.outfit(
-                                    size: compact ? 11 : 13,
-                                    weight: FontWeight.w800,
-                                    color: t.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              if (schedule != null)
-                                Expanded(
-                                  child: Transform.translate(
-                                    offset: const Offset(0, -3),
-                                    child: Align(
-                                      alignment: Alignment.topCenter,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 1),
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text(
-                                            _shiftShortLabel(shift),
-                                            textAlign: TextAlign.center,
-                                            style: PromotorText.outfit(
-                                              size: labelFont,
-                                              weight: FontWeight.w700,
-                                              color: tone,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
                       children: [
-                        Expanded(
-                          child: _buildStatItem('$workingDays', 'hari kerja', t.info, compact: true),
+                        buildCell(
+                          'Tanggal',
+                          width: dateColumnWidth,
+                          header: true,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildStatItem('$offDays', 'libur', t.textMuted, compact: true),
+                        buildCell(
+                          'Shift',
+                          width: shiftColumnWidth,
+                          header: true,
+                        ),
+                        buildCell(
+                          'Jam Shift',
+                          width: shiftTimeColumnWidth,
+                          header: true,
+                        ),
+                        buildCell(
+                          'Jam Break',
+                          width: breakColumnWidth,
+                          header: true,
+                        ),
+                        buildCell(
+                          'Jam Ramai',
+                          width: peakColumnWidth,
+                          header: true,
                         ),
                       ],
                     ),
+                    ...rows.map((row) {
+                      final date = DateTime.tryParse('${row['schedule_date']}');
+                      final shift = '${row['shift_type'] ?? ''}';
+                      final tone = _shiftColor(shift);
+                      return Row(
+                        children: [
+                          buildCell(
+                            date == null
+                                ? '-'
+                                : DateFormat(
+                                    'dd MMM, EEE',
+                                    'id_ID',
+                                  ).format(date),
+                            width: dateColumnWidth,
+                            color: t.textPrimary,
+                          ),
+                          buildCell(
+                            _shiftShortLabel(shift),
+                            width: shiftColumnWidth,
+                            color: tone,
+                          ),
+                          buildCell(
+                            _shiftTimeText(row),
+                            width: shiftTimeColumnWidth,
+                            color: t.textPrimary,
+                          ),
+                          buildCell(
+                            _breakTimeText(row),
+                            width: breakColumnWidth,
+                            color: t.textPrimary,
+                          ),
+                          buildCell(
+                            _peakTimeText(row),
+                            width: peakColumnWidth,
+                            color: t.textPrimary,
+                          ),
+                        ],
+                      );
+                    }),
                   ],
-                );
-              },
+                ),
+              ),
             ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatItem(
+                  '$workingDays',
+                  'hari kerja',
+                  t.info,
+                  compact: true,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatItem(
+                  '$offDays',
+                  'libur',
+                  t.textMuted,
+                  compact: true,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String value, String label, Color tone, {bool compact = false}) {
+  Widget _buildStatItem(
+    String value,
+    String label,
+    Color tone, {
+    bool compact = false,
+  }) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 10 : 12,

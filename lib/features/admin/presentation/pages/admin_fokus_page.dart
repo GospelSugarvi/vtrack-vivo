@@ -117,6 +117,27 @@ class _AdminFokusPageState extends State<AdminFokusPage> {
     _specialBundles = List<Map<String, dynamic>>.from(response);
   }
 
+  Future<bool> _isSpecialBundleReferenced(String bundleId) async {
+    if (_selectedPeriodId == null) return false;
+    final rows = await supabase
+        .from('user_targets')
+        .select('target_special_detail')
+        .eq('period_id', _selectedPeriodId!);
+
+    for (final raw in rows) {
+      final row = Map<String, dynamic>.from(raw);
+      final detailRaw = row['target_special_detail'];
+      final detail = detailRaw is Map<String, dynamic>
+          ? detailRaw
+          : (detailRaw is Map ? Map<String, dynamic>.from(detailRaw) : const <String, dynamic>{});
+      if (detail.containsKey(bundleId)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   Future<void> _toggleFokus(String productId, bool value) async {
     if (_selectedPeriodId == null) return;
     try {
@@ -298,6 +319,23 @@ class _AdminFokusPageState extends State<AdminFokusPage> {
   }
 
   Future<void> _deleteBundle(Map<String, dynamic> bundle) async {
+    final bundleId = '${bundle['id'] ?? ''}';
+    if (bundleId.isEmpty) return;
+
+    final isReferenced = await _isSpecialBundleReferenced(bundleId);
+    if (isReferenced) {
+      if (mounted) {
+        await showErrorDialog(
+          context,
+          title: 'Tidak Bisa Dihapus',
+          message:
+              'Bundle ini sudah dipakai di target bulan aktif. Edit bundle yang ada, jangan hapus lalu buat ulang, supaya ID dan target tetap konsisten.',
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -315,7 +353,7 @@ class _AdminFokusPageState extends State<AdminFokusPage> {
     );
 
     if (confirm == true) {
-      await supabase.from('special_focus_bundles').delete().eq('id', bundle['id']);
+      await supabase.from('special_focus_bundles').delete().eq('id', bundleId);
       await _loadSpecialBundles();
       if (mounted) setState(() {});
     }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,7 +14,7 @@ import 'package:flutter/services.dart';
 import 'barcode_scanner_page.dart';
 import '../../../../core/utils/success_dialog.dart';
 import '../../../../core/utils/error_handler.dart';
-import '../../../../ui/foundation/app_type_scale.dart';
+import '../../../../core/utils/promotor_home_refresh_bus.dart';
 import '../../../../ui/foundation/app_text_style.dart';
 import '../../../../ui/promotor/promotor.dart';
 
@@ -39,9 +40,30 @@ class _SellOutPageState extends State<SellOutPage> {
   XFile? _selectedImage;
 
   // Form State
-  String _customerType = 'toko'; // vip_call, toko
-  String _paymentMethod = 'cash'; // cash, kredit
+  String? _customerType; // vip_call, toko
+  String? _paymentMethod; // cash, kredit
   String? _leasingProvider;
+
+  String _customerTypeLabel(String value) {
+    switch (value) {
+      case 'vip_call':
+        return 'VIP Call';
+      case 'toko':
+      default:
+        return 'Toko';
+    }
+  }
+
+  String _paymentMethodLabel(String value) {
+    switch (value) {
+      case 'cash':
+        return 'Cash';
+      case 'kredit':
+        return 'Kredit';
+      default:
+        return value;
+    }
+  }
 
   String _buildProductName(Map<String, dynamic> product) {
     final model = '${product['model_name'] ?? product['name'] ?? ''}'.trim();
@@ -159,11 +181,9 @@ class _SellOutPageState extends State<SellOutPage> {
     }
   }
 
-  InputDecoration _fieldDecoration({
-    String? hintText,
-    Widget? prefixIcon,
-  }) {
+  InputDecoration _fieldDecoration({String? hintText, Widget? prefixIcon}) {
     return InputDecoration(
+      isDense: true,
       hintText: hintText,
       hintStyle: PromotorText.outfit(
         size: 13,
@@ -172,12 +192,13 @@ class _SellOutPageState extends State<SellOutPage> {
       ),
       filled: true,
       fillColor: t.surface1,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: t.surface3),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: t.surface3),
       ),
       prefixIcon: prefixIcon,
@@ -254,7 +275,10 @@ class _SellOutPageState extends State<SellOutPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  leading: Icon(Icons.photo_camera_outlined, color: t.primaryAccent),
+                  leading: Icon(
+                    Icons.photo_camera_outlined,
+                    color: t.primaryAccent,
+                  ),
                   title: Text(
                     'Ambil foto',
                     style: PromotorText.outfit(
@@ -263,14 +287,18 @@ class _SellOutPageState extends State<SellOutPage> {
                       color: t.textPrimary,
                     ),
                   ),
-                  onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+                  onTap: () =>
+                      Navigator.of(sheetContext).pop(ImageSource.camera),
                 ),
                 const SizedBox(height: 8),
                 ListTile(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  leading: Icon(Icons.photo_library_outlined, color: t.primaryAccent),
+                  leading: Icon(
+                    Icons.photo_library_outlined,
+                    color: t.primaryAccent,
+                  ),
                   title: Text(
                     'Ambil dari galeri',
                     style: PromotorText.outfit(
@@ -279,7 +307,8 @@ class _SellOutPageState extends State<SellOutPage> {
                       color: t.textPrimary,
                     ),
                   ),
-                  onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+                  onTap: () =>
+                      Navigator.of(sheetContext).pop(ImageSource.gallery),
                 ),
               ],
             ),
@@ -290,6 +319,225 @@ class _SellOutPageState extends State<SellOutPage> {
 
     if (source == null) return;
     await _pickImage(source);
+  }
+
+  Future<void> _showCustomerTypeSheet(
+    StateSetter setModalState,
+    BuildContext modalContext,
+  ) async {
+    final selected = await showModalBottomSheet<String>(
+      context: modalContext,
+      backgroundColor: t.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        Widget buildOption(String value, IconData icon, String label) {
+          final selected = _customerType == value;
+          return ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            leading: Icon(
+              icon,
+              color: selected ? t.primaryAccent : t.textMutedStrong,
+            ),
+            title: Text(
+              label,
+              style: PromotorText.outfit(
+                size: 14,
+                weight: FontWeight.w700,
+                color: selected ? t.primaryAccent : t.textPrimary,
+              ),
+            ),
+            trailing: selected
+                ? Icon(Icons.check_circle, color: t.primaryAccent)
+                : null,
+            onTap: () => Navigator.of(sheetContext).pop(value),
+          );
+        }
+
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Pilih Tipe Konsumen',
+                  style: PromotorText.display(size: 18, color: t.textPrimary),
+                ),
+                const SizedBox(height: 12),
+                buildOption('toko', Icons.storefront_rounded, 'Toko'),
+                const SizedBox(height: 8),
+                buildOption(
+                  'vip_call',
+                  Icons.workspace_premium_rounded,
+                  'VIP Call',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected == null || selected == _customerType) return;
+    setModalState(() => _customerType = selected);
+  }
+
+  Future<void> _showPaymentMethodSheet(
+    StateSetter setModalState,
+    BuildContext modalContext,
+  ) async {
+    final selected = await showModalBottomSheet<String>(
+      context: modalContext,
+      backgroundColor: t.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        Widget buildOption(String value, IconData icon, String label) {
+          final selected = _paymentMethod == value;
+          return ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            leading: Icon(
+              icon,
+              color: selected ? t.primaryAccent : t.textMutedStrong,
+            ),
+            title: Text(
+              label,
+              style: PromotorText.outfit(
+                size: 14,
+                weight: FontWeight.w700,
+                color: selected ? t.primaryAccent : t.textPrimary,
+              ),
+            ),
+            trailing: selected
+                ? Icon(Icons.check_circle, color: t.primaryAccent)
+                : null,
+            onTap: () => Navigator.of(sheetContext).pop(value),
+          );
+        }
+
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Pilih Metode Pembayaran',
+                  style: PromotorText.display(size: 18, color: t.textPrimary),
+                ),
+                const SizedBox(height: 12),
+                buildOption('cash', Icons.payments_rounded, 'Cash'),
+                const SizedBox(height: 8),
+                buildOption('kredit', Icons.credit_card_rounded, 'Kredit'),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected == null || selected == _paymentMethod) return;
+    setModalState(() {
+      _paymentMethod = selected;
+      if (selected == 'cash') {
+        _leasingProvider = null;
+      }
+    });
+  }
+
+  Future<void> _showLeasingSheet(
+    StateSetter setModalState,
+    BuildContext modalContext,
+  ) async {
+    const leasingOptions = [
+      'VAST',
+      'KREDIVO',
+      'KREDIT PLUS',
+      'INDODANA',
+      'HCI',
+      'FIF',
+      'Lainnya',
+    ];
+
+    final selected = await showModalBottomSheet<String>(
+      context: modalContext,
+      backgroundColor: t.background,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        Widget buildOption(String value) {
+          final selected = _leasingProvider == value;
+          return ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            leading: Icon(
+              Icons.account_balance_rounded,
+              color: selected ? t.primaryAccent : t.textMutedStrong,
+            ),
+            title: Text(
+              value,
+              style: PromotorText.outfit(
+                size: 14,
+                weight: FontWeight.w700,
+                color: selected ? t.primaryAccent : t.textPrimary,
+              ),
+            ),
+            trailing: selected
+                ? Icon(Icons.check_circle, color: t.primaryAccent)
+                : null,
+            onTap: () => Navigator.of(sheetContext).pop(value),
+          );
+        }
+
+        return SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.72,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Pilih Leasing',
+                    style: PromotorText.display(size: 18, color: t.textPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: leasingOptions.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        return buildOption(leasingOptions[index]);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected == null || selected == _leasingProvider) return;
+    setModalState(() => _leasingProvider = selected);
   }
 
   Future<String?> _uploadToCloudinary(XFile imageFile) async {
@@ -537,13 +785,13 @@ class _SellOutPageState extends State<SellOutPage> {
                   ),
                   child: ListView(
                     controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                     children: [
                       Center(
                         child: Container(
-                          width: 44,
+                          width: 40,
                           height: 4,
-                          margin: const EdgeInsets.only(bottom: 16),
+                          margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
                             color: t.surface3,
                             borderRadius: BorderRadius.circular(999),
@@ -555,28 +803,38 @@ class _SellOutPageState extends State<SellOutPage> {
                           Icon(
                             Icons.shopping_cart_checkout,
                             color: t.primaryAccent,
+                            size: 18,
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 6),
                           Text(
                             'Konfirmasi Penjualan',
                             style: PromotorText.display(
-                              size: 18,
+                              size: 14,
                               color: t.textPrimary,
                             ),
                           ),
                           const Spacer(),
                           IconButton(
                             icon: Icon(Icons.close, color: t.textSecondary),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 28,
+                              height: 28,
+                            ),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 9,
+                        ),
                         decoration: BoxDecoration(
                           color: t.surface1,
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: t.surface3),
                         ),
                         child: Column(
@@ -585,35 +843,36 @@ class _SellOutPageState extends State<SellOutPage> {
                             Text(
                               productName,
                               style: PromotorText.outfit(
-                                size: 17,
+                                size: 14,
                                 weight: FontWeight.w700,
                                 color: t.textPrimary,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
-                              '${variant['ram_rom'] ?? ''} • ${variant['color'] ?? ''}',
-                              style: PromotorText.outfit(
-                                size: 15,
-                                weight: FontWeight.w700,
-                                color: t.textMuted,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'IMEI: ${_stockInfo!['imei']}',
+                              [
+                                if ('${variant['ram_rom'] ?? ''}'.trim().isNotEmpty)
+                                  '${variant['ram_rom']}',
+                                if ('${variant['color'] ?? ''}'.trim().isNotEmpty)
+                                  '${variant['color']}',
+                                'IMEI ${_stockInfo!['imei']}',
+                              ].join(' • '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: AppTextStyle.mono(
                                 t.textSecondary,
-                                size: AppTypeScale.bodyStrong,
+                                size: 11,
                                 weight: FontWeight.w700,
                               ),
                             ),
                             if (isChipStock) ...[
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
+                                  horizontal: 8,
+                                  vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
                                   color: t.warningSoft,
@@ -623,7 +882,7 @@ class _SellOutPageState extends State<SellOutPage> {
                                   'Barang CHIP: transaksi tetap disimpan, bonus normal tidak dihitung',
                                   softWrap: true,
                                   style: PromotorText.outfit(
-                                    size: 13,
+                                    size: 11,
                                     weight: FontWeight.w700,
                                     color: t.warning,
                                   ),
@@ -633,7 +892,7 @@ class _SellOutPageState extends State<SellOutPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Text(
                         'Data Customer',
                         style: PromotorText.outfit(
@@ -642,7 +901,7 @@ class _SellOutPageState extends State<SellOutPage> {
                           color: t.primaryAccent,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         'Tipe Konsumen',
                         style: PromotorText.outfit(
@@ -651,52 +910,42 @@ class _SellOutPageState extends State<SellOutPage> {
                           color: t.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      SegmentedButton<String>(
-                        showSelectedIcon: false,
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.resolveWith((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return t.primaryAccentSoft;
-                            }
-                            return t.surface1;
-                          }),
-                          foregroundColor: WidgetStateProperty.resolveWith((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return t.primaryAccent;
-                            }
-                            return t.textSecondary;
-                          }),
-                          side: WidgetStatePropertyAll(BorderSide(color: t.surface3)),
-                          shape: WidgetStatePropertyAll(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          textStyle: WidgetStatePropertyAll(
-                            PromotorText.outfit(
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () =>
+                            _showCustomerTypeSheet(setModalState, context),
+                        borderRadius: BorderRadius.circular(16),
+                        child: InputDecorator(
+                          decoration:
+                              _fieldDecoration(
+                                prefixIcon: Icon(
+                                  Icons.groups_rounded,
+                                  color: t.textMuted,
+                                ),
+                              ).copyWith(
+                                hintText: 'Tap untuk memilih',
+                                suffixIcon: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: t.textMutedStrong,
+                                ),
+                              ),
+                          child: Text(
+                            _customerType == null
+                                ? 'Tap untuk memilih'
+                                : _customerTypeLabel(_customerType!),
+                            style: PromotorText.outfit(
                               size: 13,
                               weight: FontWeight.w700,
-                              color: t.textPrimary,
+                              color: _customerType == null
+                                  ? t.textMutedStrong
+                                  : t.textPrimary,
                             ),
                           ),
                         ),
-                        segments: const [
-                          ButtonSegment<String>(value: 'toko', label: Text('Toko')),
-                          ButtonSegment<String>(
-                            value: 'vip_call',
-                            label: Text('VIP Call'),
-                          ),
-                        ],
-                        selected: {_customerType},
-                        onSelectionChanged: (values) {
-                          if (values.isEmpty) return;
-                          setModalState(() => _customerType = values.first);
-                        },
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _buildFieldLabel('Nama Pelanggan', required: true),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
 
                       TextField(
                         controller: _customerNameController,
@@ -710,9 +959,9 @@ class _SellOutPageState extends State<SellOutPage> {
                           prefixIcon: Icon(Icons.person, color: t.textMuted),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _buildFieldLabel('No WA'),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
 
                       TextField(
                         controller: _customerPhoneController,
@@ -721,24 +970,25 @@ class _SellOutPageState extends State<SellOutPage> {
                           weight: FontWeight.w700,
                           color: t.textPrimary,
                         ),
-                        decoration: _fieldDecoration(
-                          hintText: '81234567890',
-                          prefixIcon: Icon(Icons.phone, color: t.textMuted),
-                        ).copyWith(
-                          prefixStyle: PromotorText.outfit(
-                            size: 13,
-                            weight: FontWeight.w600,
-                            color: t.textSecondary,
-                          ),
-                          prefixText: '+62 ',
-                        ),
+                        decoration:
+                            _fieldDecoration(
+                              hintText: '81234567890',
+                              prefixIcon: Icon(Icons.phone, color: t.textMuted),
+                            ).copyWith(
+                              prefixStyle: PromotorText.outfit(
+                                size: 13,
+                                weight: FontWeight.w600,
+                                color: t.textSecondary,
+                              ),
+                              prefixText: '+62 ',
+                            ),
                         keyboardType: TextInputType.phone,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
                         'Data Transaksi',
                         style: PromotorText.outfit(
@@ -747,9 +997,9 @@ class _SellOutPageState extends State<SellOutPage> {
                           color: t.primaryAccent,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       _buildFieldLabel('Harga SRP', required: true),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       TextField(
                         controller: _priceController,
                         style: PromotorText.outfit(
@@ -766,72 +1016,65 @@ class _SellOutPageState extends State<SellOutPage> {
                         ),
                         keyboardType: TextInputType.number,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _buildFieldLabel('Metode Pembayaran'),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: _paymentMethod,
-                        dropdownColor: t.surface1,
-                        style: PromotorText.outfit(
-                          size: 13,
-                          weight: FontWeight.w700,
-                          color: t.textPrimary,
-                        ),
-                        decoration: _fieldDecoration(
-                          hintText: 'Pilih metode pembayaran',
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                          DropdownMenuItem(
-                            value: 'kredit',
-                            child: Text('Kredit'),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () =>
+                            _showPaymentMethodSheet(setModalState, context),
+                        borderRadius: BorderRadius.circular(16),
+                        child: InputDecorator(
+                          decoration: _fieldDecoration().copyWith(
+                            hintText: 'Tap untuk memilih',
+                            suffixIcon: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: t.textMutedStrong,
+                            ),
                           ),
-                        ],
-                        onChanged: (val) {
-                          setModalState(() {
-                            _paymentMethod = val!;
-                            if (val == 'cash') _leasingProvider = null;
-                          });
-                        },
+                          child: Text(
+                            _paymentMethod == null
+                                ? 'Tap untuk memilih'
+                                : _paymentMethodLabel(_paymentMethod!),
+                            style: PromotorText.outfit(
+                              size: 13,
+                              weight: FontWeight.w700,
+                              color: _paymentMethod == null
+                                  ? t.textMutedStrong
+                                  : t.textPrimary,
+                            ),
+                          ),
+                        ),
                       ),
                       if (_paymentMethod == 'kredit') ...[
-                        const SizedBox(height: 10),
-                        _buildFieldLabel('Leasing', required: true),
                         const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          initialValue: _leasingProvider,
-                          dropdownColor: t.surface1,
-                          style: PromotorText.outfit(
-                            size: 13,
-                            weight: FontWeight.w700,
-                            color: t.textPrimary,
+                        _buildFieldLabel('Leasing', required: true),
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: () => _showLeasingSheet(setModalState, context),
+                          borderRadius: BorderRadius.circular(16),
+                          child: InputDecorator(
+                            decoration: _fieldDecoration().copyWith(
+                              hintText: 'Tap untuk memilih',
+                              suffixIcon: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: t.textMutedStrong,
+                              ),
+                            ),
+                            child: Text(
+                              _leasingProvider ?? 'Tap untuk memilih',
+                              style: PromotorText.outfit(
+                                size: 13,
+                                weight: FontWeight.w700,
+                                color: _leasingProvider == null
+                                    ? t.textMutedStrong
+                                    : t.textPrimary,
+                              ),
+                            ),
                           ),
-                          decoration: _fieldDecoration(
-                            hintText: 'Pilih leasing',
-                          ),
-                          items:
-                              [
-                                    'VAST',
-                                    'KREDIVO',
-                                    'KREDIT PLUS',
-                                    'INDODANA',
-                                    'HCI',
-                                    'FIF',
-                                    'Lainnya',
-                                  ]
-                                  .map(
-                                    (e) => DropdownMenuItem(
-                                      value: e,
-                                      child: Text(e),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged: (val) =>
-                              setModalState(() => _leasingProvider = val),
                         ),
                       ],
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
                         'Foto & Catatan',
                         style: PromotorText.outfit(
@@ -840,7 +1083,7 @@ class _SellOutPageState extends State<SellOutPage> {
                           color: t.primaryAccent,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
 
                       InkWell(
                         onTap: () async {
@@ -848,10 +1091,10 @@ class _SellOutPageState extends State<SellOutPage> {
                           setModalState(() {});
                         },
                         child: Container(
-                          height: 130,
+                          height: 110,
                           decoration: BoxDecoration(
                             border: Border.all(color: t.surface3),
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                             color: t.surface1,
                           ),
                           child: _selectedImage == null
@@ -860,14 +1103,14 @@ class _SellOutPageState extends State<SellOutPage> {
                                   children: [
                                     Icon(
                                       Icons.add_a_photo,
-                                      size: 48,
+                                      size: 38,
                                       color: t.textMuted,
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     Text(
                                       'Ambil foto atau pilih dari galeri',
                                       style: PromotorText.outfit(
-                                        size: 13,
+                                        size: 12,
                                         weight: FontWeight.w600,
                                         color: t.textSecondary,
                                       ),
@@ -877,12 +1120,12 @@ class _SellOutPageState extends State<SellOutPage> {
                               : Stack(
                                   children: [
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(18),
+                                      borderRadius: BorderRadius.circular(16),
                                       child: kIsWeb
                                           ? Image.network(
                                               _selectedImage!.path,
                                               width: double.infinity,
-                                              height: 130,
+                                              height: 110,
                                               fit: BoxFit.cover,
                                             )
                                           : FutureBuilder<Uint8List>(
@@ -893,7 +1136,7 @@ class _SellOutPageState extends State<SellOutPage> {
                                                   return Image.memory(
                                                     snapshot.data!,
                                                     width: double.infinity,
-                                                    height: 130,
+                                                    height: 110,
                                                     fit: BoxFit.cover,
                                                   );
                                                 }
@@ -925,9 +1168,9 @@ class _SellOutPageState extends State<SellOutPage> {
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      _buildFieldLabel('Catatan'),
                       const SizedBox(height: 8),
+                      _buildFieldLabel('Catatan'),
+                      const SizedBox(height: 6),
 
                       TextField(
                         controller: _notesController,
@@ -942,10 +1185,10 @@ class _SellOutPageState extends State<SellOutPage> {
                         maxLines: 3,
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
+                        height: 46,
                         child: ElevatedButton(
                           onPressed: _isSubmittingSale
                               ? null
@@ -961,9 +1204,9 @@ class _SellOutPageState extends State<SellOutPage> {
                               ? FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
-                                    'Sedang mengirim...',
+                                    'Sedang mengirim',
                                     style: PromotorText.outfit(
-                                      size: 16,
+                                      size: 15,
                                       weight: FontWeight.w700,
                                       color: t.textOnAccent,
                                     ),
@@ -974,7 +1217,7 @@ class _SellOutPageState extends State<SellOutPage> {
                                   child: Text(
                                     'Kirim',
                                     style: PromotorText.outfit(
-                                      size: 16,
+                                      size: 15,
                                       weight: FontWeight.w700,
                                       color: t.textOnAccent,
                                     ),
@@ -982,7 +1225,7 @@ class _SellOutPageState extends State<SellOutPage> {
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
@@ -1017,6 +1260,11 @@ class _SellOutPageState extends State<SellOutPage> {
       return;
     }
 
+    if (_customerType == null) {
+      ErrorHandler.showErrorSnackBar(modalContext, 'Pilih tipe konsumen');
+      return;
+    }
+
     if (_priceController.text.isEmpty) {
       ErrorHandler.showErrorSnackBar(modalContext, 'Harga wajib diisi');
       return;
@@ -1027,6 +1275,14 @@ class _SellOutPageState extends State<SellOutPage> {
         0;
     if (price <= 0) {
       ErrorHandler.showErrorSnackBar(modalContext, 'Harga harus lebih dari 0');
+      return;
+    }
+
+    if (_paymentMethod == null) {
+      ErrorHandler.showErrorSnackBar(
+        modalContext,
+        'Pilih metode pembayaran',
+      );
       return;
     }
 
@@ -1068,13 +1324,13 @@ class _SellOutPageState extends State<SellOutPage> {
               'p_stok_id': stokId,
               'p_serial_imei': imei,
               'p_price_at_transaction': price,
-              'p_payment_method': _paymentMethod,
+              'p_payment_method': _paymentMethod!,
               'p_leasing_provider': _paymentMethod == 'kredit'
                   ? _leasingProvider
                   : null,
               'p_customer_name': _customerNameController.text.trim(),
               'p_customer_phone': customerPhone,
-              'p_customer_type': _customerType,
+              'p_customer_type': _customerType!,
               // Save sale first, upload photo asynchronously after sale is committed.
               'p_image_proof_url': null,
               'p_notes': _notesController.text.trim().isNotEmpty
@@ -1106,7 +1362,10 @@ class _SellOutPageState extends State<SellOutPage> {
         title: 'Penjualan Berhasil!',
         message: 'Data penjualan telah disimpan ke sistem 💰',
       );
+      notifyPromotorHomeRefresh();
       _resetForm();
+      if (!mounted) return;
+      context.go('/promotor?tab=workplace');
     } catch (e) {
       debugPrint('Error saving sale: $e');
 
@@ -1179,7 +1438,8 @@ class _SellOutPageState extends State<SellOutPage> {
     _customerPhoneController.clear();
     _priceController.clear();
     _notesController.clear();
-    _paymentMethod = 'cash';
+    _customerType = null;
+    _paymentMethod = null;
     _leasingProvider = null;
     _selectedImage = null;
     setState(() {
@@ -1197,12 +1457,12 @@ class _SellOutPageState extends State<SellOutPage> {
         color: t.background,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHeader(context, 'Input Penjualan'),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
 
                 TextField(
                   controller: _imeiController,
@@ -1213,15 +1473,20 @@ class _SellOutPageState extends State<SellOutPage> {
                     color: t.textPrimary,
                   ),
                   decoration: InputDecoration(
+                    isDense: true,
                     labelText: 'Nomor IMEI',
                     filled: true,
                     fillColor: t.surface1,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: t.surface3),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: t.surface3),
                     ),
                     prefixIcon: Icon(Icons.smartphone, color: t.textMuted),
@@ -1234,7 +1499,7 @@ class _SellOutPageState extends State<SellOutPage> {
                   maxLength: 15,
                   onSubmitted: (_) => _validateIMEI(),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
 
                 if (_errorMessage != null)
                   Container(
@@ -1260,7 +1525,7 @@ class _SellOutPageState extends State<SellOutPage> {
                     ),
                   ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
 
                 Row(
                   children: [
@@ -1282,7 +1547,7 @@ class _SellOutPageState extends State<SellOutPage> {
                           backgroundColor: t.primaryAccent,
                           foregroundColor: t.textOnAccent,
                           visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
                         ),
                       ),
                     ),
@@ -1295,7 +1560,7 @@ class _SellOutPageState extends State<SellOutPage> {
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 12,
+                          vertical: 11,
                         ),
                       ),
                     ),
@@ -1317,24 +1582,24 @@ class _SellOutPageState extends State<SellOutPage> {
           onTap: () => Navigator.of(context).maybePop(),
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            width: 32,
-            height: 32,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: t.surface1,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(9),
               border: Border.all(color: t.surface3),
             ),
             child: Icon(
               Icons.arrow_back_ios_new_rounded,
               color: t.textSecondary,
-              size: 17,
+              size: 16,
             ),
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 10),
         Text(
           title,
-          style: PromotorText.display(size: 18, color: t.textPrimary),
+          style: PromotorText.display(size: 16, color: t.textPrimary),
         ),
       ],
     );

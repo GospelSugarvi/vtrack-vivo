@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../main.dart';
 import '../../../../ui/foundation/app_colors.dart';
+import '../widgets/admin_dialog_sync.dart';
 import 'package:vtrack/core/utils/success_dialog.dart';
 
 class AdminStoresPage extends StatefulWidget {
@@ -33,21 +34,26 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
       final name = '${store['store_name'] ?? ''}'.toLowerCase();
       final area = '${store['area'] ?? ''}'.toLowerCase();
       final address = '${store['address'] ?? ''}'.toLowerCase();
-      return name.contains(query) || area.contains(query) || address.contains(query);
+      return name.contains(query) ||
+          area.contains(query) ||
+          address.contains(query);
     }).toList();
   }
 
   Future<void> _loadStores() async {
     setState(() => _isLoading = true);
     try {
-      var query = supabase.from('stores').select('*').isFilter('deleted_at', null);
-      
+      var query = supabase
+          .from('stores')
+          .select('id, store_name, area, address, grade, status')
+          .isFilter('deleted_at', null);
+
       if (_filterGrade != 'all') {
         query = query.eq('grade', _filterGrade);
       }
 
       final response = await query.order('store_name');
-      
+
       setState(() {
         _stores = List<Map<String, dynamic>>.from(response);
         _isLoading = false;
@@ -80,9 +86,12 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isDesktop)
-                  Text('Toko Management', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    'Toko Management',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                 if (isDesktop) const SizedBox(height: 16),
-                
+
                 Row(
                   children: [
                     Expanded(
@@ -91,14 +100,18 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
                           hintText: 'Cari nama toko atau area...',
                           prefixIcon: Icon(Icons.search),
                         ),
-                        onChanged: (value) => setState(() => _searchQuery = value),
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
                       ),
                     ),
                     const SizedBox(width: 12),
                     DropdownButton<String>(
                       value: _filterGrade,
                       items: const [
-                        DropdownMenuItem(value: 'all', child: Text('Semua Grade')),
+                        DropdownMenuItem(
+                          value: 'all',
+                          child: Text('Semua Grade'),
+                        ),
                         DropdownMenuItem(value: 'A', child: Text('Grade A')),
                         DropdownMenuItem(value: 'B', child: Text('Grade B')),
                         DropdownMenuItem(value: 'C', child: Text('Grade C')),
@@ -120,10 +133,10 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredStores.isEmpty
-                    ? const Center(child: Text('Tidak ada toko'))
-                    : isDesktop
-                        ? _buildDesktopTable()
-                        : _buildMobileList(),
+                ? const Center(child: Text('Tidak ada toko'))
+                : isDesktop
+                ? _buildDesktopTable()
+                : _buildMobileList(),
           ),
         ],
       ),
@@ -136,7 +149,9 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
       child: SizedBox(
         width: double.infinity,
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue.withValues(alpha: 0.1)),
+          headingRowColor: WidgetStateProperty.all(
+            AppTheme.primaryBlue.withValues(alpha: 0.1),
+          ),
           columns: const [
             DataColumn(label: Text('Nama Toko')),
             DataColumn(label: Text('Area')),
@@ -145,33 +160,52 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
             DataColumn(label: Text('Status')),
             DataColumn(label: Text('Aksi')),
           ],
-          rows: _filteredStores.map((store) => DataRow(
-            cells: [
-              DataCell(Text(store['store_name'] ?? '-')),
-              DataCell(Text(store['area'] ?? '-')),
-              DataCell(_buildGradeBadge(store['grade'])),
-              DataCell(Text(store['address'] ?? '-', overflow: TextOverflow.ellipsis)),
-              DataCell(_buildStatusBadge(store['status'])),
-              DataCell(Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.people, size: 20, color: AppColors.info),
-                    tooltip: 'Manage Promotor',
-                    onPressed: () => _showManagePromotorDialog(store),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () => _showEditStoreDialog(store),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: AppTheme.errorRed),
-                    onPressed: () => _confirmDelete(store),
-                  ),
-                ],
-              )),
-            ],
-          )).toList(),
+          rows: _filteredStores
+              .map(
+                (store) => DataRow(
+                  cells: [
+                    DataCell(Text(store['store_name'] ?? '-')),
+                    DataCell(Text(store['area'] ?? '-')),
+                    DataCell(_buildGradeBadge(store['grade'])),
+                    DataCell(
+                      Text(
+                        store['address'] ?? '-',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DataCell(_buildStatusBadge(store['status'])),
+                    DataCell(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.people,
+                              size: 20,
+                              color: AppColors.info,
+                            ),
+                            tooltip: 'Manage Promotor',
+                            onPressed: () => _showManagePromotorDialog(store),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 20),
+                            onPressed: () => _showEditStoreDialog(store),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              size: 20,
+                              color: AppTheme.errorRed,
+                            ),
+                            onPressed: () => _confirmDelete(store),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .toList(),
         ),
       ),
     );
@@ -187,19 +221,53 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: _getGradeColor(store['grade']).withValues(alpha: 0.2),
+              backgroundColor: _getGradeColor(
+                store['grade'],
+              ).withValues(alpha: 0.2),
               child: Text(
                 store['grade'] ?? '?',
-                style: TextStyle(color: _getGradeColor(store['grade']), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: _getGradeColor(store['grade']),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             title: Text(store['store_name'] ?? 'Unknown'),
-            subtitle: Text('${store['area'] ?? 'No Area'} • ${store['address'] ?? ''}'),
+            subtitle: Text(
+              '${store['area'] ?? 'No Area'} • ${store['address'] ?? ''}',
+            ),
             trailing: PopupMenuButton(
               itemBuilder: (context) => [
-                const PopupMenuItem(value: 'promotor', child: Row(children: [Icon(Icons.people, size: 18), SizedBox(width: 8), Text('Manage Promotor')])),
-                const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text('Edit')])),
-                const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18), SizedBox(width: 8), Text('Hapus')])),
+                const PopupMenuItem(
+                  value: 'promotor',
+                  child: Row(
+                    children: [
+                      Icon(Icons.people, size: 18),
+                      SizedBox(width: 8),
+                      Text('Manage Promotor'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 18),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18),
+                      SizedBox(width: 8),
+                      Text('Hapus'),
+                    ],
+                  ),
+                ),
               ],
               onSelected: (value) {
                 if (value == 'promotor') _showManagePromotorDialog(store);
@@ -235,7 +303,8 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: (isActive ? AppTheme.successGreen : AppTheme.errorRed).withValues(alpha: 0.1),
+        color: (isActive ? AppTheme.successGreen : AppTheme.errorRed)
+            .withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -250,11 +319,16 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
 
   Color _getGradeColor(String? grade) {
     switch (grade) {
-      case 'A': return AppColors.success;
-      case 'B': return AppColors.info;
-      case 'C': return AppColors.warning;
-      case 'D': return AppColors.danger;
-      default: return AppColors.textSecondary;
+      case 'A':
+        return AppColors.success;
+      case 'B':
+        return AppColors.info;
+      case 'C':
+        return AppColors.warning;
+      case 'D':
+        return AppColors.danger;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
@@ -267,8 +341,11 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
   }
 
   void _showStoreFormDialog(Map<String, dynamic>? store) {
+    final pageContext = context;
     final isEdit = store != null;
-    final nameController = TextEditingController(text: store?['store_name'] ?? '');
+    final nameController = TextEditingController(
+      text: store?['store_name'] ?? '',
+    );
     String? selectedAreaId;
     String selectedGrade = store?['grade'] ?? 'A';
     List<Map<String, dynamic>> areas = [];
@@ -276,28 +353,35 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
 
     // Load areas
     Future<void> loadAreas(StateSetter setDialogState) async {
-      final result = await supabase.from('areas').select('id, area_name').order('area_name');
+      final result = await supabase
+          .from('areas')
+          .select('id, area_name')
+          .order('area_name');
       setDialogState(() {
         areas = List<Map<String, dynamic>>.from(result);
-        
+
         // Find area ID if editing
         if (store != null && store['area'] != null) {
-          final found = areas.firstWhere((a) => a['area_name'] == store['area'], orElse: () => {});
+          final found = areas.firstWhere(
+            (a) => a['area_name'] == store['area'],
+            orElse: () => {},
+          );
           if (found.isNotEmpty) selectedAreaId = found['id'] as String;
         } else if (areas.isNotEmpty) {
-           // Optional: default to first area
+          // Optional: default to first area
         }
         isLoading = false;
       });
     }
 
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
+    showAdminChangedDialog(
+      context: pageContext,
+      onChanged: _loadStores,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
           if (isLoading) {
-             loadAreas(setDialogState);
-             isLoading = false; // Prevent loop
+            loadAreas(setDialogState);
+            isLoading = false; // Prevent loop
           }
 
           return AlertDialog(
@@ -308,25 +392,55 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
                 children: [
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Nama Toko (HURUF BESAR)', hintText: 'VIVO OFFICIAL STORE'),
+                    decoration: const InputDecoration(
+                      labelText: 'Nama Toko (HURUF BESAR)',
+                      hintText: 'VIVO OFFICIAL STORE',
+                    ),
                     textCapitalization: TextCapitalization.characters,
-                    onChanged: (v) => nameController.value = nameController.value.copyWith(text: v.toUpperCase(), selection: TextSelection.collapsed(offset: v.length)),
+                    onChanged: (v) =>
+                        nameController.value = nameController.value.copyWith(
+                          text: v.toUpperCase(),
+                          selection: TextSelection.collapsed(offset: v.length),
+                        ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: selectedAreaId,
                     decoration: const InputDecoration(labelText: 'Area'),
                     hint: const Text('Pilih Area'),
-                    items: areas.map((a) => DropdownMenuItem(value: a['id'] as String, child: Text(a['area_name'] ?? '-'))).toList(),
+                    items: areas
+                        .map(
+                          (a) => DropdownMenuItem(
+                            value: a['id'] as String,
+                            child: Text(a['area_name'] ?? '-'),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (v) => setDialogState(() => selectedAreaId = v),
                   ),
-                  if (areas.isEmpty) 
-                     const Padding(padding: EdgeInsets.only(top:4), child: Text('Loading areas...', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                  if (areas.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Loading areas...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: selectedGrade,
                     decoration: const InputDecoration(labelText: 'Grade'),
-                    items: ['A', 'B', 'C', 'D'].map((g) => DropdownMenuItem(value: g, child: Text('Grade $g'))).toList(),
+                    items: ['A', 'B', 'C', 'D']
+                        .map(
+                          (g) => DropdownMenuItem(
+                            value: g,
+                            child: Text('Grade $g'),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (v) => selectedGrade = v ?? 'A',
                   ),
                 ],
@@ -334,52 +448,78 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => closeAdminDialog(dialogContext),
                 child: const Text('Batal'),
               ),
               ElevatedButton(
-                onPressed: isLoading ? null : () async {
-                  if (nameController.text.isEmpty || selectedAreaId == null) {
-                     showErrorDialog(context, title: 'Gagal', message: 'Nama dan Area wajib diisi');
-                     return;
-                  }
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        if (nameController.text.isEmpty ||
+                            selectedAreaId == null) {
+                          showErrorDialog(
+                            dialogContext,
+                            title: 'Gagal',
+                            message: 'Nama dan Area wajib diisi',
+                          );
+                          return;
+                        }
 
-                  setDialogState(() => isLoading = true);
+                        setDialogState(() => isLoading = true);
 
-                  try {
-                    final areaName = areas.firstWhere((a) => a['id'] == selectedAreaId, orElse: () => {})['area_name'] ?? '';
+                        try {
+                          final areaName =
+                              areas.firstWhere(
+                                (a) => a['id'] == selectedAreaId,
+                                orElse: () => {},
+                              )['area_name'] ??
+                              '';
 
-                    final data = {
-                      'store_name': nameController.text.trim(),
-                      'area': areaName,
-                      'address': '', // Empty as requested
-                      'grade': selectedGrade,
-                      'status': 'active',
-                    };
+                          final data = {
+                            'store_name': nameController.text.trim(),
+                            'area': areaName,
+                            'address': '', // Empty as requested
+                            'grade': selectedGrade,
+                            'status': 'active',
+                          };
 
-                    if (isEdit) {
-                      await supabase.from('stores').update(data).eq('id', store['id']);
-                    } else {
-                      await supabase.from('stores').insert(data);
-                    }
+                          if (isEdit) {
+                            await supabase
+                                .from('stores')
+                                .update(data)
+                                .eq('id', store['id']);
+                          } else {
+                            await supabase.from('stores').insert(data);
+                          }
 
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                    showSuccessDialog(context, title: 'Berhasil', message: 'Berhasil menyimpan data toko');
-                    _loadStores();
-                  } catch (e) {
-                    setDialogState(() => isLoading = false);
-                    if (!context.mounted) return;
-                    showErrorDialog(context, title: 'Gagal', message: 'Error: $e');
-                  }
-                },
-                child: isLoading 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
-                  : Text(isEdit ? 'Simpan' : 'Tambah'),
+                          if (!dialogContext.mounted) return;
+                          closeAdminDialog(dialogContext, changed: true);
+                          showSuccessDialog(
+                            pageContext,
+                            title: 'Berhasil',
+                            message: 'Berhasil menyimpan data toko',
+                          );
+                        } catch (e) {
+                          setDialogState(() => isLoading = false);
+                          if (!dialogContext.mounted) return;
+                          showErrorDialog(
+                            dialogContext,
+                            title: 'Gagal',
+                            message: 'Error: $e',
+                          );
+                        }
+                      },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(isEdit ? 'Simpan' : 'Tambah'),
               ),
             ],
           );
-        }
+        },
       ),
     );
   }
@@ -405,9 +545,10 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
     );
 
     if (confirm == true) {
-      await supabase.from('stores').update({
-        'deleted_at': DateTime.now().toIso8601String(),
-      }).eq('id', store['id']);
+      await supabase
+          .from('stores')
+          .update({'deleted_at': DateTime.now().toIso8601String()})
+          .eq('id', store['id']);
       _loadStores();
     }
   }
@@ -420,15 +561,17 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
         .eq('role', 'promotor')
         .isFilter('deleted_at', null)
         .order('full_name');
-    
+
     final assignmentsResult = await supabase
         .from('assignments_promotor_store')
         .select('promotor_id, active')
         .eq('store_id', store['id']);
 
     final allPromotors = List<Map<String, dynamic>>.from(promotorsResult);
-    final currentAssignments = List<Map<String, dynamic>>.from(assignmentsResult);
-    
+    final currentAssignments = List<Map<String, dynamic>>.from(
+      assignmentsResult,
+    );
+
     // Create a set of assigned promotor IDs
     final assignedIds = currentAssignments
         .where((a) => a['active'] == true)
@@ -450,7 +593,11 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
                 const SizedBox(height: 4),
                 Text(
                   store['store_name'] ?? '',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.normal,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -464,7 +611,7 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
                       itemBuilder: (context, index) {
                         final promotor = allPromotors[index];
                         final isAssigned = assignedIds.contains(promotor['id']);
-                        
+
                         return CheckboxListTile(
                           title: Text(promotor['full_name'] ?? ''),
                           subtitle: Text(promotor['area'] ?? 'No Area'),
@@ -472,11 +619,13 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
                           onChanged: (bool? value) async {
                             if (value == true) {
                               // Assign promotor to store
-                              await supabase.from('assignments_promotor_store').upsert({
-                                'promotor_id': promotor['id'],
-                                'store_id': store['id'],
-                                'active': true,
-                              });
+                              await supabase
+                                  .from('assignments_promotor_store')
+                                  .upsert({
+                                    'promotor_id': promotor['id'],
+                                    'store_id': store['id'],
+                                    'active': true,
+                                  });
                               assignedIds.add(promotor['id'] as String);
                             } else {
                               // Unassign promotor from store

@@ -33,9 +33,10 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
 
   // Monthly rekap data
   int _monthlyAttendanceCount = 0;
-  int _monthlySellOutCount = 0;
-  int _monthlyValidationCount = 0;
-  double _monthlyFollowerIncrease = 0;
+  int _monthlyPermissionCount = 0;
+  int _monthlyPromotionCount = 0;
+  int _monthlyFollowerReportCount = 0;
+  Map<String, int> _monthlyPermissionTypeCounts = {};
 
   @override
   void initState() {
@@ -63,219 +64,84 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
         return;
       }
 
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final nextDateStr = DateFormat(
-        'yyyy-MM-dd',
-      ).format(_selectedDate.add(const Duration(days: 1)));
+      final snapshot = await Supabase.instance.client.rpc(
+        'get_promotor_activity_snapshot',
+        params: {'p_date': DateFormat('yyyy-MM-dd').format(_selectedDate)},
+      );
+      final payload = Map<String, dynamic>.from(
+        (snapshot as Map?) ?? const <String, dynamic>{},
+      );
 
-      // Load Kehadiran / Laporan Masuk
-      try {
-        final attendance = await Supabase.instance.client
-            .from('attendance')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('attendance_date', dateStr)
-            .order('clock_in', ascending: false)
-            .limit(1)
-            .maybeSingle();
-        _attendanceData = attendance;
-      } catch (e) {
-        debugPrint('Error loading attendance: $e');
-      }
+      _attendanceData = _asMap(payload['attendance_data']);
+      _clockOutData = _asMap(payload['clock_out_data']);
+      _sellOutData = _asListOfMaps(payload['sell_out_data']);
+      _stockInputData = _asListOfMaps(payload['stock_input_data']);
+      _stockValidationData = _asMap(payload['stock_validation_data']);
+      _promotionData = _asListOfMaps(payload['promotion_data']);
+      _followerData = _asListOfMaps(payload['follower_data']);
+      _allBrandData = _asMap(payload['all_brand_data']);
+      _monthlyAttendanceCount = _asInt(payload['monthly_attendance_count']);
 
-      // Load Clock Out
-      try {
-        final clockOut = await Supabase.instance.client
-            .from('attendance')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('attendance_date', dateStr)
-            .not('clock_out', 'is', null)
-            .order('clock_out', ascending: false)
-            .limit(1)
-            .maybeSingle();
-        _clockOutData = clockOut;
-      } catch (e) {
-        debugPrint('Error loading clock out: $e');
-      }
+      final monthStart = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        1,
+      );
+      final monthEnd = DateTime(
+        _selectedDate.year,
+        _selectedDate.month + 1,
+        1,
+      );
+      final monthStartDate = DateFormat('yyyy-MM-dd').format(monthStart);
+      final monthEndDate = DateFormat('yyyy-MM-dd').format(monthEnd);
+      final monthStartTs = monthStart.toIso8601String();
+      final monthEndTs = monthEnd.toIso8601String();
 
-      // Load Sell Out
-      try {
-        debugPrint('=== LOADING SELL OUT for date: $dateStr ===');
-        final sellOut = await Supabase.instance.client
-            .from('sales_sell_out')
-            .select('*')
+      final monthlyRows = await Future.wait([
+        Supabase.instance.client
+            .from('permission_requests')
+            .select('request_type')
             .eq('promotor_id', userId)
-            .isFilter('deleted_at', null)
-            .gte('transaction_date', dateStr)
-            .lt('transaction_date', nextDateStr);
-        _sellOutData = List<Map<String, dynamic>>.from(sellOut);
-        _sellOutVoidRequestBySaleId.clear();
-        final saleIds = _sellOutData
-            .map((e) => '${e['id'] ?? ''}')
-            .where((e) => e.isNotEmpty)
-            .toList();
-        if (saleIds.isNotEmpty) {
-          final requests = await Supabase.instance.client
-              .from('sell_out_void_requests')
-              .select('*')
-              .inFilter('sale_id', saleIds)
-              .order('requested_at', ascending: false);
-          for (final row in List<Map<String, dynamic>>.from(requests)) {
-            final saleId = '${row['sale_id'] ?? ''}';
-            if (saleId.isEmpty ||
-                _sellOutVoidRequestBySaleId.containsKey(saleId)) {
-              continue;
-            }
-            _sellOutVoidRequestBySaleId[saleId] = row;
-          }
-        }
-        debugPrint('=== SELL OUT DATA COUNT: ${_sellOutData.length} ===');
-        if (_sellOutData.isNotEmpty) {
-          debugPrint('=== SELL OUT SAMPLE: ${_sellOutData.first} ===');
-        }
-      } catch (e) {
-        debugPrint('=== ERROR loading sell out: $e ===');
-      }
-
-      // Load Stock Input
-      try {
-        debugPrint('=== LOADING STOCK INPUT for date: $dateStr ===');
-        final stockInput = await Supabase.instance.client
-            .from('stock_movement_log')
-            .select('*')
-            .eq('moved_by', userId)
-            .inFilter('movement_type', ['initial', 'transfer_in', 'adjustment'])
-            .gte('moved_at', dateStr)
-            .lt('moved_at', nextDateStr);
-        _stockInputData = List<Map<String, dynamic>>.from(stockInput);
-        debugPrint('=== STOCK INPUT DATA COUNT: ${_stockInputData.length} ===');
-        if (_stockInputData.isNotEmpty) {
-          debugPrint('=== STOCK INPUT SAMPLE: ${_stockInputData.first} ===');
-        }
-      } catch (e) {
-        debugPrint('=== ERROR loading stock input: $e ===');
-      }
-
-      // Load Stock Validation
-      try {
-        debugPrint('=== LOADING STOCK VALIDATION for date: $dateStr ===');
-        final stockValidation = await Supabase.instance.client
-            .from('stock_validations')
-            .select('*')
-            .eq('promotor_id', userId)
-            .gte('created_at', dateStr)
-            .lt('created_at', nextDateStr)
-            .order('created_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
-        _stockValidationData = stockValidation;
-        debugPrint(
-          '=== STOCK VALIDATION: ${_stockValidationData != null ? "Found" : "Not found"} ===',
-        );
-      } catch (e) {
-        debugPrint('=== ERROR loading stock validation: $e ===');
-      }
-
-      // Load Promotion Reports
-      try {
-        final promotions = await Supabase.instance.client
+            .gte('request_date', monthStartDate)
+            .lt('request_date', monthEndDate),
+        Supabase.instance.client
             .from('promotion_reports')
-            .select('*')
+            .select('id')
             .eq('promotor_id', userId)
-            .gte('created_at', dateStr)
-            .lt('created_at', nextDateStr);
-        _promotionData = List<Map<String, dynamic>>.from(promotions);
-      } catch (e) {
-        debugPrint('Error loading promotions: $e');
-      }
-
-      // Load Follower Reports
-      try {
-        final followers = await Supabase.instance.client
+            .gte('created_at', monthStartTs)
+            .lt('created_at', monthEndTs),
+        Supabase.instance.client
             .from('follower_reports')
-            .select('*')
-            .eq('promotor_id', userId)
-            .gte('created_at', dateStr)
-            .lt('created_at', nextDateStr);
-        _followerData = List<Map<String, dynamic>>.from(followers);
-      } catch (e) {
-        debugPrint('Error loading followers: $e');
-      }
-
-      // Load AllBrand Report
-      try {
-        final allBrand = await Supabase.instance.client
-            .from('allbrand_reports')
-            .select('*')
-            .eq('promotor_id', userId)
-            .gte('report_date', dateStr)
-            .lt('report_date', nextDateStr)
-            .maybeSingle();
-        _allBrandData = allBrand;
-      } catch (e) {
-        debugPrint('Error loading allbrand: $e');
-      }
-
-      // Load Monthly Rekap
-      try {
-        final monthStart = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          1,
-        ).toIso8601String();
-        final monthEnd = DateTime(
-          _selectedDate.year,
-          _selectedDate.month + 1,
-          1,
-        ).toIso8601String();
-
-        // 1. Attendance Count
-        final attendance = await Supabase.instance.client
-            .from('attendance')
-            .select('id')
-            .eq('user_id', userId)
-            .gte('attendance_date', monthStart.substring(0, 10))
-            .lt('attendance_date', monthEnd.substring(0, 10))
-            .count();
-        _monthlyAttendanceCount = attendance.count;
-
-        // 2. Sell Out Count
-        final sellOut = await Supabase.instance.client
-            .from('sales_sell_out')
             .select('id')
             .eq('promotor_id', userId)
-            .isFilter('deleted_at', null)
-            .gte('transaction_date', monthStart)
-            .lt('transaction_date', monthEnd)
-            .count();
-        _monthlySellOutCount = sellOut.count;
+            .gte('created_at', monthStartTs)
+            .lt('created_at', monthEndTs),
+      ]);
 
-        // 3. Validation Count
-        final validation = await Supabase.instance.client
-            .from('stock_validations')
-            .select('id')
-            .eq('promotor_id', userId)
-            .gte('validation_date', monthStart)
-            .lt('validation_date', monthEnd)
-            .count();
-        _monthlyValidationCount = validation.count;
-
-        // 4. Follower Increase (Total gain this month)
-        final followers = await Supabase.instance.client
-            .from('follower_reports')
-            .select('follower_count')
-            .eq('promotor_id', userId)
-            .gte('created_at', monthStart)
-            .lt('created_at', monthEnd);
-
-        _monthlyFollowerIncrease = 0;
-        for (var f in (followers as List)) {
-          _monthlyFollowerIncrease += (f['follower_count'] ?? 0).toDouble();
-        }
-      } catch (e) {
-        debugPrint('Error loading monthly rekap: $e');
+      final permissionRows = _asListOfMaps(monthlyRows[0]);
+      final permissionTypeCounts = <String, int>{};
+      for (final row in permissionRows) {
+        final rawType = '${row['request_type'] ?? ''}'.trim();
+        if (rawType.isEmpty) continue;
+        final label = _permissionTypeLabel(rawType);
+        permissionTypeCounts[label] = (permissionTypeCounts[label] ?? 0) + 1;
       }
+
+      _monthlyPermissionCount = permissionRows.length;
+      _monthlyPromotionCount = _asListOfMaps(monthlyRows[1]).length;
+      _monthlyFollowerReportCount = _asListOfMaps(monthlyRows[2]).length;
+      _monthlyPermissionTypeCounts = permissionTypeCounts;
+
+      _sellOutVoidRequestBySaleId
+        ..clear()
+        ..addEntries(
+          _asListOfMaps(payload['sell_out_void_requests'])
+              .map((row) {
+                final saleId = '${row['sale_id'] ?? ''}';
+                return MapEntry(saleId, row);
+              })
+              .where((entry) => entry.key.isNotEmpty),
+        );
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -293,6 +159,52 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
       _selectedDate = _selectedDate.add(Duration(days: days));
     });
     _loadAllActivities();
+  }
+
+  Future<void> _submitSellOutVoidRequest({
+    required dynamic saleId,
+    required String reason,
+  }) async {
+    final client = Supabase.instance.client;
+
+    try {
+      await client.rpc(
+        'request_sell_out_void',
+        params: {
+          'p_sale_id': saleId,
+          'p_reason': reason,
+        },
+      );
+      return;
+    } on PostgrestException catch (error) {
+      debugPrint(
+        '[AjukanBatal][RPC] message=${error.message} code=${error.code} details=${error.details} hint=${error.hint}',
+      );
+      final message = error.message.toLowerCase();
+      final isRpcSignatureIssue =
+          message.contains('request_sell_out_void') &&
+          (message.contains('schema cache') ||
+              message.contains('matches the given name') ||
+              message.contains('argument types'));
+
+      if (!isRpcSignatureIssue) rethrow;
+      debugPrint(
+        '[AjukanBatal][RPC] fallback insert activated for sale_id=$saleId',
+      );
+    }
+
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('User belum login.');
+    }
+
+    await client.from('sell_out_void_requests').insert({
+      'sale_id': saleId,
+      'promotor_id': userId,
+      'requested_by': userId,
+      'reason': reason,
+      'status': 'pending',
+    });
   }
 
   Future<void> _selectDate() async {
@@ -323,6 +235,41 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
 
   String get _headerDateLabel {
     return DateFormat('d MMM', 'id_ID').format(_selectedDate);
+  }
+
+  Map<String, dynamic>? _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((key, val) => MapEntry(key.toString(), val));
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _asListOfMaps(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => row.map((key, val) => MapEntry(key.toString(), val)))
+        .toList();
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('$value') ?? 0;
+  }
+
+  String _permissionTypeLabel(String rawType) {
+    switch (rawType.toLowerCase()) {
+      case 'sick':
+        return 'Izin Sakit';
+      case 'personal':
+        return 'Izin Pribadi';
+      case 'other':
+        return 'Izin Lainnya';
+      default:
+        return rawType;
+    }
   }
 
   @override
@@ -546,17 +493,23 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
         InkWell(
           onTap: _selectDate,
           borderRadius: BorderRadius.circular(999),
-            child: Container(
+          child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
               color: t.surface1,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: isToday ? t.primaryAccentGlow : t.surface3),
+              border: Border.all(
+                color: isToday ? t.primaryAccentGlow : t.surface3,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.calendar_today_rounded, size: 12, color: t.textMutedStrong),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 12,
+                  color: t.textMutedStrong,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   _headerDateLabel,
@@ -588,128 +541,184 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
 
   Widget _buildMonthlyTab() {
     final monthName = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
+    final permissionTypeText = _monthlyPermissionTypeCounts.isEmpty
+        ? 'Belum ada izin.'
+        : _monthlyPermissionTypeCounts.entries
+              .map((entry) => '${entry.key} (${entry.value})')
+              .join(', ');
+    final monthlyDoneCount = [
+      _monthlyAttendanceCount > 0,
+      _monthlyPermissionCount > 0,
+      _monthlyPromotionCount > 0,
+      _monthlyFollowerReportCount > 0,
+    ].where((done) => done).length;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(18),
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: t.surface1,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: t.surface3),
+            gradient: LinearGradient(colors: [t.surface2, t.background]),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: t.primaryAccentGlow),
           ),
-          child: Text(
-            'Rekapitulasi $monthName',
-            style: PromotorText.outfit(
-              size: 18,
-              weight: FontWeight.w700,
-              color: t.textPrimary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildRekapItem(
-          'Hari Kerja',
-          _monthlyAttendanceCount,
-          'Hari',
-          Icons.calendar_month,
-          t.info,
-        ),
-        _buildRekapItem(
-          'Total Jual (Sell-Out)',
-          _monthlySellOutCount,
-          'Unit',
-          Icons.shopping_bag,
-          t.success,
-        ),
-        _buildRekapItem(
-          'Stok Toko Done',
-          _monthlyValidationCount,
-          'Kali',
-          Icons.check_circle,
-          t.primaryAccent,
-        ),
-        _buildRekapItem(
-          'Follower Baru',
-          _monthlyFollowerIncrease.toInt(),
-          'Follower',
-          Icons.group_add,
-          t.primaryAccentLight,
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  Widget _buildRekapItem(
-    String label,
-    int value,
-    String unit,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.surface1,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: t.surface3),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: t.primaryAccentSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$monthlyDoneCount/4',
                   style: PromotorText.outfit(
-                    size: 13,
-                    weight: FontWeight.w700,
-                    color: t.textMuted,
+                    size: 9,
+                    weight: FontWeight.w800,
+                    color: t.primaryAccent,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      '$value',
-                      style: PromotorText.outfit(
-                        size: 24,
-                        weight: FontWeight.w700,
-                        color: t.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      unit,
-                      style: PromotorText.outfit(
-                        size: 13,
-                        weight: FontWeight.w700,
-                        color: t.textMuted,
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Rekap $monthName',
+                  style: PromotorText.outfit(
+                    size: 11,
+                    weight: FontWeight.w700,
+                    color: t.textPrimary,
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        Expanded(
+          child: _isLoading
+              ? Center(child: CircularProgressIndicator(color: t.primaryAccent))
+              : RefreshIndicator(
+                  onRefresh: _loadAllActivities,
+                  color: t.primaryAccent,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    children: [
+                      _buildActivityCard(
+                        title: 'Absen Masuk Kerja',
+                        icon: Icons.calendar_month,
+                        color: t.info,
+                        isDone: _monthlyAttendanceCount > 0,
+                        content: _monthlyAttendanceCount > 0
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _compactMetricRow(
+                                    'Jumlah',
+                                    '$_monthlyAttendanceCount Hari',
+                                    tone: t.info,
+                                  ),
+                                  _compactMetricRow(
+                                    'Periode',
+                                    monthName,
+                                    tone: t.textPrimary,
+                                  ),
+                                  _compactMetricRow(
+                                    'Status',
+                                    'Tercatat',
+                                    tone: t.success,
+                                  ),
+                                ],
+                              )
+                            : _buildCompactEmpty('Belum ada absen bulan ini'),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildActivityCard(
+                        title: 'Izin',
+                        icon: Icons.assignment_late_outlined,
+                        color: t.warning,
+                        isDone: _monthlyPermissionCount > 0,
+                        content: _monthlyPermissionCount > 0
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _compactMetricRow(
+                                    'Jumlah',
+                                    '$_monthlyPermissionCount Kali',
+                                    tone: t.warning,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    permissionTypeText,
+                                    style: PromotorText.outfit(
+                                      size: 11,
+                                      weight: FontWeight.w700,
+                                      color: t.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : _buildCompactEmpty('Belum ada izin bulan ini'),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildActivityCard(
+                        title: 'Laporan Promosi Medsos',
+                        icon: Icons.campaign_outlined,
+                        color: t.success,
+                        isDone: _monthlyPromotionCount > 0,
+                        content: _monthlyPromotionCount > 0
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _compactMetricRow(
+                                    'Jumlah',
+                                    '$_monthlyPromotionCount Kali',
+                                    tone: t.success,
+                                  ),
+                                  _compactMetricRow(
+                                    'Status',
+                                    'Terkirim',
+                                    tone: t.success,
+                                  ),
+                                ],
+                              )
+                            : _buildCompactEmpty(
+                                'Belum ada laporan promosi bulan ini',
+                              ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildActivityCard(
+                        title: 'Laporan Followers',
+                        icon: Icons.group_add_outlined,
+                        color: t.primaryAccentLight,
+                        isDone: _monthlyFollowerReportCount > 0,
+                        content: _monthlyFollowerReportCount > 0
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _compactMetricRow(
+                                    'Jumlah',
+                                    '$_monthlyFollowerReportCount Kali',
+                                    tone: t.primaryAccentLight,
+                                  ),
+                                  _compactMetricRow(
+                                    'Status',
+                                    'Terkirim',
+                                    tone: t.success,
+                                  ),
+                                ],
+                              )
+                            : _buildCompactEmpty(
+                                'Belum ada laporan follower bulan ini',
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
@@ -720,9 +729,7 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
     required bool isDone,
     required Widget content,
   }) {
-    final panelColor = isDone
-        ? color.withValues(alpha: 0.07)
-        : t.surface1;
+    final panelColor = isDone ? color.withValues(alpha: 0.07) : t.surface1;
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
@@ -743,7 +750,11 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
               color: isDone ? color.withValues(alpha: 0.14) : t.surface2,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: isDone ? color : t.textMutedStrong, size: 14),
+            child: Icon(
+              icon,
+              color: isDone ? color : t.textMutedStrong,
+              size: 14,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -818,9 +829,9 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
               children: [
                 _compactMetricRow(
                   'Masuk',
-                  DateFormat(
-                    'HH:mm',
-                  ).format(DateTime.parse(_attendanceData!['created_at']).toLocal()),
+                  DateFormat('HH:mm').format(
+                    DateTime.parse(_attendanceData!['created_at']).toLocal(),
+                  ),
                   tone: t.info,
                 ),
                 _compactMetricRow(
@@ -832,9 +843,11 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
                   'Pulang',
                   _clockOutData == null
                       ? '-'
-                      : DateFormat(
-                          'HH:mm',
-                        ).format(DateTime.parse(_clockOutData!['created_at']).toLocal()),
+                      : DateFormat('HH:mm').format(
+                          DateTime.parse(
+                            _clockOutData!['created_at'],
+                          ).toLocal(),
+                        ),
                   tone: _clockOutData == null ? t.textMutedStrong : t.success,
                 ),
               ],
@@ -883,8 +896,12 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
                   Align(
                     alignment: Alignment.centerRight,
                     child: FilledButton.icon(
-                      onPressed: () => _showSellOutVoidRequestDialog(latestSale),
-                      icon: const Icon(Icons.cancel_schedule_send_rounded, size: 14),
+                      onPressed: () =>
+                          _showSellOutVoidRequestDialog(latestSale),
+                      icon: const Icon(
+                        Icons.cancel_schedule_send_rounded,
+                        size: 14,
+                      ),
                       label: const Text('Ajukan batal'),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(0, 30),
@@ -904,7 +921,9 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(999),
-                          side: BorderSide(color: t.warning.withValues(alpha: 0.2)),
+                          side: BorderSide(
+                            color: t.warning.withValues(alpha: 0.2),
+                          ),
                         ),
                       ),
                     ),
@@ -994,12 +1013,9 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
                           if (reason.isEmpty) return;
                           setDialogState(() => isSubmitting = true);
                           try {
-                            await Supabase.instance.client.rpc(
-                              'request_sell_out_void',
-                              params: {
-                                'p_sale_id': item['id'],
-                                'p_reason': reason,
-                              },
+                            await _submitSellOutVoidRequest(
+                              saleId: item['id'],
+                              reason: reason,
                             );
                             if (!mounted || !dialogContext.mounted) return;
                             Navigator.of(dialogContext).pop();
@@ -1009,7 +1025,14 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
                               message: 'Pengajuan batal berhasil dikirim.',
                             );
                             await _loadAllActivities();
-                          } catch (e) {
+                          } catch (e, stackTrace) {
+                            debugPrint(
+                              '[AjukanBatal][UI] sale_id=${item['id']} reason="$reason" error=$e',
+                            );
+                            debugPrintStack(
+                              label: '[AjukanBatal][UI][STACK]',
+                              stackTrace: stackTrace,
+                            );
                             if (!mounted || !rootContext.mounted) return;
                             ScaffoldMessenger.of(rootContext).showSnackBar(
                               SnackBar(
@@ -1090,11 +1113,7 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
                   platforms.isEmpty ? '-' : platforms.take(2).join(', '),
                   tone: t.textPrimary,
                 ),
-                _compactMetricRow(
-                  'Status',
-                  'Terkirim',
-                  tone: t.success,
-                ),
+                _compactMetricRow('Status', 'Terkirim', tone: t.success),
               ],
             )
           : _buildCompactEmpty('Belum ada promosi'),
@@ -1128,11 +1147,7 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
                   '$totalFollower',
                   tone: t.textPrimary,
                 ),
-                _compactMetricRow(
-                  'Status',
-                  'Terkirim',
-                  tone: t.success,
-                ),
+                _compactMetricRow('Status', 'Terkirim', tone: t.success),
               ],
             )
           : _buildCompactEmpty('Belum ada follower'),
@@ -1152,23 +1167,15 @@ class _AktivitasHarianPageState extends State<AktivitasHarianPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _compactMetricRow(
-                  'Laporan',
-                  'Sudah masuk',
-                  tone: t.success,
-                ),
+                _compactMetricRow('Laporan', 'Sudah masuk', tone: t.success),
                 _compactMetricRow(
                   'Jam',
-                  DateFormat(
-                    'HH:mm',
-                  ).format(DateTime.parse(_allBrandData!['created_at']).toLocal()),
+                  DateFormat('HH:mm').format(
+                    DateTime.parse(_allBrandData!['created_at']).toLocal(),
+                  ),
                   tone: t.primaryAccent,
                 ),
-                _compactMetricRow(
-                  'Status',
-                  'Siap dicek',
-                  tone: t.textPrimary,
-                ),
+                _compactMetricRow('Status', 'Siap dicek', tone: t.textPrimary),
               ],
             )
           : _buildCompactEmpty('Belum ada allbrand'),

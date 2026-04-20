@@ -2,11 +2,15 @@ class ChatRoomMember {
   final String id;
   final String displayName;
   final String? role;
+  final String? avatarUrl;
+  final String? whatsappPhone;
 
   const ChatRoomMember({
     required this.id,
     required this.displayName,
     this.role,
+    this.avatarUrl,
+    this.whatsappPhone,
   });
 
   factory ChatRoomMember.fromJson(Map<String, dynamic> json) {
@@ -18,6 +22,8 @@ class ChatRoomMember {
           ? nickname
           : (fullName != null && fullName.isNotEmpty ? fullName : 'User'),
       role: json['role'] as String?,
+      avatarUrl: (json['avatar_url'] as String?)?.trim(),
+      whatsappPhone: (json['whatsapp_phone'] as String?)?.trim(),
     );
   }
 }

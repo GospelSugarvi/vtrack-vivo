@@ -19,7 +19,9 @@ class _SellInDashboardPageState extends State<SellInDashboardPage> {
 
   Map<String, dynamic>? _summaryData;
   String _areaName = 'Area';
+  String _satorFullName = 'SATOR';
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -33,17 +35,29 @@ class _SellInDashboardPageState extends State<SellInDashboardPage> {
     return double.tryParse('${value ?? ''}') ?? 0.0;
   }
 
+  String _sessionFullName() {
+    final metadata =
+        _supabase.auth.currentUser?.userMetadata ?? const <String, dynamic>{};
+    final fullName =
+        '${metadata['full_name'] ?? metadata['name'] ?? ''}'.trim();
+    return fullName;
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
-
-      final profile = await _supabase
-          .from('users')
-          .select('area')
-          .eq('id', userId)
-          .single();
+      final profileRaw = await _supabase.rpc('get_my_profile_snapshot');
+      final profile = Map<String, dynamic>.from(
+        (profileRaw as Map?) ?? const <String, dynamic>{},
+      );
       _areaName = profile['area']?.toString() ?? 'Area';
+      final fullName = _sessionFullName().isNotEmpty
+          ? _sessionFullName()
+          : '${profile['full_name'] ?? ''}'.trim();
+      _satorFullName = fullName.isEmpty
+          ? 'SATOR'
+          : fullName;
 
       final summary = await _supabase
           .rpc('get_sator_sellin_summary', params: {'p_sator_id': userId})
@@ -53,10 +67,17 @@ class _SellInDashboardPageState extends State<SellInDashboardPage> {
         setState(() {
           _summaryData = summary;
           _isLoading = false;
+          _errorMessage = null;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _summaryData = null;
+          _isLoading = false;
+          _errorMessage = 'Tidak bisa memuat ringkasan sell in.';
+        });
+      }
     }
   }
 
@@ -67,6 +88,47 @@ class _SellInDashboardPageState extends State<SellInDashboardPage> {
       backgroundColor: t.background,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? RefreshIndicator(
+              color: t.primaryAccent,
+              onRefresh: _loadData,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 40, 20, 120),
+                children: [
+                  _buildHeader(),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: t.surface1,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: t.surface3),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Data sell in belum bisa dimuat',
+                          style: PromotorText.display(
+                            size: 18,
+                            color: t.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _errorMessage!,
+                          style: PromotorText.outfit(
+                            size: 12,
+                            weight: FontWeight.w600,
+                            color: t.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
               color: t.primaryAccent,
               onRefresh: _loadData,
@@ -130,6 +192,15 @@ class _SellInDashboardPageState extends State<SellInDashboardPage> {
                 Text(
                   'Sell In',
                   style: PromotorText.display(size: 20, color: t.textPrimary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _satorFullName,
+                  style: PromotorText.outfit(
+                    size: 11,
+                    weight: FontWeight.w700,
+                    color: t.textSecondary,
+                  ),
                 ),
                 Text(
                   periodLabel,
@@ -305,14 +376,21 @@ class _SellInDashboardPageState extends State<SellInDashboardPage> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: PromotorText.outfit(
-              size: 13,
-              weight: FontWeight.w800,
-              color: t.textPrimary,
+          SizedBox(
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                softWrap: false,
+                style: PromotorText.outfit(
+                  size: 13,
+                  weight: FontWeight.w800,
+                  color: t.textPrimary,
+                ),
+              ),
             ),
           ),
         ],

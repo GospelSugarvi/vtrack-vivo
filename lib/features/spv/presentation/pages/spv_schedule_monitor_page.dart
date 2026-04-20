@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vtrack/features/sator/presentation/pages/jadwal/schedule_detail_page.dart';
 import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
+import 'package:vtrack/ui/foundation/app_type_scale.dart';
 
 class SpvScheduleMonitorPage extends StatefulWidget {
   const SpvScheduleMonitorPage({super.key});
@@ -13,15 +15,12 @@ class SpvScheduleMonitorPage extends StatefulWidget {
 
 class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
   final _supabase = Supabase.instance.client;
-  final _searchController = TextEditingController();
 
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   bool _isLoading = true;
   String? _errorMessage;
   List<Map<String, dynamic>> _rows = <Map<String, dynamic>>[];
-  Map<String, String> _dailyShiftByPromotor = <String, String>{};
-  String _statusFilter = 'all';
-  String _searchQuery = '';
+  String _activeTab = 'watch';
 
   FieldThemeTokens get t => context.fieldTokens;
   String get _monthYear => DateFormat('yyyy-MM').format(_selectedMonth);
@@ -33,60 +32,9 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
     _loadData();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<List<dynamic>> _safeList(Future<dynamic> Function() loader) async {
-    try {
-      final result = await loader();
-      return result is List ? result : <dynamic>[];
-    } catch (_) {
-      return <dynamic>[];
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchRowsForMonth(
-    List<String> satorIds,
-    String monthYear,
-  ) async {
-    final satorUsers = await _safeList(
-      () => _supabase
-          .from('users')
-          .select('id, full_name')
-          .inFilter('id', satorIds),
-    );
-    final satorNameById = {
-      for (final row in List<Map<String, dynamic>>.from(satorUsers))
-        row['id'].toString(): (row['full_name'] ?? 'SATOR').toString(),
-    };
-
-    final allRows = <Map<String, dynamic>>[];
-    for (final satorId in satorIds) {
-      final response = await _supabase.rpc(
-        'get_sator_schedule_summary',
-        params: <String, dynamic>{
-          'p_sator_id': satorId,
-          'p_month_year': monthYear,
-        },
-      );
-      final parsed = List<Map<String, dynamic>>.from(response ?? const []);
-      for (final row in parsed) {
-        allRows.add(<String, dynamic>{
-          ...row,
-          'sator_id': satorId,
-          'sator_name': satorNameById[satorId] ?? 'SATOR',
-        });
-      }
-    }
-    return allRows;
-  }
-
   Future<void> _loadData() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
+    final requestedMonth = _monthYear;
+    if (_supabase.auth.currentUser?.id == null) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'Session tidak ditemukan.';
@@ -100,75 +48,16 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
     });
 
     try {
-      final satorLinks = await _safeList(
-        () => _supabase
-            .from('hierarchy_spv_sator')
-            .select('sator_id')
-            .eq('spv_id', userId)
-            .eq('active', true),
+      final snapshotRaw = await _supabase.rpc(
+        'get_spv_schedule_monitor_snapshot',
+        params: <String, dynamic>{'p_month_year': requestedMonth},
       );
-      final satorIds = satorLinks
-          .map((row) => row['sator_id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toList();
-
-      if (satorIds.isEmpty) {
-        setState(() {
-          _rows = <Map<String, dynamic>>[];
-          _isLoading = false;
-        });
-        return;
-      }
-
-      var targetMonth = DateTime(_selectedMonth.year, _selectedMonth.month);
-      var allRows = await _fetchRowsForMonth(satorIds, _monthYear);
-      final now = DateTime.now();
-      final currentMonth = DateTime(now.year, now.month);
-      final isCurrentMonth = targetMonth.year == currentMonth.year &&
-          targetMonth.month == currentMonth.month;
-      final hasSubmitted =
-          allRows.any((row) => '${row['status'] ?? ''}' == 'submitted');
-
-      if (isCurrentMonth && !hasSubmitted) {
-        final nextMonth = DateTime(targetMonth.year, targetMonth.month + 1);
-        final nextMonthYear = DateFormat('yyyy-MM').format(nextMonth);
-        final nextRows = await _fetchRowsForMonth(satorIds, nextMonthYear);
-        final nextHasSubmitted =
-            nextRows.any((row) => '${row['status'] ?? ''}' == 'submitted');
-        if (nextHasSubmitted) {
-          targetMonth = nextMonth;
-          allRows = nextRows;
-        }
-      }
-
-      final promotorIds = allRows
-          .map((row) => row['promotor_id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-
-      final nextDailyShiftByPromotor = <String, String>{};
-      if (promotorIds.isNotEmpty) {
-        final today = DateTime.now();
-        final inspectDate = DateTime(
-          _selectedMonth.year,
-          _selectedMonth.month,
-          today.day.clamp(1, DateUtils.getDaysInMonth(_selectedMonth.year, _selectedMonth.month)),
-        );
-        final scheduleRows = await _safeList(
-          () => _supabase
-              .from('schedules')
-              .select('promotor_id, shift_type, status')
-              .inFilter('promotor_id', promotorIds)
-              .eq('schedule_date', DateFormat('yyyy-MM-dd').format(inspectDate)),
-        );
-        for (final row in List<Map<String, dynamic>>.from(scheduleRows)) {
-          final promotorId = row['promotor_id']?.toString() ?? '';
-          if (promotorId.isEmpty) continue;
-          nextDailyShiftByPromotor[promotorId] =
-              '${row['shift_type'] ?? ''}|${row['status'] ?? ''}';
-        }
-      }
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      final resolvedMonthYear = '${snapshot['month_year'] ?? requestedMonth}';
+      final resolvedMonth = _parseMonthYear(resolvedMonthYear);
+      final allRows = _parseMapList(snapshot['rows']);
 
       allRows.sort((a, b) {
         final statusCompare =
@@ -179,9 +68,8 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
 
       if (!mounted) return;
       setState(() {
-        _selectedMonth = targetMonth;
+        _selectedMonth = resolvedMonth;
         _rows = allRows;
-        _dailyShiftByPromotor = nextDailyShiftByPromotor;
         _isLoading = false;
       });
     } catch (e) {
@@ -191,6 +79,21 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
         _errorMessage = 'Gagal memuat monitor jadwal. $e';
       });
     }
+  }
+
+  DateTime _parseMonthYear(String value) {
+    final parsed = DateFormat('yyyy-MM').tryParseStrict(value);
+    return parsed == null
+        ? DateTime(DateTime.now().year, DateTime.now().month)
+        : DateTime(parsed.year, parsed.month);
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   int _statusRank(String status) {
@@ -212,36 +115,6 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
 
   int _countStatus(String status) =>
       _rows.where((row) => '${row['status'] ?? ''}' == status).length;
-
-  List<Map<String, dynamic>> _applyFilters(Iterable<Map<String, dynamic>> source) {
-    final query = _searchQuery.trim().toLowerCase();
-    return source.where((row) {
-      final status = '${row['status'] ?? ''}';
-      if (_statusFilter == 'today_working') {
-        final shift = _todayShiftType('${row['promotor_id'] ?? ''}');
-        if (shift.isEmpty || shift == 'libur') return false;
-      } else if (_statusFilter == 'today_off') {
-        final shift = _todayShiftType('${row['promotor_id'] ?? ''}');
-        if (shift != 'libur') return false;
-      } else if (_statusFilter != 'all' && status != _statusFilter) {
-        return false;
-      }
-      if (query.isEmpty) return true;
-      final haystack = [
-        '${row['promotor_name'] ?? ''}',
-        '${row['store_name'] ?? ''}',
-        '${row['sator_name'] ?? ''}',
-      ].join(' ').toLowerCase();
-      return haystack.contains(query);
-    }).toList();
-  }
-
-  String _todayShiftType(String promotorId) {
-    final raw = _dailyShiftByPromotor[promotorId];
-    if (raw == null || raw.isEmpty) return '';
-    final parts = raw.split('|');
-    return parts.isEmpty ? '' : parts.first;
-  }
 
   Color _statusColor(String status) {
     switch (status) {
@@ -288,14 +161,12 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
     }
   }
 
-  String _dailyShiftLabel(String promotorId) {
-    final raw = _dailyShiftByPromotor[promotorId];
-    if (raw == null || raw.isEmpty) {
+  String _dailyShiftLabel(Map<String, dynamic> row) {
+    final shift = '${row['today_shift_type'] ?? ''}';
+    if (shift.isEmpty) {
       return 'Hari ini belum ada baris jadwal';
     }
-    final parts = raw.split('|');
-    final shift = parts.isNotEmpty ? parts.first : '';
-    final status = parts.length > 1 ? parts[1] : '';
+    final status = '${row['today_shift_status'] ?? ''}';
     final shiftText = switch (shift) {
       'pagi' => 'Hari ini masuk pagi',
       'siang' => 'Hari ini masuk siang',
@@ -310,12 +181,9 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
     return shiftText;
   }
 
-  Color _dailyShiftTone(String promotorId) {
-    final raw = _dailyShiftByPromotor[promotorId];
-    if (raw == null || raw.isEmpty) return t.textMuted;
-    final parts = raw.split('|');
-    final shift = parts.isNotEmpty ? parts.first : '';
-    return _dailyShiftColor(shift);
+  Color _dailyShiftTone(Map<String, dynamic> row) {
+    final shift = '${row['today_shift_type'] ?? ''}';
+    return shift.isEmpty ? t.textMuted : _dailyShiftColor(shift);
   }
 
   void _changeMonth(int offset) {
@@ -342,50 +210,38 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final watchRows = _applyFilters(
-      _rows.where(
-        (row) => <String>['belum_kirim', 'submitted', 'rejected']
-            .contains('${row['status'] ?? ''}'),
-      ),
-    );
-    final approvedRows = _applyFilters(
-      _rows.where((row) => '${row['status'] ?? ''}' == 'approved'),
-    );
+    final watchRows = _rows.where(
+      (row) => <String>['belum_kirim', 'submitted', 'rejected']
+          .contains('${row['status'] ?? ''}'),
+    ).toList();
+    final approvedRows = _rows.where(
+      (row) => '${row['status'] ?? ''}' == 'approved',
+    ).toList();
 
     return Scaffold(
-      backgroundColor: t.textOnAccent,
-      appBar: AppBar(
-        title: const Text('Monitor Jadwal SPV'),
-        actions: [
-          IconButton(
-            onPressed: _loadData,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
+      backgroundColor: t.shellBackground,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                 children: [
+                  _buildPageHeader(),
+                  const SizedBox(height: 12),
                   _buildMonthCard(),
                   const SizedBox(height: 12),
                   if (_errorMessage != null) _buildErrorCard() else ...[
                     _buildSummaryCard(),
                     const SizedBox(height: 12),
-                    _buildFilterCard(),
+                    _buildTabBar(watchRows.length, approvedRows.length),
                     const SizedBox(height: 12),
                     _buildSection(
-                      title: 'Perlu dipantau',
-                      rows: watchRows,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSection(
-                      title: 'Jadwal approved SATOR',
-                      rows: approvedRows,
-                      showOpenHint: true,
+                      title: _activeTab == 'watch'
+                          ? 'Perlu dipantau'
+                          : 'Jadwal approved SATOR',
+                      rows: _activeTab == 'watch' ? watchRows : approvedRows,
+                      showOpenHint: _activeTab == 'approved',
                     ),
                   ],
                 ],
@@ -394,10 +250,66 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
     );
   }
 
+  Widget _buildPageHeader() {
+    return Row(
+      children: [
+        InkWell(
+          onTap: () => context.pop(),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: t.surface1,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: t.surface3),
+            ),
+            child: Icon(
+              Icons.chevron_left_rounded,
+              size: 18,
+              color: t.textPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'SPV • MONITOR JADWAL',
+                style: TextStyle(
+                  fontSize: AppTypeScale.caption,
+                  fontWeight: FontWeight.w800,
+                  color: t.primaryAccent,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Jadwal Bulanan',
+                style: TextStyle(
+                  fontSize: AppTypeScale.title,
+                  fontWeight: FontWeight.bold,
+                  color: t.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMonthCard() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: t.surface3),
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
             IconButton(
@@ -409,7 +321,11 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
               child: Text(
                 _monthLabel,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: t.textPrimary,
+                ),
               ),
             ),
             IconButton(
@@ -424,16 +340,107 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
   }
 
   Widget _buildSummaryCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: t.surface3),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _buildMiniStat('${_countStatus('belum_kirim')}', 'Belum', t.textMuted)),
+          const SizedBox(width: 8),
+          Expanded(child: _buildMiniStat('${_countStatus('submitted')}', 'Kirim', t.warning)),
+          const SizedBox(width: 8),
+          Expanded(child: _buildMiniStat('${_countStatus('approved')}', 'OK', t.success)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar(int watchCount, int approvedCount) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.surface3),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildTabButton(
+              label: 'Perlu dipantau',
+              value: 'watch',
+              count: watchCount,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _buildTabButton(
+              label: 'Approved',
+              value: 'approved',
+              count: approvedCount,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton({
+    required String label,
+    required String value,
+    required int count,
+  }) {
+    final active = _activeTab == value;
+    return InkWell(
+      onTap: () => setState(() => _activeTab = value),
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: active ? t.primaryAccentSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: active ? t.primaryAccent.withValues(alpha: 0.22) : Colors.transparent,
+          ),
+        ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(child: _buildMiniStat('${_countStatus('belum_kirim')}', 'Belum', t.textMuted)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildMiniStat('${_countStatus('submitted')}', 'Kirim', t.warning)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildMiniStat('${_countStatus('approved')}', 'OK', t.success)),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: active ? t.primaryAccent : t.textSecondary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: active
+                    ? t.primaryAccent.withValues(alpha: 0.14)
+                    : t.surface2,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: active ? t.primaryAccent : t.textSecondary,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -442,10 +449,10 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
 
   Widget _buildMiniStat(String value, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
@@ -456,94 +463,21 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w800,
-              fontSize: 16,
+              fontSize: 14,
+              height: 1.0,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             label,
             style: TextStyle(
               color: t.textSecondary,
               fontWeight: FontWeight.w700,
-              fontSize: 11,
+              fontSize: 10,
+              height: 1.0,
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFilterCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Filter',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Cari nama promotor, toko, atau SATOR',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _searchQuery.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                _buildFilterChip('Semua', 'all'),
-                _buildFilterChip('Belum kirim', 'belum_kirim'),
-                _buildFilterChip('Submitted', 'submitted'),
-                _buildFilterChip('Approved', 'approved'),
-                _buildFilterChip('Rejected', 'rejected'),
-                _buildFilterChip('Hari ini masuk', 'today_working'),
-                _buildFilterChip('Hari ini libur', 'today_off'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value) {
-    final active = _statusFilter == value;
-    final color = active ? t.primaryAccent : t.textMuted;
-    return InkWell(
-      onTap: () => setState(() => _statusFilter = value),
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: active ? 0.14 : 0.08),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.24)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
       ),
     );
   }
@@ -553,26 +487,35 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
     required List<Map<String, dynamic>> rows,
     bool showOpenHint = false,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: t.surface3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: AppTypeScale.bodyStrong,
             ),
-            const SizedBox(height: 10),
-            if (rows.isEmpty)
-              Text(
+          ),
+          const SizedBox(height: 8),
+          if (rows.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
                 'Tidak ada data di section ini.',
                 style: TextStyle(color: t.textSecondary),
-              )
-            else
-              ...rows.map((row) => _buildPromotorCard(row, showOpenHint: showOpenHint)),
-          ],
-        ),
+              ),
+            )
+          else
+            ...rows.map((row) => _buildPromotorCard(row, showOpenHint: showOpenHint)),
+        ],
       ),
     );
   }
@@ -581,82 +524,131 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
     final status = '${row['status'] ?? 'belum_kirim'}';
     final tone = _statusColor(status);
     final updatedAt = DateTime.tryParse('${row['last_updated'] ?? ''}');
-    final promotorId = '${row['promotor_id'] ?? ''}';
-    final dailyTone = _dailyShiftTone(promotorId);
-    final dailyLabel = _dailyShiftLabel(promotorId);
+    final dailyTone = _dailyShiftTone(row);
+    final dailyLabel = _dailyShiftLabel(row);
+    final showDailyLabel =
+        !(status == 'belum_kirim' && dailyLabel == 'Hari ini belum ada baris jadwal');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 3),
       decoration: BoxDecoration(
         color: t.surface1,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: t.surface3),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${row['promotor_name'] ?? ''}',
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(9, 8, 9, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${row['promotor_name'] ?? ''}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11.5,
+                      height: 1.0,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${row['store_name'] ?? '-'}',
+                    style: TextStyle(
+                      color: t.textSecondary,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (showDailyLabel) ...[
                     const SizedBox(height: 2),
                     Text(
-                      '${row['store_name'] ?? '-'} • ${row['sator_name'] ?? 'SATOR'}',
-                      style: TextStyle(color: t.textSecondary, fontSize: 12),
+                      dailyLabel,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        color: dailyTone,
+                        fontWeight: FontWeight.w700,
+                        height: 1.0,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                ),
+                ],
               ),
-              _buildPill(_statusLabel(status), tone),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              if (updatedAt != null)
-                _buildPill(
-                  'Update ${DateFormat('dd MMM yyyy', 'id_ID').format(updatedAt)}',
-                  t.textMuted,
-                ),
-              _buildPill(dailyLabel, dailyTone),
-              if (showOpenHint) _buildPill('Bisa cek detail shift', t.primaryAccent),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.tonalIcon(
-              onPressed: status == 'belum_kirim' ? null : () => _openDetail(row),
-              icon: const Icon(Icons.visibility_outlined),
-              label: Text(status == 'belum_kirim' ? 'Belum ada jadwal' : 'Buka detail jadwal'),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPill(_statusLabel(status), tone),
+                if (updatedAt != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('dd MMM', 'id_ID').format(updatedAt),
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      color: t.textMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (status != 'belum_kirim') ...[
+                  const SizedBox(height: 4),
+                  InkWell(
+                    onTap: () => _openDetail(row),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: t.primaryAccentSoft,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: t.primaryAccent.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Text(
+                        'Detail',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: t.primaryAccent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildErrorCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(_errorMessage ?? 'Terjadi kesalahan.'),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: t.surface3),
       ),
+      child: Text(_errorMessage ?? 'Terjadi kesalahan.'),
     );
   }
 
   Widget _buildPill(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
@@ -667,7 +659,7 @@ class _SpvScheduleMonitorPageState extends State<SpvScheduleMonitorPage> {
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w700,
-          fontSize: 11.5,
+          fontSize: 10,
         ),
       ),
     );

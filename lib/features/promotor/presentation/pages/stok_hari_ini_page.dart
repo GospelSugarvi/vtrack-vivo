@@ -21,11 +21,9 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
   bool _isLoading = true;
   bool _hasValidationToday = false;
   int _emptyCount = 0;
-  int _lowCount = 0;
+  int _readyCount = 0;
   int _chipCount = 0;
   String? _storeName;
-  String? _storeGrade;
-
   void _handleBack() {
     if (context.canPop()) {
       context.pop();
@@ -67,6 +65,8 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
         throw Exception('Store promotor tidak ditemukan.');
       }
 
+      final scopeStoreIds = await _loadStockScopeStoreIds(storeId);
+
       final now = DateTime.now();
       final startOfDay = DateTime(
         now.year,
@@ -97,16 +97,16 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
 
       final groupedCounts = await _buildCounts(
         storeId: storeId,
+        scopeStoreIds: scopeStoreIds,
         validationIds: validationIds,
       );
 
       if (!mounted) return;
       setState(() {
         _storeName = assigned['stores']?['store_name']?.toString();
-        _storeGrade = assigned['stores']?['grade']?.toString();
         _hasValidationToday = validationIds.isNotEmpty;
         _emptyCount = groupedCounts['empty'] ?? 0;
-        _lowCount = groupedCounts['low'] ?? 0;
+        _readyCount = groupedCounts['ready'] ?? 0;
         _chipCount = groupedCounts['chip'] ?? 0;
         _isLoading = false;
       });
@@ -123,11 +123,13 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
 
   Future<Map<String, int>> _buildCounts({
     required String storeId,
+    required List<String> scopeStoreIds,
     required List<String> validationIds,
   }) async {
     final variantsRaw = await _supabase
         .from('product_variants')
         .select('id')
+        .isFilter('deleted_at', null)
         .order('id');
 
     final counts = <String, int>{};
@@ -147,6 +149,7 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
           );
 
       var chipCount = 0;
+      var readyCount = 0;
       for (final row in (validatedRows as List)) {
         final stok = row['stok'] as Map<String, dynamic>?;
         final variantId = stok?['variant_id']?.toString() ?? '';
@@ -155,13 +158,15 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
         }
         if ('${stok?['tipe_stok'] ?? ''}' == 'chip') {
           chipCount++;
+        } else {
+          readyCount++;
         }
       }
 
       final values = counts.values.toList();
       return {
         'empty': values.where((qty) => qty == 0).length,
-        'low': values.where((qty) => qty > 0 && qty <= 2).length,
+        'ready': readyCount,
         'chip': chipCount,
       };
     }
@@ -169,10 +174,14 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
     final stockRows = await _supabase
         .from('stok')
         .select('variant_id, tipe_stok')
-        .eq('store_id', storeId)
+        .inFilter(
+          'store_id',
+          scopeStoreIds.isNotEmpty ? scopeStoreIds : <String>[storeId],
+        )
         .eq('is_sold', false);
 
     var chipCount = 0;
+    var readyCount = 0;
     for (final row in (stockRows as List)) {
       final variantId = row['variant_id']?.toString() ?? '';
       if (variantId.isNotEmpty) {
@@ -180,15 +189,73 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
       }
       if ('${row['tipe_stok'] ?? ''}' == 'chip') {
         chipCount++;
+      } else {
+        readyCount++;
       }
     }
 
     final values = counts.values.toList();
     return {
       'empty': values.where((qty) => qty == 0).length,
-      'low': values.where((qty) => qty > 0 && qty <= 2).length,
+      'ready': readyCount,
       'chip': chipCount,
     };
+  }
+
+  Future<List<String>> _loadStockScopeStoreIds(String storeId) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId != null) {
+      try {
+        final rpcResult = await _supabase.rpc(
+          'get_promotor_stock_scope',
+          params: {'p_promotor_id': userId},
+        );
+        final rpcMap = rpcResult is Map<String, dynamic>
+            ? rpcResult
+            : Map<String, dynamic>.from(rpcResult as Map);
+        final rpcScope = (rpcMap['stock_scope_store_ids'] as List? ?? const [])
+            .map((item) => '${item ?? ''}'.trim())
+            .where((id) => id.isNotEmpty)
+            .toList();
+        if (rpcScope.isNotEmpty) {
+          return rpcScope;
+        }
+      } catch (_) {}
+    }
+
+    final storeRow = await _supabase
+        .from('stores')
+        .select('group_id')
+        .eq('id', storeId)
+        .maybeSingle();
+    final groupId = '${storeRow?['group_id'] ?? ''}'.trim();
+    Map<String, dynamic> group = <String, dynamic>{};
+    if (groupId.isNotEmpty) {
+      final groupRow = await _supabase
+          .from('store_groups')
+          .select('stock_handling_mode')
+          .eq('id', groupId)
+          .isFilter('deleted_at', null)
+          .maybeSingle();
+      if (groupRow != null) {
+        group = Map<String, dynamic>.from(groupRow);
+      }
+    }
+    final groupMode = '${group['stock_handling_mode'] ?? ''}'.trim();
+    if (groupId.isEmpty || groupMode != 'shared_group') {
+      return <String>[storeId];
+    }
+
+    final storeRows = await _supabase
+        .from('stores')
+        .select('id')
+        .eq('group_id', groupId)
+        .isFilter('deleted_at', null);
+    final ids = List<Map<String, dynamic>>.from(storeRows)
+        .map((row) => '${row['id'] ?? ''}'.trim())
+        .where((id) => id.isNotEmpty)
+        .toList();
+    return ids.isEmpty ? <String>[storeId] : ids;
   }
 
   Widget _buildMetric({
@@ -197,10 +264,10 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
     required Color tone,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: tone.withValues(alpha: 0.28)),
       ),
       child: Column(
@@ -209,17 +276,17 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
           Text(
             label,
             style: PromotorText.outfit(
-              size: 13,
-              weight: FontWeight.w600,
-              color: t.textMuted,
+              size: 11,
+              weight: FontWeight.w800,
+              color: tone,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             value,
             style: PromotorText.outfit(
-              size: 20,
-              weight: FontWeight.w800,
+              size: 18,
+              weight: FontWeight.w900,
               color: tone,
             ),
           ),
@@ -262,9 +329,8 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
     );
   }
 
-  Widget _buildActionTile({
-    required String title,
-    required String shortLabel,
+  Widget _buildStockMenuIcon({
+    required String label,
     required IconData icon,
     required Color iconTone,
     required VoidCallback onTap,
@@ -272,45 +338,33 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: t.surface1,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: t.surface3),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 58,
+              height: 58,
               decoration: BoxDecoration(
                 color: iconTone.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: iconTone.withValues(alpha: 0.18)),
               ),
-              child: Icon(icon, color: iconTone, size: 20),
+              child: Icon(icon, color: iconTone, size: 26),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
-              title,
+              label,
+              textAlign: TextAlign.center,
               style: PromotorText.outfit(
-                size: 15,
+                size: 12,
                 weight: FontWeight.w800,
                 color: t.textPrimary,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
-            Text(
-              shortLabel,
-              style: PromotorText.outfit(
-                size: 12,
-                weight: FontWeight.w700,
-                color: t.textMutedStrong,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Icon(Icons.arrow_forward_rounded, color: t.textMuted, size: 18),
           ],
         ),
       ),
@@ -353,14 +407,14 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Stok Hari Ini',
+                            'Stok Toko',
                             style: PromotorText.display(
                               size: 20,
                               color: t.textPrimary,
                             ),
                           ),
                           Text(
-                            '${_storeName ?? '-'} • Grade ${_storeGrade ?? '-'}',
+                            _storeName ?? '-',
                             style: PromotorText.outfit(
                               size: 13,
                               weight: FontWeight.w700,
@@ -370,15 +424,11 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: _loadData,
-                      icon: Icon(Icons.refresh, color: t.textMuted),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                   decoration: BoxDecoration(
                     color: t.surface1,
                     borderRadius: BorderRadius.circular(22),
@@ -391,7 +441,7 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Ringkasan Stok',
+                              'Stok Toko',
                               style: PromotorText.outfit(
                                 size: 16,
                                 weight: FontWeight.w800,
@@ -402,7 +452,7 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
                           _buildStatusChip(),
                         ],
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       Row(
                         children: [
                           Expanded(
@@ -415,9 +465,9 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: _buildMetric(
-                              label: 'Tipis',
-                              value: '$_lowCount',
-                              tone: t.warning,
+                              label: 'Ready',
+                              value: '$_readyCount',
+                              tone: t.success,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -443,52 +493,46 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionTile(
-                        title: 'Validasi',
-                        shortLabel: 'Cek fisik',
-                        icon: Icons.fact_check_outlined,
-                        iconTone: t.primaryAccent,
-                        onTap: () => context.push('/promotor/stok-validasi'),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: t.surface1,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: t.surface3),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Expanded(
+                        child: _buildStockMenuIcon(
+                          label: 'Validasi',
+                          icon: Icons.fact_check_outlined,
+                          iconTone: t.primaryAccent,
+                          onTap: () =>
+                              context.push('/promotor/stock-validation'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionTile(
-                        title: 'Order',
-                        shortLabel: 'Rekomendasi',
-                        icon: Icons.assignment_outlined,
-                        iconTone: t.warning,
-                        onTap: () => context.push('/promotor/rekomendasi-order'),
+                      Expanded(
+                        child: _buildStockMenuIcon(
+                          label: 'Management Stok',
+                          icon: Icons.tune_rounded,
+                          iconTone: t.success,
+                          onTap: () => context.push('/promotor/stok-aksi'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionTile(
-                        title: 'Aksi',
-                        shortLabel: 'Chip & klaim',
-                        icon: Icons.tune_rounded,
-                        iconTone: t.success,
-                        onTap: () => context.push('/promotor/stok-aksi'),
+                      Expanded(
+                        child: _buildStockMenuIcon(
+                          label: 'Stok Toko',
+                          icon: Icons.inventory_2_outlined,
+                          iconTone: t.textPrimary,
+                          onTap: () => context.push('/promotor/stok-ringkasan'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionTile(
-                        title: 'Ringkasan',
-                        shortLabel: 'Lihat stok',
-                        icon: Icons.inventory_2_outlined,
-                        iconTone: t.textPrimary,
-                        onTap: () => context.push('/promotor/stok-ringkasan'),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(

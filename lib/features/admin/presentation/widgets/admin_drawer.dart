@@ -75,7 +75,10 @@ class AdminDrawer extends StatelessWidget {
                   ),
                   selected: isSelected,
                   selectedTileColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                  onTap: () => onMenuSelected(index),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    onMenuSelected(index);
+                  },
                 );
               },
             ),

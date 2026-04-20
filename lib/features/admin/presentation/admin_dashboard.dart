@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -18,6 +19,7 @@ import 'pages/admin_stock_page.dart';
 import 'pages/admin_activity_page.dart';
 import 'pages/admin_reports_page.dart';
 import 'pages/admin_chat_management_page.dart';
+import 'pages/admin_system_groups_page.dart';
 import 'pages/admin_ai_settings_page.dart';
 import 'pages/admin_weekly_target_page.dart';
 import 'pages/admin_fokus_page.dart';
@@ -25,6 +27,7 @@ import 'pages/admin_settings_page.dart';
 import 'pages/shift_settings_page.dart';
 import 'pages/admin_store_groups_page.dart';
 import 'pages/stock_rules_page.dart';
+import 'pages/admin_warehouse_import_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -35,115 +38,126 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final List<AdminMenuItem> _menuItems = [
     AdminMenuItem(
       icon: Icons.dashboard,
       label: 'Overview',
-      page: const AdminOverviewPage(),
+      buildPage: () => const AdminOverviewPage(),
     ),
     AdminMenuItem(
       icon: Icons.people,
       label: 'User',
-      page: const AdminUsersPage(),
+      buildPage: () => const AdminUsersPage(),
     ),
-    AdminMenuItem(icon: Icons.map, label: 'Area', page: const AdminAreasPage()),
+    AdminMenuItem(
+      icon: Icons.map,
+      label: 'Area',
+      buildPage: () => const AdminAreasPage(),
+    ),
     AdminMenuItem(
       icon: Icons.store,
       label: 'Toko',
-      page: const AdminStoresPage(),
+      buildPage: () => const AdminStoresPage(),
     ),
     AdminMenuItem(
       icon: Icons.group_work,
       label: 'Grup Toko',
-      page: const AdminStoreGroupsPage(),
+      buildPage: () => const AdminStoreGroupsPage(),
     ),
     AdminMenuItem(
       icon: Icons.phone_android,
       label: 'Produk',
-      page: const AdminProductsPage(),
+      buildPage: () => const AdminProductsPage(),
     ),
     AdminMenuItem(
       icon: Icons.track_changes,
       label: 'Target',
-      page: const AdminTargetsMonthSelector(),
+      buildPage: () => const AdminTargetsMonthSelector(),
     ),
     AdminMenuItem(
       icon: Icons.star,
       label: 'Produk Fokus',
-      page: const AdminFokusPage(),
+      buildPage: () => const AdminFokusPage(),
     ),
     AdminMenuItem(
       icon: Icons.date_range,
       label: 'Weekly Target',
-      page: const AdminWeeklyTargetPage(),
+      buildPage: () => const AdminWeeklyTargetPage(),
     ),
     AdminMenuItem(
       icon: Icons.attach_money,
       label: 'Bonus & Reward',
-      page: const AdminBonusPage(),
+      buildPage: () => const AdminBonusPage(),
     ),
     AdminMenuItem(
       icon: Icons.account_tree,
       label: 'Hierarchy',
-      page: const AdminHierarchyPage(),
+      buildPage: () => const AdminHierarchyPage(),
     ),
 
     // ...
     AdminMenuItem(
       icon: Icons.inventory_2,
       label: 'Stock',
-      page: const AdminStockPage(),
+      buildPage: () => const AdminStockPage(),
+    ),
+    AdminMenuItem(
+      icon: Icons.upload_file,
+      label: 'Import Gudang',
+      buildPage: () => const AdminWarehouseImportPage(),
     ),
     AdminMenuItem(
       icon: Icons.rule,
       label: 'Aturan Stok',
-      page: const StockRulesPage(),
+      buildPage: () => const StockRulesPage(),
     ), // <-- New Menu
     AdminMenuItem(
       icon: Icons.checklist,
       label: 'Aktivitas',
-      page: const AdminActivityPage(),
+      buildPage: () => const AdminActivityPage(),
     ),
     AdminMenuItem(
       icon: Icons.bar_chart,
       label: 'Reports',
-      page: const AdminReportsPage(),
+      buildPage: () => const AdminReportsPage(),
     ),
     AdminMenuItem(
       icon: Icons.chat_bubble,
       label: 'Chat',
-      page: const ChatListPage(),
+      buildPage: () => const ChatListPage(),
+    ),
+    AdminMenuItem(
+      icon: Icons.groups_2,
+      label: 'Grup Sistem',
+      buildPage: () => const AdminSystemGroupsPage(),
     ),
     AdminMenuItem(
       icon: Icons.campaign,
       label: 'Pengumuman',
-      page: const AdminChatManagementPage(),
+      buildPage: () => const AdminChatManagementPage(),
     ),
     AdminMenuItem(
       icon: Icons.smart_toy,
       label: 'AI Settings',
-      page: const AdminAiSettingsPage(),
+      buildPage: () => const AdminAiSettingsPage(),
     ),
     AdminMenuItem(
       icon: Icons.access_time,
       label: 'Jam Kerja',
-      page: const ShiftSettingsPage(),
+      buildPage: () => const ShiftSettingsPage(),
     ),
     AdminMenuItem(
       icon: Icons.settings,
       label: 'Settings',
-      page: const AdminSettingsPage(),
+      buildPage: () => const AdminSettingsPage(),
     ),
   ];
 
+  Widget _buildSelectedPage() => _menuItems[_selectedIndex].buildPage();
+
   void _onMenuSelected(int index) {
     setState(() => _selectedIndex = index);
-    // Check if mobile layout by checking if drawer is open
-    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-      Navigator.of(context).pop();
-    }
   }
 
   Future<void> _handleLogout() async {
@@ -264,10 +278,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
               ),
-              Expanded(child: _menuItems[_selectedIndex].page),
+              Expanded(child: _buildSelectedPage()),
             ],
           ),
-          const TestAccountSwitcherFab(),
+          if (kDebugMode) const TestAccountSwitcherFab(),
         ],
       ),
     );
@@ -275,12 +289,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildMobileLayout() {
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(
         title: Text(_menuItems[_selectedIndex].label),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
         actions: [
           IconButton(icon: const Icon(Icons.logout), onPressed: _handleLogout),
@@ -292,7 +307,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
         onMenuSelected: _onMenuSelected,
       ),
       body: Stack(
-        children: [_menuItems[_selectedIndex].page, const TestAccountSwitcherFab()],
+        children: [
+          _buildSelectedPage(),
+          if (kDebugMode) const TestAccountSwitcherFab(),
+        ],
       ),
     );
   }
@@ -301,7 +319,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
 class AdminMenuItem {
   final IconData icon;
   final String label;
-  final Widget page;
+  final Widget Function() buildPage;
 
-  AdminMenuItem({required this.icon, required this.label, required this.page});
+  AdminMenuItem({
+    required this.icon,
+    required this.label,
+    required this.buildPage,
+  });
 }

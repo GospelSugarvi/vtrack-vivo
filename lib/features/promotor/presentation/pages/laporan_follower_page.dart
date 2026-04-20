@@ -20,7 +20,7 @@ class LaporanFollowerPage extends StatefulWidget {
 
 class _LaporanFollowerPageState extends State<LaporanFollowerPage> {
   FieldThemeTokens get t => context.fieldTokens;
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>(debugLabel: 'laporan_follower_form');
   final _usernameController = TextEditingController();
   final _followerCountController = TextEditingController();
   final _notesController = TextEditingController();
@@ -215,24 +215,6 @@ class _LaporanFollowerPageState extends State<LaporanFollowerPage> {
         throw SessionExpiredException();
       }
 
-      // Get store ID
-      final storeRows = await Supabase.instance.client
-          .from('assignments_promotor_store')
-          .select('store_id')
-          .eq('promotor_id', userId)
-          .eq('active', true)
-          .order('created_at', ascending: false)
-          .limit(1)
-          .timeout(const Duration(seconds: 10));
-
-      final assignments = List<Map<String, dynamic>>.from(storeRows);
-      final storeData = assignments.isNotEmpty ? assignments.first : null;
-      if (storeData == null || storeData['store_id'] == null) {
-        throw AppException('Toko aktif promotor tidak ditemukan');
-      }
-
-      final storeId = storeData['store_id'];
-
       // Upload screenshot if provided
       String? screenshotUrl;
       if (_screenshot != null) {
@@ -256,21 +238,19 @@ class _LaporanFollowerPageState extends State<LaporanFollowerPage> {
         }
       }
 
-      // Save to database
       await Supabase.instance.client
-          .from('follower_reports')
-          .insert({
-            'promotor_id': userId,
-            'store_id': storeId,
-            'platform': _selectedPlatform,
-            'username': formattedUsername,
-            'screenshot_url': screenshotUrl,
-            'follower_count': followerCount,
-            'notes': _notesController.text.trim().isNotEmpty
-                ? _notesController.text.trim()
-                : null,
-            'status': 'submitted',
-          })
+          .rpc(
+            'submit_follower_report',
+            params: {
+              'p_platform': _selectedPlatform,
+              'p_username': formattedUsername,
+              'p_screenshot_url': screenshotUrl,
+              'p_follower_count': followerCount,
+              'p_notes': _notesController.text.trim().isNotEmpty
+                  ? _notesController.text.trim()
+                  : null,
+            },
+          )
           .timeout(const Duration(seconds: 15));
 
       if (!mounted) return;

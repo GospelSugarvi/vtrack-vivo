@@ -54,20 +54,9 @@ class _TokoDetailPageState extends State<TokoDetailPage> {
     });
 
     try {
-      final store = await _supabase
-          .from('stores')
-          .select('*')
-          .eq('id', widget.storeId)
-          .isFilter('deleted_at', null)
-          .maybeSingle();
-
-      if (store == null) {
-        throw Exception('Toko tidak ditemukan atau sudah tidak aktif.');
-      }
-
       final dateKey = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final checklistFuture = _supabase.rpc(
-        'get_store_promotor_checklist',
+      final snapshotFuture = _supabase.rpc(
+        'get_store_detail_snapshot',
         params: {'p_store_id': widget.storeId, 'p_date': dateKey},
       );
       final allbrandFuture = _chatRepository.getStorePerformanceData(
@@ -75,7 +64,6 @@ class _TokoDetailPageState extends State<TokoDetailPage> {
         date: _selectedDate,
       );
 
-      final checklistResult = await checklistFuture;
       Map<String, dynamic>? performance;
 
       try {
@@ -85,12 +73,19 @@ class _TokoDetailPageState extends State<TokoDetailPage> {
             'Ringkasan AllBrand belum berhasil dimuat. Checklist aktivitas tetap tersedia.';
       }
 
+      final snapshotRaw = await snapshotFuture;
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      final store = Map<String, dynamic>.from(
+        (snapshot['store'] as Map?) ?? const <String, dynamic>{},
+      );
+      final promotors = _parseMapList(snapshot['promotors']);
+
       if (!mounted) return;
       setState(() {
-        _storeData = Map<String, dynamic>.from(store);
-        _promotors = List<Map<String, dynamic>>.from(
-          checklistResult ?? const [],
-        );
+        _storeData = store;
+        _promotors = promotors;
         _allbrandData = performance?['allbrand'] as Map<String, dynamic>?;
         _isLoading = false;
       });
@@ -101,6 +96,14 @@ class _TokoDetailPageState extends State<TokoDetailPage> {
         _errorMessage = 'Detail toko gagal dimuat. ${_humanizeError(e)}';
       });
     }
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   String _humanizeError(Object error) {

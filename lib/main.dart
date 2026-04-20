@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,7 +12,18 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/app_font_preference_provider.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'core/router/app_router.dart';
+import 'features/notifications/data/notification_push_service.dart';
 import 'ui/foundation/app_font_tokens.dart';
+
+Future<void> _initializeDeferredServices() async {
+  try {
+    await Firebase.initializeApp();
+    await NotificationPushService.instance.initialize();
+  } catch (error, stack) {
+    debugPrint('Firebase init skipped: $error');
+    debugPrint('$stack');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,16 +52,23 @@ void main() async {
   };
 
   runApp(const ProviderScope(child: VTrackApp()));
+  unawaited(_initializeDeferredServices());
 }
 
 // Global Supabase client accessor - SAFE: only accessed after Supabase.initialize()
 SupabaseClient get supabase => Supabase.instance.client;
 
-class VTrackApp extends ConsumerWidget {
+class VTrackApp extends ConsumerStatefulWidget {
   const VTrackApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VTrackApp> createState() => _VTrackAppState();
+}
+
+class _VTrackAppState extends ConsumerState<VTrackApp> {
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
     final fontPreference = ref.watch(appFontPreferenceProvider);

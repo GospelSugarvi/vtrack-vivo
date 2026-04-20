@@ -42,6 +42,12 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    final rawReactions = json['reactions'];
+    final reactions = rawReactions is Map<String, dynamic>
+        ? Map<String, dynamic>.from(rawReactions)
+        : rawReactions is Map
+        ? Map<String, dynamic>.from(rawReactions)
+        : null;
     return ChatMessage(
       id: (json['message_id'] as String?) ?? '',
       senderId: json['sender_id'] as String?,
@@ -66,7 +72,7 @@ class ChatMessage {
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
       readByCount: (json['read_by_count'] as int?) ?? 0,
-      reactions: json['reactions'] as Map<String, dynamic>?,
+      reactions: reactions,
       isOwnMessage: (json['is_own_message'] as bool?) ?? false,
     );
   }

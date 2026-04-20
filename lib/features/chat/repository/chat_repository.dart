@@ -9,6 +9,15 @@ import 'dart:convert';
 class ChatRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  bool _isReplyConstraintError(Object error) {
+    if (error is! PostgrestException) return false;
+    final message = '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
+        .toLowerCase();
+    return message.contains('chat_messages_reply_to_id_fkey') ||
+        message.contains('reply_to_id') ||
+        message.contains('foreign key constraint');
+  }
+
   // Get all chat rooms for current user
   Future<List<ChatRoom>> getUserChatRooms() async {
     final userId = _supabase.auth.currentUser?.id;
@@ -22,6 +31,49 @@ class ChatRepository {
     return (response as List)
         .map((json) => ChatRoom.fromJson(json as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<ChatRoom?> getStoreChatRoom({required String storeId}) async {
+    dynamic row;
+    try {
+      final resolved = await _supabase.rpc(
+        'get_store_chat_room_resolved',
+        params: {'p_store_id': storeId},
+      );
+      if (resolved is List && resolved.isNotEmpty) {
+        row = resolved.first;
+      } else if (resolved is Map) {
+        row = resolved;
+      }
+    } catch (_) {}
+
+    row ??= await _supabase
+        .from('chat_rooms')
+        .select(
+          'id, room_type, name, description, store_id, sator_id, user1_id, user2_id, created_at',
+        )
+        .eq('room_type', 'toko')
+        .eq('store_id', storeId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (row == null) return null;
+    return ChatRoom.fromJson(Map<String, dynamic>.from(row));
+  }
+
+  Future<ChatRoom?> getTeamChatRoom({required String satorId}) async {
+    final row = await _supabase
+        .from('chat_rooms')
+        .select(
+          'id, room_type, name, description, store_id, sator_id, user1_id, user2_id, created_at',
+        )
+        .eq('room_type', 'tim')
+        .eq('sator_id', satorId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (row == null) return null;
+    return ChatRoom.fromJson(Map<String, dynamic>.from(row));
   }
 
   // Get messages for a specific chat room
@@ -71,19 +123,35 @@ class ChatRepository {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
-    final response = await _supabase.rpc(
-      'send_message',
-      params: {
-        'p_room_id': roomId,
-        'p_sender_id': userId,
-        'p_message_type': 'text',
-        'p_content': content,
-        'p_mentions': mentions,
-        'p_reply_to_id': replyToId,
-      },
-    );
+    try {
+      final response = await _supabase.rpc(
+        'send_message',
+        params: {
+          'p_room_id': roomId,
+          'p_sender_id': userId,
+          'p_message_type': 'text',
+          'p_content': content,
+          'p_mentions': mentions,
+          'p_reply_to_id': replyToId,
+        },
+      );
 
-    return response as String;
+      return response as String;
+    } catch (error) {
+      if (replyToId == null || !_isReplyConstraintError(error)) rethrow;
+      final retry = await _supabase.rpc(
+        'send_message',
+        params: {
+          'p_room_id': roomId,
+          'p_sender_id': userId,
+          'p_message_type': 'text',
+          'p_content': content,
+          'p_mentions': mentions,
+          'p_reply_to_id': null,
+        },
+      );
+      return retry as String;
+    }
   }
 
   // Send an image message
@@ -98,23 +166,45 @@ class ChatRepository {
   }) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
+    final safeCaption = (caption == null || caption.trim().isEmpty)
+        ? ''
+        : caption.trim();
 
-    final response = await _supabase.rpc(
-      'send_message',
-      params: {
-        'p_room_id': roomId,
-        'p_sender_id': userId,
-        'p_message_type': 'image',
-        'p_content': caption,
-        'p_image_url': imageUrl,
-        'p_image_width': imageWidth,
-        'p_image_height': imageHeight,
-        'p_mentions': mentions,
-        'p_reply_to_id': replyToId,
-      },
-    );
+    try {
+      final response = await _supabase.rpc(
+        'send_message',
+        params: {
+          'p_room_id': roomId,
+          'p_sender_id': userId,
+          'p_message_type': 'image',
+          'p_content': safeCaption,
+          'p_image_url': imageUrl,
+          'p_image_width': imageWidth,
+          'p_image_height': imageHeight,
+          'p_mentions': mentions,
+          'p_reply_to_id': replyToId,
+        },
+      );
 
-    return response as String;
+      return response as String;
+    } catch (error) {
+      if (replyToId == null || !_isReplyConstraintError(error)) rethrow;
+      final retry = await _supabase.rpc(
+        'send_message',
+        params: {
+          'p_room_id': roomId,
+          'p_sender_id': userId,
+          'p_message_type': 'image',
+          'p_content': safeCaption,
+          'p_image_url': imageUrl,
+          'p_image_width': imageWidth,
+          'p_image_height': imageHeight,
+          'p_mentions': mentions,
+          'p_reply_to_id': null,
+        },
+      );
+      return retry as String;
+    }
   }
 
   // Mark messages as read
@@ -135,6 +225,24 @@ class ChatRepository {
     );
 
     return response as int;
+  }
+
+  Future<void> markRoomMentionNotificationsRead({
+    required String roomId,
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    await _supabase
+        .from('app_notifications')
+        .update({
+          'status': 'read',
+          'read_at': DateTime.now().toIso8601String(),
+        })
+        .eq('recipient_user_id', userId)
+        .inFilter('type', ['chat_mention', 'chat_mention_all'])
+        .filter('payload->>room_id', 'eq', roomId)
+        .eq('status', 'unread');
   }
 
   // Get store daily data for toko chat rooms
@@ -207,7 +315,7 @@ class ChatRepository {
   // Subscribe to read receipt updates
   RealtimeChannel subscribeToReadReceipts({
     required String roomId,
-    required Function() onReadReceiptUpdate,
+    required Function(String messageId) onReadReceiptUpdate,
   }) {
     return _supabase
         .channel('message_reads_$roomId')
@@ -215,7 +323,12 @@ class ChatRepository {
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'message_reads',
-          callback: (payload) => onReadReceiptUpdate(),
+          callback: (payload) {
+            final messageId = payload.newRecord['message_id'] as String?;
+            if (messageId != null && messageId.isNotEmpty) {
+              onReadReceiptUpdate(messageId);
+            }
+          },
         )
         .subscribe();
   }
@@ -223,7 +336,7 @@ class ChatRepository {
   // Subscribe to reaction updates
   RealtimeChannel subscribeToReactions({
     required String roomId,
-    required Function() onReactionUpdate,
+    required Function(String messageId) onReactionUpdate,
   }) {
     return _supabase
         .channel('message_reactions_$roomId')
@@ -231,7 +344,15 @@ class ChatRepository {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'message_reactions',
-          callback: (payload) => onReactionUpdate(),
+          callback: (payload) {
+            final record = payload.newRecord.isNotEmpty
+                ? payload.newRecord
+                : payload.oldRecord;
+            final messageId = record['message_id'] as String?;
+            if (messageId != null && messageId.isNotEmpty) {
+              onReactionUpdate(messageId);
+            }
+          },
         )
         .subscribe();
   }
@@ -245,65 +366,174 @@ class ChatRepository {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
-      final response = await _supabase.rpc(
-        'get_chat_messages',
-        params: {
-          'p_room_id': roomId,
-          'p_user_id': userId,
-          'p_limit': 50, // Get more messages to find the specific one
-          'p_offset': 0,
-        },
-      );
+      final messageRow = await _supabase
+          .from('chat_messages')
+          .select(
+            'id, room_id, sender_id, message_type, content, image_url, image_width, image_height, mentions, reply_to_id, is_edited, edited_at, created_at, is_deleted',
+          )
+          .eq('id', messageId)
+          .eq('room_id', roomId)
+          .maybeSingle();
 
-      if (response == null) {
-        throw Exception('No response from get_chat_messages');
-      }
-
-      final messages = (response as List)
-          .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
-          .where((msg) => msg.id == messageId)
-          .toList();
-
-      if (messages.isEmpty) {
+      if (messageRow == null || messageRow['is_deleted'] == true) {
         throw Exception('Message not found: $messageId');
       }
 
-      return messages.first;
+      final senderId = messageRow['sender_id'] as String?;
+      final replyToId = messageRow['reply_to_id'] as String?;
+
+      final Future<Map<String, dynamic>?> senderFuture = senderId == null
+          ? Future<Map<String, dynamic>?>.value(null)
+          : _supabase
+                .from('users')
+                .select('full_name, role')
+                .eq('id', senderId)
+                .maybeSingle();
+      final Future<Map<String, dynamic>?> replyFuture = replyToId == null
+          ? Future<Map<String, dynamic>?>.value(null)
+          : _fetchReplyPreview(replyToId);
+      final Future<List<Map<String, dynamic>>> readsFuture = _supabase
+          .from('message_reads')
+          .select('id')
+          .eq('message_id', messageId)
+          .then((value) => List<Map<String, dynamic>>.from(value));
+      final Future<List<Map<String, dynamic>>> reactionsFuture = _supabase
+          .from('message_reactions')
+          .select(
+            'emoji, user_id, users!message_reactions_user_id_fkey(full_name)',
+          )
+          .eq('message_id', messageId)
+          .then((value) => List<Map<String, dynamic>>.from(value));
+
+      final results = await Future.wait<Object?>([
+        senderFuture,
+        replyFuture,
+        readsFuture,
+        reactionsFuture,
+      ]);
+
+      final sender = results[0] as Map<String, dynamic>?;
+      final reply = results[1] as Map<String, dynamic>?;
+      final reads = results[2] as List<Map<String, dynamic>>;
+      final reactions = results[3] as List<Map<String, dynamic>>;
+
+      return ChatMessage.fromJson({
+        'message_id': messageRow['id'],
+        'sender_id': senderId,
+        'sender_name': sender?['full_name'],
+        'sender_role': sender?['role'],
+        'message_type': messageRow['message_type'],
+        'content': messageRow['content'],
+        'image_url': messageRow['image_url'],
+        'image_width': messageRow['image_width'],
+        'image_height': messageRow['image_height'],
+        'mentions': messageRow['mentions'],
+        'reply_to_id': replyToId,
+        'reply_to_content': reply?['content'],
+        'reply_to_sender_name': reply?['sender_name'],
+        'is_edited': messageRow['is_edited'],
+        'edited_at': messageRow['edited_at'],
+        'created_at': messageRow['created_at'],
+        'read_by_count': reads.length,
+        'reactions': _groupReactions(reactions),
+        'is_own_message': senderId == userId,
+      });
     } catch (e) {
       debugPrint('Error fetching complete message: $e');
       rethrow;
     }
   }
 
+  Future<Map<String, dynamic>?> _fetchReplyPreview(String replyToId) async {
+    final replyRow = await _supabase
+        .from('chat_messages')
+        .select('content, sender_id, is_deleted')
+        .eq('id', replyToId)
+        .maybeSingle();
+
+    if (replyRow == null || replyRow['is_deleted'] == true) {
+      return null;
+    }
+
+    final replySenderId = replyRow['sender_id'] as String?;
+    String? senderName;
+
+    if (replySenderId != null) {
+      final replySender = await _supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', replySenderId)
+          .maybeSingle();
+      senderName = replySender?['full_name'] as String?;
+    }
+
+    return {'content': replyRow['content'], 'sender_name': senderName};
+  }
+
+  Map<String, dynamic> _groupReactions(List<Map<String, dynamic>> rows) {
+    final grouped = <String, Map<String, dynamic>>{};
+
+    for (final row in rows) {
+      final emoji = row['emoji']?.toString();
+      final userId = row['user_id']?.toString();
+      if (emoji == null || emoji.isEmpty || userId == null || userId.isEmpty) {
+        continue;
+      }
+
+      final bucket = grouped.putIfAbsent(emoji, () {
+        return {'count': 0, 'users': <Map<String, dynamic>>[]};
+      });
+
+      bucket['count'] = (bucket['count'] as int) + 1;
+      (bucket['users'] as List<Map<String, dynamic>>).add({
+        'user_id': userId,
+        'name': row['users'] is Map
+            ? (row['users'] as Map)['full_name']?.toString()
+            : null,
+      });
+    }
+
+    return grouped;
+  }
+
   // Add emoji reaction to message
-  Future<void> addReaction({
+  Future<Map<String, dynamic>> addReaction({
     required String messageId,
     required String emoji,
   }) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('User not authenticated');
-
-    await _supabase.from('message_reactions').insert({
-      'message_id': messageId,
-      'user_id': userId,
-      'emoji': emoji,
-    });
+    final response = await _supabase.rpc(
+      'set_message_reaction',
+      params: {
+        'p_message_id': messageId,
+        'p_emoji': emoji,
+        'p_active': true,
+      },
+    );
+    return response is Map<String, dynamic>
+        ? Map<String, dynamic>.from(response)
+        : response is Map
+        ? Map<String, dynamic>.from(response)
+        : const <String, dynamic>{};
   }
 
   // Remove emoji reaction from message
-  Future<void> removeReaction({
+  Future<Map<String, dynamic>> removeReaction({
     required String messageId,
     required String emoji,
   }) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('User not authenticated');
-
-    await _supabase
-        .from('message_reactions')
-        .delete()
-        .eq('message_id', messageId)
-        .eq('user_id', userId)
-        .eq('emoji', emoji);
+    final response = await _supabase.rpc(
+      'set_message_reaction',
+      params: {
+        'p_message_id': messageId,
+        'p_emoji': emoji,
+        'p_active': false,
+      },
+    );
+    return response is Map<String, dynamic>
+        ? Map<String, dynamic>.from(response)
+        : response is Map
+        ? Map<String, dynamic>.from(response)
+        : const <String, dynamic>{};
   }
 
   // Update chat room member settings (mute/unmute)
@@ -324,6 +554,20 @@ class ChatRepository {
           .eq('room_id', roomId)
           .eq('user_id', userId);
     }
+  }
+
+  Future<void> deleteMyMessagesInRoom({
+    required String roomId,
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    await _supabase
+        .from('chat_messages')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('sender_id', userId)
+        .eq('is_deleted', false);
   }
 
   // Get store performance data for chat room
@@ -348,11 +592,13 @@ class ChatRepository {
 
       // Get activity data
       final activityData = await _getStoreActivityData(storeId, targetDate);
+      final vastData = await _getStoreVastFinanceData(storeId, targetDate);
 
       return {
         'target': targetData,
         'allbrand': allbrandData,
         'activity': activityData,
+        'vast': vastData,
       };
     } catch (e) {
       debugPrint('=== ERROR getting store performance data: $e ===');
@@ -393,8 +639,7 @@ class ChatRepository {
         String name = 'Promotor';
         if (rawUser is Map) {
           final user = Map<String, dynamic>.from(rawUser);
-          name =
-              user['nickname']?.toString().trim().isNotEmpty == true
+          name = user['nickname']?.toString().trim().isNotEmpty == true
               ? user['nickname'].toString().trim()
               : (user['full_name']?.toString() ?? 'Promotor');
         }
@@ -405,11 +650,13 @@ class ChatRepository {
       final sales = await _supabase
           .from('sales_sell_out')
           .select(
-            'promotor_id, price_at_transaction, variant_id, product_variants!inner(product_id, variant_name, products!inner(model_name))',
+            'promotor_id, price_at_transaction, variant_id, product_variants!inner(product_id, ram_rom, color, products!inner(model_name))',
           )
           .inFilter('promotor_id', promotorIds)
           .gte('created_at', '${date}T00:00:00')
-          .lt('created_at', '${date}T23:59:59');
+          .lt('created_at', '${date}T23:59:59')
+          .isFilter('deleted_at', null)
+          .eq('is_chip_sale', false);
 
       int dailyAchievement = 0;
       int fokusAchievement = 0;
@@ -438,17 +685,21 @@ class ChatRepository {
           final variantRow = sale['product_variants'];
           if (variantRow is Map) {
             final variant = Map<String, dynamic>.from(variantRow);
-            final modelName =
-                variant['products'] is Map
-                ? Map<String, dynamic>.from(variant['products'])['model_name']
-                      ?.toString()
+            final modelName = variant['products'] is Map
+                ? Map<String, dynamic>.from(
+                    variant['products'],
+                  )['model_name']?.toString()
                 : null;
-            final variantName = variant['variant_name']?.toString();
+            final variantName = [
+              variant['ram_rom']?.toString(),
+              variant['color']?.toString(),
+            ]
+                .where((value) => value != null && value.trim().isNotEmpty)
+                .map((value) => value!.trim())
+                .join(' ');
             final label = (modelName != null && modelName.isNotEmpty)
-                ? (variantName != null && variantName.isNotEmpty
-                      ? '$modelName $variantName'
-                      : modelName)
-                : (variantName ?? 'Produk');
+                ? (variantName.isNotEmpty ? '$modelName $variantName' : modelName)
+                : (variantName.isNotEmpty ? variantName : 'Produk');
             variantsByPromotor.putIfAbsent(promotorId, () => <String>[]);
             final list = variantsByPromotor[promotorId]!;
             if (!list.contains(label)) list.add(label);
@@ -460,51 +711,84 @@ class ChatRepository {
         if (fokusProductIds.contains(productId)) {
           fokusAchievement += price;
           if (promotorId.isNotEmpty) {
-            fokusByPromotor[promotorId] = (fokusByPromotor[promotorId] ?? 0) + 1;
+            fokusByPromotor[promotorId] =
+                (fokusByPromotor[promotorId] ?? 0) + 1;
           }
         }
       }
 
-      // Get targets for this month - use period_id instead of month_year
-      // For now, just get all targets for these users (we'll improve period filtering later)
-      final targets = await _supabase
-          .from('user_targets')
-          .select('user_id, target_omzet, target_fokus_total')
-          .inFilter('user_id', promotorIds);
+      final targetRows = await Future.wait<Map<String, dynamic>>(
+        promotorIds.map((rawId) async {
+          final promotorId = '$rawId';
+          final raw = await _supabase.rpc(
+            'get_daily_target_dashboard',
+            params: <String, dynamic>{
+              'p_user_id': promotorId,
+              'p_date': DateTime.now().toIso8601String().split('T').first,
+            },
+          );
+          if (raw is List && raw.isNotEmpty && raw.first is Map) {
+            return Map<String, dynamic>.from(raw.first as Map);
+          }
+          if (raw is Map) {
+            return Map<String, dynamic>.from(raw);
+          }
+          return const <String, dynamic>{};
+        }),
+      );
+      final monthlyTargetRows = await Future.wait<Map<String, dynamic>>(
+        promotorIds.map((rawId) async {
+          final promotorId = '$rawId';
+          final raw = await _supabase.rpc(
+            'get_target_dashboard',
+            params: <String, dynamic>{
+              'p_user_id': promotorId,
+              'p_period_id': null,
+            },
+          );
+          if (raw is List && raw.isNotEmpty && raw.first is Map) {
+            return Map<String, dynamic>.from(raw.first as Map);
+          }
+          if (raw is Map) {
+            return Map<String, dynamic>.from(raw);
+          }
+          return const <String, dynamic>{};
+        }),
+      );
 
-      int totalDailyTarget = 0;
-      int totalFokusTarget = 0;
-
-      for (var target in targets) {
-        totalDailyTarget += ((target['target_omzet'] as num?) ?? 0).toInt();
-        totalFokusTarget += ((target['target_fokus_total'] as num?) ?? 0)
-            .toInt();
-      }
-
-      // Calculate daily target (monthly / 30)
-      final dailyTarget = (totalDailyTarget / 30).round();
-      final dailyFokusTarget = (totalFokusTarget / 30).round();
-      final selloutByPromotor = promotorIds.map((rawId) {
-        final promotorId = '$rawId';
-        return {
-          'promotor_id': promotorId,
-          'promotor_name': promotorNameById[promotorId] ?? 'Promotor',
-          'units': unitByPromotor[promotorId] ?? 0,
-          'omzet': omzetByPromotor[promotorId] ?? 0,
-          'focus_units': fokusByPromotor[promotorId] ?? 0,
-          'variants': variantsByPromotor[promotorId] ?? const <String>[],
-        };
-      }).toList()
-        ..sort(
-          (a, b) => ((b['omzet'] as int).compareTo(a['omzet'] as int)),
-        );
+      final dailyTarget = targetRows.fold<int>(
+        0,
+        (sum, row) => sum + ((row['target_daily_all_type'] as num?) ?? 0).toInt(),
+      );
+      final dailyFokusTarget = targetRows.fold<int>(
+        0,
+        (sum, row) => sum + ((row['target_daily_focus'] as num?) ?? 0).ceil(),
+      );
+      final monthlyTarget = monthlyTargetRows.fold<int>(
+        0,
+        (sum, row) => sum + ((row['target_omzet'] as num?) ?? 0).toInt(),
+      );
+      final selloutByPromotor =
+          promotorIds.map((rawId) {
+            final promotorId = '$rawId';
+            return {
+              'promotor_id': promotorId,
+              'promotor_name': promotorNameById[promotorId] ?? 'Promotor',
+              'units': unitByPromotor[promotorId] ?? 0,
+              'omzet': omzetByPromotor[promotorId] ?? 0,
+              'focus_units': fokusByPromotor[promotorId] ?? 0,
+              'variants': variantsByPromotor[promotorId] ?? const <String>[],
+            };
+          }).toList()..sort(
+            (a, b) => ((b['omzet'] as int).compareTo(a['omzet'] as int)),
+          );
 
       return {
         'daily_achievement': dailyAchievement,
         'daily_target': dailyTarget,
         'monthly_achievement':
             dailyAchievement, // TODO: Calculate actual monthly
-        'monthly_target': totalDailyTarget,
+        'monthly_target': monthlyTarget,
         'fokus_achievement': fokusAchievement,
         'fokus_target': dailyFokusTarget,
         'promotor_count': promotorIds.length,
@@ -627,13 +911,17 @@ class ChatRepository {
           .from('sales_sell_out')
           .select('promotor_id, variant_id')
           .eq('store_id', storeId)
-          .eq('transaction_date', date);
+          .eq('transaction_date', date)
+          .isFilter('deleted_at', null)
+          .eq('is_chip_sale', false);
 
       final salesCumulative = await _supabase
           .from('sales_sell_out')
           .select('promotor_id, variant_id')
           .eq('store_id', storeId)
-          .lte('transaction_date', date);
+          .lte('transaction_date', date)
+          .isFilter('deleted_at', null)
+          .eq('is_chip_sale', false);
 
       final variantRows = await _supabase
           .from('product_variants')
@@ -899,7 +1187,9 @@ class ChatRepository {
             .select('id')
             .eq('promotor_id', promotorId)
             .gte('created_at', '${date}T00:00:00')
-            .lt('created_at', '${date}T23:59:59');
+            .lt('created_at', '${date}T23:59:59')
+            .isFilter('deleted_at', null)
+            .eq('is_chip_sale', false);
 
         final salesCount = salesData.length;
 
@@ -930,24 +1220,271 @@ class ChatRepository {
     }
   }
 
+  Future<Map<String, dynamic>> _getStoreVastFinanceData(
+    String storeId,
+    String date,
+  ) async {
+    try {
+      final promotorAssignments = List<Map<String, dynamic>>.from(
+        await _supabase
+          .from('assignments_promotor_store')
+          .select('promotor_id, users!inner(full_name, nickname)')
+          .eq('store_id', storeId)
+          .eq('active', true),
+      );
+
+      final promotorById = <String, Map<String, dynamic>>{};
+      for (final row in promotorAssignments) {
+        final promotorId = '${row['promotor_id'] ?? ''}';
+        if (promotorId.isEmpty || promotorById.containsKey(promotorId)) continue;
+        promotorById[promotorId] = row;
+      }
+
+      if (promotorById.isEmpty) {
+        return {
+          'target_total': 0,
+          'input_total': 0,
+          'closing_total': 0,
+          'today_total': 0,
+          'month_total': 0,
+          'pending_total': 0,
+          'approved_total': 0,
+          'reject_total': 0,
+          'rejected_total': 0,
+          'rows': <Map<String, dynamic>>[],
+        };
+      }
+
+      final promotorIds = promotorById.keys.toList();
+      final startOfMonth = '${date.substring(0, 8)}01';
+      final endExclusive = DateTime.parse(date)
+          .add(const Duration(days: 1))
+          .toIso8601String()
+          .split('T')
+          .first;
+
+      String? periodId;
+      try {
+        final periodRows = await _supabase
+            .from('target_periods')
+            .select('id')
+            .lte('start_date', date)
+            .gte('end_date', date)
+            .isFilter('deleted_at', null)
+            .order('start_date', ascending: false)
+            .limit(1);
+        if (periodRows.isNotEmpty) {
+          periodId = '${periodRows.first['id'] ?? ''}';
+        }
+      } catch (_) {}
+
+      final targetRows = periodId == null || periodId.isEmpty
+          ? const <Map<String, dynamic>>[]
+          : List<Map<String, dynamic>>.from(
+              await _supabase
+                  .from('user_targets')
+                  .select('user_id, target_vast')
+                  .eq('period_id', periodId)
+                  .inFilter('user_id', promotorIds),
+            );
+
+      final targetByUser = <String, int>{};
+      for (final row in targetRows) {
+        final userId = '${row['user_id'] ?? ''}';
+        if (userId.isEmpty || targetByUser.containsKey(userId)) continue;
+        targetByUser[userId] = _toInt(row['target_vast']);
+      }
+
+      final rows = await _supabase
+          .from('vast_applications')
+          .select(
+            'promotor_id, application_date, outcome_status, lifecycle_status',
+          )
+          .inFilter('promotor_id', promotorIds)
+          .gte('application_date', startOfMonth)
+          .lt('application_date', endExclusive)
+          .isFilter('deleted_at', null);
+
+      final todayTotal = rows.where((row) {
+        final appDate = '${row['application_date'] ?? ''}';
+        return appDate == date;
+      }).length;
+      final inputTotal = rows.length;
+      final pendingTotal = rows.where((row) {
+        final status = '${row['lifecycle_status'] ?? ''}'.toLowerCase();
+        return status == 'approved_pending' ||
+            status.contains('pending') ||
+            status.contains('review');
+      }).length;
+      final closingTotal = rows.where((row) {
+        final lifecycle = '${row['lifecycle_status'] ?? ''}'.toLowerCase();
+        return lifecycle == 'closed_direct' || lifecycle == 'closed_follow_up';
+      }).length;
+      final rejectTotal = rows.where((row) {
+        final lifecycle = '${row['lifecycle_status'] ?? ''}'.toLowerCase();
+        final outcome = '${row['outcome_status'] ?? ''}'.toLowerCase();
+        return lifecycle == 'rejected' ||
+            lifecycle.contains('cancel') ||
+            outcome.contains('reject') ||
+            outcome.contains('cancel');
+      }).length;
+
+      final targetTotal = promotorIds.fold<int>(
+        0,
+        (sum, userId) => sum + (targetByUser[userId] ?? 0),
+      );
+
+      final rowByPromotor = <String, Map<String, dynamic>>{};
+      for (final entry in promotorById.entries) {
+        final promotorId = entry.key;
+        final promotor = entry.value;
+        final user = promotor['users'] is Map
+            ? Map<String, dynamic>.from(promotor['users'] as Map)
+            : const <String, dynamic>{};
+        final name =
+            '${user['nickname'] ?? ''}'.trim().isNotEmpty
+            ? '${user['nickname']}'
+            : '${user['full_name'] ?? 'Promotor'}';
+        rowByPromotor[promotorId] = <String, dynamic>{
+          'promotor_id': promotorId,
+          'promotor_name': name,
+          'target_total': targetByUser[promotorId] ?? 0,
+          'input_total': 0,
+          'closing_total': 0,
+          'today_total': 0,
+          'month_total': 0,
+          'pending_total': 0,
+          'approved_total': 0,
+          'reject_total': 0,
+          'rejected_total': 0,
+        };
+      }
+
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw);
+        final promotorId = '${row['promotor_id'] ?? ''}';
+        final bucket = rowByPromotor[promotorId];
+        if (bucket == null) continue;
+        bucket['input_total'] = _toInt(bucket['input_total']) + 1;
+        bucket['month_total'] = _toInt(bucket['month_total']) + 1;
+        if ('${row['application_date'] ?? ''}' == date) {
+          bucket['today_total'] = _toInt(bucket['today_total']) + 1;
+        }
+        final outcome = '${row['outcome_status'] ?? ''}'.toLowerCase();
+        final lifecycle = '${row['lifecycle_status'] ?? ''}'.toLowerCase();
+        if (lifecycle == 'closed_direct' || lifecycle == 'closed_follow_up') {
+          bucket['closing_total'] = _toInt(bucket['closing_total']) + 1;
+          bucket['approved_total'] = _toInt(bucket['approved_total']) + 1;
+        } else if (lifecycle == 'rejected' ||
+            outcome.contains('reject') ||
+            lifecycle.contains('cancel') ||
+            outcome.contains('cancel')) {
+          bucket['reject_total'] = _toInt(bucket['reject_total']) + 1;
+          bucket['rejected_total'] = _toInt(bucket['rejected_total']) + 1;
+        } else if (lifecycle == 'approved_pending' ||
+            lifecycle.contains('pending') ||
+            lifecycle.contains('review')) {
+          bucket['pending_total'] = _toInt(bucket['pending_total']) + 1;
+        }
+      }
+
+      final summaryRows = rowByPromotor.values.toList()
+        ..sort(
+          (a, b) => _toInt(b['input_total']).compareTo(_toInt(a['input_total'])),
+        );
+
+      return {
+        'target_total': targetTotal,
+        'input_total': inputTotal,
+        'closing_total': closingTotal,
+        'today_total': todayTotal,
+        'month_total': inputTotal,
+        'pending_total': pendingTotal,
+        'approved_total': closingTotal,
+        'reject_total': rejectTotal,
+        'rejected_total': rejectTotal,
+        'rows': summaryRows,
+      };
+    } catch (e) {
+      debugPrint('=== ERROR getting vast finance data: $e ===');
+      return {
+        'target_total': 0,
+        'input_total': 0,
+        'closing_total': 0,
+        'today_total': 0,
+        'month_total': 0,
+        'pending_total': 0,
+        'approved_total': 0,
+        'reject_total': 0,
+        'rejected_total': 0,
+        'rows': <Map<String, dynamic>>[],
+      };
+    }
+  }
+
   Future<List<ChatRoomMember>> getRoomMembers({required String roomId}) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
     final response = await _supabase.rpc(
       'get_chat_room_members',
-      params: {
-        'p_room_id': roomId,
-        'p_user_id': userId,
-      },
+      params: {'p_room_id': roomId, 'p_user_id': userId},
     );
 
     final members = (response as List)
         .map((row) => ChatRoomMember.fromJson(row as Map<String, dynamic>))
         .toList();
-    members.sort(
-      (a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+
+    final memberIds = members
+        .map((member) => member.id)
+        .where((id) => id.isNotEmpty)
+        .toList();
+    final avatarById = <String, String>{};
+    final whatsappById = <String, String>{};
+    if (memberIds.isNotEmpty) {
+      try {
+        dynamic avatarRows;
+        try {
+          avatarRows = await _supabase
+              .from('users')
+              .select('id, avatar_url, whatsapp_phone')
+              .inFilter('id', memberIds);
+        } catch (_) {
+          avatarRows = await _supabase
+              .from('users')
+              .select('id, avatar_url')
+              .inFilter('id', memberIds);
+        }
+        for (final raw in List<Map<String, dynamic>>.from(avatarRows)) {
+          final id = '${raw['id'] ?? ''}';
+          final avatarUrl = '${raw['avatar_url'] ?? ''}'.trim();
+          final whatsappPhone = '${raw['whatsapp_phone'] ?? ''}'.trim();
+          if (id.isEmpty) continue;
+          if (avatarUrl.isNotEmpty) {
+            avatarById[id] = avatarUrl;
+          }
+          if (whatsappPhone.isNotEmpty) {
+            whatsappById[id] = whatsappPhone;
+          }
+        }
+      } catch (_) {}
+    }
+
+    final hydrated = members
+        .map(
+          (member) => ChatRoomMember(
+            id: member.id,
+            displayName: member.displayName,
+            role: member.role,
+            avatarUrl: avatarById[member.id] ?? member.avatarUrl,
+            whatsappPhone: whatsappById[member.id] ?? member.whatsappPhone,
+          ),
+        )
+        .toList();
+    hydrated.sort(
+      (a, b) =>
+          a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
     );
-    return members;
+    return hydrated;
   }
 }

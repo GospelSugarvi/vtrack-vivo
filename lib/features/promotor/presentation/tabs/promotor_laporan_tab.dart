@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/router/app_route_names.dart';
+import '../../../../features/notifications/presentation/widgets/app_notification_bell_button.dart';
 
 class _C {
   const _C(this.t);
@@ -76,6 +77,14 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
   @override
   void initState() {
     super.initState();
+    final user = Supabase.instance.client.auth.currentUser;
+    final metadata = user?.userMetadata ?? const <String, dynamic>{};
+    final nickname = '${metadata['nickname'] ?? ''}'.trim();
+    final fullName =
+        '${metadata['full_name'] ?? metadata['name'] ?? 'Promotor'}'.trim();
+    _displayName = fullName.isNotEmpty
+        ? fullName
+        : (nickname.isNotEmpty ? nickname : 'Promotor');
     _loadTodayActivities();
     _loadUserProfile();
   }
@@ -101,7 +110,7 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
           .maybeSingle();
       final nickname = '${userRow?['nickname'] ?? ''}'.trim();
       final fullName = '${userRow?['full_name'] ?? 'Promotor'}'.trim();
-      final displayName = nickname.isNotEmpty ? nickname : fullName;
+      final displayName = fullName.isNotEmpty ? fullName : nickname;
 
       if (!mounted) return;
       setState(() {
@@ -121,84 +130,28 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) return;
 
-      final today = DateTime.now();
-      final todayStr = DateFormat('yyyy-MM-dd').format(today);
-      final tomorrowStr = DateFormat(
-        'yyyy-MM-dd',
-      ).format(today.add(const Duration(days: 1)));
-
-      final clockInReq = Supabase.instance.client
-          .from('attendance')
-          .select('id')
-          .eq('user_id', userId)
-          .gte('created_at', todayStr)
-          .lt('created_at', tomorrowStr)
-          .limit(1);
-
-      final salesReq = Supabase.instance.client
-          .from('sales_sell_out')
-          .select('id')
-          .eq('promotor_id', userId)
-          .gte('transaction_date', todayStr)
-          .lt('transaction_date', tomorrowStr)
-          .limit(1);
-
-      final validateReq = Supabase.instance.client
-          .from('stock_validations')
-          .select('id')
-          .eq('promotor_id', userId)
-          .gte('validation_date', todayStr)
-          .lt('validation_date', tomorrowStr)
-          .limit(1);
-      final stockInputReq = Supabase.instance.client
-          .from('stock_movement_log')
-          .select('id')
-          .eq('moved_by', userId)
-          .inFilter('movement_type', ['initial', 'transfer_in', 'adjustment'])
-          .gte('moved_at', todayStr)
-          .lt('moved_at', tomorrowStr)
-          .limit(1);
-      final promotionReq = Supabase.instance.client
-          .from('promotion_reports')
-          .select('id')
-          .eq('promotor_id', userId)
-          .gte('created_at', todayStr)
-          .lt('created_at', tomorrowStr)
-          .limit(1);
-      final followerReq = Supabase.instance.client
-          .from('follower_reports')
-          .select('id')
-          .eq('promotor_id', userId)
-          .gte('created_at', todayStr)
-          .lt('created_at', tomorrowStr)
-          .limit(1);
-      final allBrandReq = Supabase.instance.client
-          .from('allbrand_reports')
-          .select('id')
-          .eq('promotor_id', userId)
-          .gte('report_date', todayStr)
-          .lt('report_date', tomorrowStr)
-          .limit(1);
-
-      final results = await Future.wait([
-        clockInReq,
-        salesReq,
-        validateReq,
-        stockInputReq,
-        promotionReq,
-        followerReq,
-        allBrandReq,
-      ]);
+      final snapshot = await Supabase.instance.client.rpc(
+        'get_promotor_activity_snapshot',
+        params: {'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now())},
+      );
+      final payload = Map<String, dynamic>.from(
+        (snapshot as Map?) ?? const <String, dynamic>{},
+      );
+      final sellOutData = _asListOfMaps(payload['sell_out_data']);
+      final stockInputData = _asListOfMaps(payload['stock_input_data']);
+      final promotionData = _asListOfMaps(payload['promotion_data']);
+      final followerData = _asListOfMaps(payload['follower_data']);
 
       if (mounted) {
         setState(() {
-          _hasClockInToday = (results[0] as List).isNotEmpty;
-          _hasSalesReportToday = (results[1] as List).isNotEmpty;
+          _hasClockInToday = _asMap(payload['attendance_data']) != null;
+          _hasSalesReportToday = sellOutData.isNotEmpty;
           _hasStockTaskToday =
-              (results[2] as List).isNotEmpty || (results[3] as List).isNotEmpty;
-          _hasPromotionToday = (results[4] as List).isNotEmpty;
-          _hasFollowerToday = (results[5] as List).isNotEmpty;
-          _hasAllBrandToday = (results[6] as List).isNotEmpty;
+              _asMap(payload['stock_validation_data']) != null ||
+              stockInputData.isNotEmpty;
+          _hasPromotionToday = promotionData.isNotEmpty;
+          _hasFollowerToday = followerData.isNotEmpty;
+          _hasAllBrandToday = _asMap(payload['all_brand_data']) != null;
           _isLoading = false;
         });
       }
@@ -206,6 +159,22 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
       debugPrint('Error loading activities: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Map<String, dynamic>? _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((key, val) => MapEntry(key.toString(), val));
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _asListOfMaps(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => row.map((key, val) => MapEntry(key.toString(), val)))
+        .toList();
   }
 
   @override
@@ -228,7 +197,7 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
           padding: const EdgeInsets.only(top: 12, bottom: 85),
           children: [
             _buildHeader(),
-            _buildProgressCard(),
+            _buildBonusHeroCard(),
             _buildTimelineSection(),
           ],
         ),
@@ -309,51 +278,18 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
               ],
             ),
           ),
-          // Notification bell lebih premium
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             margin: const EdgeInsets.only(top: 4),
-            decoration: BoxDecoration(
-              color: c.t.surface1,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: c.t.surface3),
-              boxShadow: [
-                BoxShadow(
-                  color: c.t.shellBackground.withValues(alpha: 0.4),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  Icons.notifications_none_rounded,
-                  color: c.muted,
-                  size: 19,
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: c.red,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: c.t.surface1, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: c.red.withValues(alpha: 0.5),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            alignment: Alignment.center,
+            child: AppNotificationBellButton(
+              backgroundColor: c.t.surface2,
+              borderColor: c.t.surface3,
+              iconColor: c.muted,
+              badgeColor: c.red,
+              badgeTextColor: c.t.textOnAccent,
+              routePath: '/promotor/notifications',
             ),
           ),
         ],
@@ -361,173 +297,109 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
     );
   }
 
-  Widget _buildProgressCard() {
-    double pct = _totalTasks > 0 ? (_finishedTasks / _totalTasks) * 100 : 0;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.t.heroGradientStart, c.t.heroGradientEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _buildBonusHeroCard() {
+    return GestureDetector(
+      onTap: () => context.pushNamed(AppRouteNames.promotorBonusDetail),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [c.t.heroGradientStart, c.t.heroGradientEnd],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: c.gold.withValues(alpha: 0.25)),
+          boxShadow: [
+            BoxShadow(
+              color: c.gold.withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: c.gold.withValues(alpha: 0.25)),
-        boxShadow: [
-          BoxShadow(
-            color: c.gold.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Shine garis di atas
-          Positioned(
-            top: -14,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 1.5,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    c.gold.withValues(alpha: 0),
-                    c.gold.withValues(alpha: 0.6),
-                    c.gold.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Glow radial kanan atas
-          Positioned(
-            top: -30,
-            right: -30,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    c.gold.withValues(alpha: 0.12),
-                    c.gold.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.7],
-                ),
-              ),
-            ),
-          ),
-          // Glow radial kiri bawah
-          Positioned(
-            bottom: -20,
-            left: -20,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    c.t.primaryAccentLight.withValues(alpha: 0.08),
-                    c.gold.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Progress hari ini',
-                        style: AppTextStyle.bodyMd(c.muted),
-                      ),
-                      const SizedBox(height: 3),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: '$_finishedTasks ',
-                              style: AppTextStyle.headingSm(
-                                c.gold,
-                                weight: FontWeight.bold,
-                              ),
-                            ),
-                            TextSpan(
-                              text: 'dari $_totalTasks selesai',
-                              style: AppTextStyle.bodyMd(
-                                c.cream2,
-                                weight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${pct.toInt()}%',
-                        style: AppTextStyle.heroNum(
-                          pct >= 100 ? c.green : c.gold,
-                          weight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'SELESAI',
-                        style: AppTextStyle.micro(
-                          c.muted,
-                          weight: FontWeight.w600,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                height: 6,
-                width: double.infinity,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: -10,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 1.5,
                 decoration: BoxDecoration(
-                  color: c.t.surface3,
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: pct / 100,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [c.gold, c.goldLt]),
-                      borderRadius: BorderRadius.circular(100),
-                      boxShadow: [
-                        BoxShadow(
-                          color: c.goldGlow,
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
+                  gradient: LinearGradient(
+                    colors: [
+                      c.gold.withValues(alpha: 0),
+                      c.gold.withValues(alpha: 0.6),
+                      c.gold.withValues(alpha: 0),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-        ],
+            ),
+            Positioned(
+              top: -24,
+              right: -24,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      c.gold.withValues(alpha: 0.12),
+                      c.gold.withValues(alpha: 0),
+                    ],
+                    stops: const [0.0, 0.7],
+                  ),
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Detail Bonus',
+                            style: AppTextStyle.titleMd(
+                              c.gold,
+                              weight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: c.gold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: c.gold.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.workspace_premium_rounded,
+                        color: c.gold,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -549,10 +421,6 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
             badge: _hasClockInToday
                 ? _StatusBadge.done('✓ Sudah', c)
                 : _StatusBadge.red('Belum', c),
-            chips: [
-              _MetaChip(icon: Icons.gps_fixed, text: 'GPS aktif'),
-              _MetaChip(icon: Icons.portrait, text: 'Foto selfie'),
-            ],
             onTap: () => context.push('/promotor/clock-in'),
           ),
 
@@ -564,10 +432,18 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
             badge: _hasStockTaskToday
                 ? _StatusBadge.done('✓ Selesai', c)
                 : _StatusBadge.red('Belum', c),
-            chips: _hasStockTaskToday
-                ? [_MetaChip(text: 'Input tersimpan', isGreen: true)]
-                : [_MetaChip(text: 'Fresh · Chip · Display')],
             onTap: () => context.push('/promotor/stock-input'),
+          ),
+
+          _TimelineItem(
+            icon: Icons.point_of_sale,
+            dotType: _hasSalesReportToday ? _DotType.done : _DotType.gold,
+            title: 'Input Penjualan',
+            titleColor: _hasSalesReportToday ? c.green : c.cream2,
+            badge: _hasSalesReportToday
+                ? _StatusBadge.done('✓ Terinput', c)
+                : _StatusBadge.red('Belum', c),
+            onTap: () => context.push('/promotor/sell-out'),
           ),
 
           _TimelineItem(
@@ -578,9 +454,6 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
             badge: _hasStockTaskToday
                 ? _StatusBadge.done('✓ Selesai', c)
                 : _StatusBadge.red('Belum', c),
-            chips: _hasStockTaskToday
-                ? []
-                : [_MetaChip(text: '16 item perlu dicek', isHighlight: true)],
             onTap: () => context.push('/promotor/stok-toko'),
           ),
 
@@ -589,49 +462,16 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
             dotType: _DotType.gold,
             title: 'VAST Finance',
             badge: _StatusBadge.dim('Buka', c),
-            chips: [
-              _MetaChip(text: 'Input'),
-              _MetaChip(text: 'Pending'),
-              _MetaChip(text: 'History'),
-              _MetaChip(text: 'Reminder'),
-            ],
             onTap: () => context.pushNamed('promotor-vast'),
           ),
 
           _TimelineItem(
-            icon: Icons.point_of_sale,
-            dotType: _hasSalesReportToday ? _DotType.done : _DotType.gold,
-            title: 'Lapor Jual',
-            titleColor: _hasSalesReportToday ? c.green : c.cream2,
-            badge: _hasSalesReportToday
-                ? _StatusBadge.done('✓ Terinput', c)
-                : _StatusBadge.red('Belum', c),
-            onTap: () => context.push('/promotor/sell-out'),
-          ),
-
-          const SizedBox(height: 8),
-          _buildGroupLabel('JADWAL & PENORMALAN'),
-
-          _TimelineItem(
-            icon: Icons.calendar_month,
-            dotType: _DotType.done,
-            title: 'Jadwal Bulanan',
-            titleColor: c.green,
-            badge: _StatusBadge.done('✓ Disetujui', c),
-            chips: [
-              _MetaChip(text: 'Submit ke SATOR', isGreen: true),
-              _MetaChip(text: 'Buka Jadwal', isGreen: true),
-            ],
-            onTap: () => context.push('/promotor/jadwal-bulanan'),
-          ),
-
-          _TimelineItem(
-            icon: Icons.qr_code_scanner,
-            dotType: _DotType.purple,
-            title: 'Penormalan IMEI',
-            badge: _StatusBadge.dim('10 pending', c),
-            chips: [_MetaChip(text: '10 perlu dikirim', isHighlight: true)],
-            onTap: () => context.push('/promotor/imei-normalization'),
+            icon: Icons.insights_outlined,
+            dotType: _DotType.blue,
+            title: 'Sell Out Insight',
+            badge: _StatusBadge.dim('Analisa', c),
+            onTap: () =>
+                context.pushNamed(AppRouteNames.promotorSelloutInsight),
           ),
 
           const SizedBox(height: 8),
@@ -639,25 +479,15 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
 
           _TimelineItem(
             icon: Icons.assignment_outlined,
-            dotType: _finishedTasks == _totalTasks ? _DotType.done : _DotType.gold,
+            dotType: _finishedTasks == _totalTasks
+                ? _DotType.done
+                : _DotType.gold,
             title: 'Laporan Aktivitas',
             titleColor: _finishedTasks == _totalTasks ? c.green : c.cream2,
             badge: _finishedTasks == _totalTasks
                 ? _StatusBadge.done('$_finishedTasks/$_totalTasks', c)
                 : _StatusBadge.gold('$_finishedTasks/$_totalTasks', c),
             onTap: () => context.pushNamed(AppRouteNames.aktivitasHarian),
-          ),
-
-          _TimelineItem(
-            icon: Icons.account_balance_wallet_outlined,
-            dotType: _DotType.done,
-            title: 'Detail Bonus',
-            badge: _StatusBadge.gold('34%', c),
-            hasProgressBar: true,
-            progressValue: 0.34,
-            progressLabelLeft: 'Rp 1.000.000',
-            progressLabelRight: 'dari Rp 3.000.000',
-            onTap: () => context.pushNamed(AppRouteNames.promotorBonusDetail),
           ),
 
           _TimelineItem(
@@ -668,10 +498,6 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
             badge: _hasPromotionToday
                 ? _StatusBadge.done('✓ Terkirim', c)
                 : _StatusBadge.red('Belum', c),
-            chips: [
-              _MetaChip(text: 'TikTok'),
-              _MetaChip(text: 'Instagram'),
-            ],
             onTap: () => context.push('/promotor/laporan-promosi'),
           ),
 
@@ -694,9 +520,36 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
             badge: _hasAllBrandToday
                 ? _StatusBadge.done('✓ Terkirim', c)
                 : _StatusBadge.red('Belum', c),
-            chips: [_MetaChip(text: 'Samsung · OPPO · Xiaomi')],
-            isLast: true,
             onTap: () => context.push('/promotor/laporan-allbrand'),
+          ),
+
+          const SizedBox(height: 8),
+          _buildGroupLabel('JADWAL & PENORMALAN'),
+
+          _TimelineItem(
+            icon: Icons.calendar_month,
+            dotType: _DotType.done,
+            title: 'Jadwal Bulanan',
+            titleColor: c.green,
+            badge: _StatusBadge.done('✓ Disetujui', c),
+            onTap: () => context.push('/promotor/jadwal-bulanan'),
+          ),
+
+          _TimelineItem(
+            icon: Icons.qr_code_scanner,
+            dotType: _DotType.purple,
+            title: 'Penormalan IMEI',
+            badge: _StatusBadge.dim('10 pending', c),
+            onTap: () => context.push('/promotor/imei-normalization'),
+          ),
+
+          _TimelineItem(
+            icon: Icons.people_alt_outlined,
+            dotType: _DotType.blue,
+            title: 'Data Konsumen',
+            badge: _StatusBadge.dim('Riwayat', c),
+            isLast: true,
+            onTap: () => context.pushNamed(AppRouteNames.promotorCustomerData),
           ),
         ],
       ),
@@ -717,10 +570,10 @@ class _PromotorLaporanTabState extends State<PromotorLaporanTab> {
           const SizedBox(width: 6),
           Text(
             text,
-            style: AppTextStyle.micro(
+            style: AppTextStyle.bodyMd(
               c.muted2,
               weight: FontWeight.w800,
-              letterSpacing: 1.6,
+              letterSpacing: 1.2,
             ),
           ),
           const SizedBox(width: 8),
@@ -777,20 +630,6 @@ class _StatusBadge {
       _StatusBadge(text: text, color: c.muted, bg: c.s2, border: c.s3);
 }
 
-class _MetaChip {
-  final String text;
-  final IconData? icon;
-  final bool isHighlight;
-  final bool isGreen;
-
-  _MetaChip({
-    required this.text,
-    this.icon,
-    this.isHighlight = false,
-    this.isGreen = false,
-  });
-}
-
 class _TimelineItem extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
@@ -799,12 +638,6 @@ class _TimelineItem extends StatelessWidget {
   final String title;
   final Color? titleColor;
   final _StatusBadge badge;
-  final List<_MetaChip>? chips;
-
-  final bool hasProgressBar;
-  final double progressValue;
-  final String progressLabelLeft;
-  final String progressLabelRight;
 
   final VoidCallback onTap;
 
@@ -816,17 +649,60 @@ class _TimelineItem extends StatelessWidget {
     required this.title,
     this.titleColor,
     required this.badge,
-    this.chips,
-    this.hasProgressBar = false,
-    this.progressValue = 0,
-    this.progressLabelLeft = '',
-    this.progressLabelRight = '',
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = _C.of(context);
+    final isLightMode = Theme.of(context).brightness == Brightness.light;
+    final warmSurface = isLightMode
+        ? Color.lerp(c.s1, c.goldDim, 0.12) ?? c.s1
+        : c.s1;
+    final warmSurfaceAlt = isLightMode
+        ? Color.lerp(c.bg, c.goldDim, 0.08) ?? c.bg
+        : c.s2;
+    final warmBorder = isLightMode
+        ? Color.lerp(c.s3, c.gold, 0.12) ?? c.s3
+        : c.s3;
+
+    BoxDecoration menuCardDecoration() {
+      if (isLightMode) {
+        return BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              warmSurface,
+              Color.lerp(warmSurface, c.gold, 0.045) ?? warmSurface,
+              warmSurfaceAlt,
+            ],
+            stops: const [0, 0.6, 1],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: warmBorder),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withValues(alpha: 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: c.gold.withValues(alpha: 0.05),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        );
+      }
+
+      return BoxDecoration(
+        color: warmSurface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: warmBorder),
+      );
+    }
+
     Color dotBg = c.s2;
     Color dotBorder = c.s4;
     Color iconColor = c.muted;
@@ -859,178 +735,60 @@ class _TimelineItem extends StatelessWidget {
         break;
     }
 
-    return InkWell(
-      onTap: onTap,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left Column: Dot & Line
-            SizedBox(
-              width: 32,
-              child: Column(
-                children: [
-                  const SizedBox(height: 3),
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: dotBg,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: dotBorder, width: 1.5),
-                    ),
-                    child: Icon(icon, color: iconColor, size: 15),
+    return Container(
+      margin: EdgeInsets.only(bottom: isLast ? 4 : 9),
+      decoration: menuCardDecoration(),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: dotBg,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: dotBorder, width: 1.3),
                   ),
-                  if (!isLast)
-                    Expanded(
-                      child: Container(
-                        width: 1,
-                        margin: const EdgeInsets.symmetric(vertical: 3),
-                        color: c.s3.withValues(alpha: 0.5),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // Right Column: Content
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 12,
-                  bottom: isLast ? 4 : 16,
-                  top: 4,
+                  child: Icon(icon, color: iconColor, size: 16),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: AppTextStyle.bodyMd(
-                              titleColor ?? c.cream2,
-                              weight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: badge.bg,
-                            border: Border.all(color: badge.border),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            badge.text,
-                            style: AppTextStyle.micro(
-                              badge.color,
-                              weight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTextStyle.bodyMd(
+                      titleColor ?? c.cream2,
+                      weight: FontWeight.w700,
                     ),
-                    if (chips != null && chips!.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      Wrap(
-                        spacing: 5,
-                        runSpacing: 5,
-                        children: chips!.map((chip) {
-                          Color cColor = c.muted2;
-                          Color cBg = c.s2;
-                          Color cBorder = c.s3;
-
-                          if (chip.isHighlight) {
-                            cColor = c.gold;
-                            cBg = c.goldDimBg;
-                            cBorder = c.gold.withValues(alpha: 0.2);
-                          } else if (chip.isGreen) {
-                            cColor = c.green;
-                            cBg = c.greenDim;
-                            cBorder = c.green.withValues(alpha: 0.2);
-                          }
-
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cBg,
-                              border: Border.all(color: cBorder),
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (chip.icon != null) ...[
-                                  Icon(chip.icon, size: 8, color: cColor),
-                                  const SizedBox(width: 3),
-                                ],
-                                Text(
-                                  chip.text,
-                                  style: AppTextStyle.micro(
-                                    cColor,
-                                    weight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                    if (hasProgressBar) ...[
-                      const SizedBox(height: 7),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            progressLabelLeft,
-                            style: AppTextStyle.micro(
-                              c.gold,
-                              weight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            progressLabelRight,
-                            style: AppTextStyle.micro(c.muted),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Container(
-                        height: 3,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: c.s3,
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: progressValue,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [c.gold, c.goldLt],
-                              ),
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: badge.bg,
+                    border: Border.all(color: badge.border),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    badge.text,
+                    style: AppTextStyle.micro(
+                      badge.color,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

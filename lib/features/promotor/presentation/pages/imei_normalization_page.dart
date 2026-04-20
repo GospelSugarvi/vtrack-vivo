@@ -7,7 +7,14 @@ import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
 import '../../../../ui/promotor/promotor.dart';
 
 class ImeiNormalizationPage extends StatefulWidget {
-  const ImeiNormalizationPage({super.key});
+  const ImeiNormalizationPage({
+    super.key,
+    this.initialNormalizationId,
+    this.initialNotificationType,
+  });
+
+  final String? initialNormalizationId;
+  final String? initialNotificationType;
 
   @override
   State<ImeiNormalizationPage> createState() => _ImeiNormalizationPageState();
@@ -21,6 +28,7 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
 
   bool _isLoading = true;
   bool _isSubmitting = false;
+  bool _hasAppliedInitialFocus = false;
   String? _promotorName;
   List<Map<String, dynamic>> _unreportedSales = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _imeiItems = <Map<String, dynamic>>[];
@@ -74,6 +82,7 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
               'product_variants!inner(ram_rom, color, products!inner(id, model_name))',
             )
             .eq('promotor_id', userId)
+            .isFilter('deleted_at', null)
             .order('transaction_date', ascending: false),
       ]);
 
@@ -112,6 +121,7 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
         );
         _isLoading = false;
       });
+      _applyInitialFocus();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -140,6 +150,48 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
     return item;
   }
 
+  void _applyInitialFocus() {
+    if (_hasAppliedInitialFocus || !mounted) return;
+    final focusId = widget.initialNormalizationId?.trim();
+    Map<String, dynamic>? focusedItem;
+    if (focusId != null && focusId.isNotEmpty) {
+      for (final item in _imeiItems) {
+        if ('${item['id']}' == focusId) {
+          focusedItem = item;
+          break;
+        }
+      }
+    }
+
+    var targetIndex = 0;
+    if (focusedItem != null) {
+      final status = '${focusedItem['status'] ?? ''}';
+      if (status == 'reported') targetIndex = 1;
+      if (status == 'ready_to_scan') targetIndex = 2;
+      if (status == 'scanned') targetIndex = 3;
+      if (status == 'ready_to_scan' && focusId != null) {
+        _selectedReadyIds
+          ..clear()
+          ..add(focusId);
+      }
+    } else {
+      switch (widget.initialNotificationType) {
+        case 'imei_normalization_ready':
+          targetIndex = 2;
+          break;
+        case 'imei_normalization_submitted':
+          targetIndex = 1;
+          break;
+      }
+    }
+
+    _hasAppliedInitialFocus = true;
+    if (_tabController.index != targetIndex) {
+      _tabController.index = targetIndex;
+    }
+    setState(() {});
+  }
+
   List<Map<String, dynamic>> _itemsByStatus(String status) {
     return _imeiItems.where((item) => item['status'] == status).toList();
   }
@@ -160,10 +212,46 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
     return '$title • $meta';
   }
 
+  Future<bool> _confirmSubmitSelectedImeis() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: t.background,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          'Konfirmasi Kirim IMEI',
+          style: PromotorText.display(size: 18, color: t.textPrimary),
+        ),
+        content: Text(
+          'Apa Anda yakin mau mengirimkan IMEI ini untuk dinormalkan oleh SATOR?',
+          style: PromotorText.outfit(
+            size: 13,
+            weight: FontWeight.w700,
+            color: t.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Ya, Kirim'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   Future<void> _submitSelectedImeis() async {
     if (_selectedUnreportedSaleIds.isEmpty || _isSubmitting) return;
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return;
+
+    final confirmed = await _confirmSubmitSelectedImeis();
+    if (!confirmed) return;
 
     setState(() => _isSubmitting = true);
     try {
@@ -198,10 +286,30 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
         throw Exception('Tidak ada IMEI valid yang bisa dikirim');
       }
 
-      await _supabase.from('imei_normalizations').upsert(
-        rows,
-        onConflict: 'imei,sold_at',
-      );
+      final insertedRows = await _supabase
+          .from('imei_normalizations')
+          .upsert(
+            rows
+                .map(
+                  (row) => {
+                    ...row,
+                    'status': 'pending',
+                    'sent_to_sator_at': null,
+                  },
+                )
+                .toList(),
+            onConflict: 'imei,sold_at',
+          )
+          .select('id');
+
+      for (final row in List<Map<String, dynamic>>.from(insertedRows)) {
+        final normalizationId = '${row['id'] ?? ''}'.trim();
+        if (normalizationId.isEmpty) continue;
+        await _supabase.rpc(
+          'send_imei_to_sator',
+          params: {'p_normalization_id': normalizationId},
+        );
+      }
       await _loadData();
       if (!mounted) return;
       await showSuccessDialog(
@@ -225,7 +333,10 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
     if (_selectedReadyIds.isEmpty) return;
     try {
       for (final id in _selectedReadyIds) {
-        await _supabase.rpc('mark_imei_scanned', params: {'p_normalization_id': id});
+        await _supabase.rpc(
+          'mark_imei_scanned',
+          params: {'p_normalization_id': id},
+        );
       }
       await _loadData();
       if (!mounted) return;
@@ -284,15 +395,26 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
     if (confirmed != true) return;
 
     try {
-      await _supabase.from('imei_normalizations').delete().eq('id', id);
+      final result = await _supabase.rpc(
+        'delete_promotor_imei_normalization_draft',
+        params: {'p_normalization_id': id},
+      );
+      final payload = Map<String, dynamic>.from(
+        (result as Map?) ?? const <String, dynamic>{},
+      );
+      if (payload['success'] != true) {
+        throw Exception(
+          '${payload['message'] ?? 'Item IMEI gagal dihapus.'}',
+        );
+      }
       if (!mounted) return;
       setState(() {
         _imeiItems = _imeiItems.where((row) => '${row['id']}' != id).toList();
         _selectedReadyIds.remove(id);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Item IMEI dihapus')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Item IMEI dihapus')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -439,7 +561,10 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
                 _buildItemTab(scannedItems, selectable: false),
               ],
             ),
-      bottomNavigationBar: _buildBottomBar(reportedItems.length, readyItems.length),
+      bottomNavigationBar: _buildBottomBar(
+        reportedItems.length,
+        readyItems.length,
+      ),
     );
   }
 
@@ -458,7 +583,9 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
                   onPressed: _selectedUnreportedSaleIds.isEmpty || _isSubmitting
                       ? null
                       : _submitSelectedImeis,
-                  child: Text(_isSubmitting ? 'Mengirim...' : 'Kirim IMEI Terpilih'),
+                  child: Text(
+                    _isSubmitting ? 'Mengirim...' : 'Kirim IMEI Terpilih',
+                  ),
                 ),
         ),
       );
@@ -557,7 +684,10 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
           ),
           child: CheckboxListTile(
             value: selected,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
             controlAffinity: ListTileControlAffinity.leading,
             checkboxShape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
@@ -601,6 +731,7 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
         final id = '${item['id']}';
         final selected = _selectedReadyIds.contains(id);
         final status = item['status']?.toString() ?? '-';
+        final isFocused = (widget.initialNormalizationId ?? '') == id;
 
         final rowContent = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,7 +773,10 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
               decoration: BoxDecoration(
                 color: t.surface1,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: t.surface3),
+                border: Border.all(
+                  color: isFocused ? t.primaryAccent : t.surface3,
+                  width: isFocused ? 1.4 : 1,
+                ),
               ),
               child: rowContent,
             ),
@@ -655,11 +789,17 @@ class _ImeiNormalizationPageState extends State<ImeiNormalizationPage>
             decoration: BoxDecoration(
               color: t.surface1,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: selected ? t.primaryAccent : t.surface3),
+              border: Border.all(
+                color: isFocused || selected ? t.primaryAccent : t.surface3,
+                width: isFocused ? 1.4 : 1,
+              ),
             ),
             child: CheckboxListTile(
               value: selected,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 4,
+              ),
               controlAffinity: ListTileControlAffinity.leading,
               checkboxShape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(6),

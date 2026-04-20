@@ -27,28 +27,13 @@ class _SatorStockManagementPageState extends State<SatorStockManagementPage> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('Sesi login tidak ditemukan');
-      final hierarchy = await _supabase
-          .from('hierarchy_sator_promotor')
-          .select('promotor_id')
-          .eq('sator_id', userId)
-          .eq('active', true);
-      final promotorIds = List<Map<String, dynamic>>.from(hierarchy)
-          .map((row) => row['promotor_id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toList();
-
-      final rows = promotorIds.isEmpty
-          ? <Map<String, dynamic>>[]
-          : List<Map<String, dynamic>>.from(
-              await _supabase
-                  .from('stok')
-                  .select('id, imei, tipe_stok, is_sold, promotor:promotor_id(full_name), stores(store_name)')
-                  .inFilter('promotor_id', promotorIds)
-                  .order('created_at', ascending: false)
-                  .limit(200),
-            );
+      final snapshotRaw = await _supabase.rpc(
+        'get_sator_stock_management_snapshot',
+      );
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      final rows = _parseMapList(snapshot['rows']);
 
       if (!mounted) return;
       setState(() {
@@ -62,6 +47,14 @@ class _SatorStockManagementPageState extends State<SatorStockManagementPage> {
         _isLoading = false;
       });
     }
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   @override
@@ -86,6 +79,9 @@ class _SatorStockManagementPageState extends State<SatorStockManagementPage> {
                   (row) => Card(
                     child: ListTile(
                       title: Text('${row['imei'] ?? '-'}'),
+                      subtitle: Text(
+                        '${row['promotor_name'] ?? 'Promotor'} • ${row['store_name'] ?? '-'}',
+                      ),
                       trailing: Text('${row['tipe_stok'] ?? '-'}'),
                     ),
                   ),

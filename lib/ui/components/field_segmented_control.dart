@@ -21,7 +21,7 @@ class FieldSegmentedControl extends StatelessWidget {
       builder: (context, constraints) {
         final hasBoundedWidth = constraints.hasBoundedWidth;
         return Container(
-          padding: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: tokens.surface2,
             borderRadius: BorderRadius.circular(999),
@@ -36,8 +36,8 @@ class FieldSegmentedControl extends StatelessWidget {
                 child: Container(
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
+                    horizontal: 7,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: active ? tokens.primaryAccent : Colors.transparent,
@@ -50,6 +50,7 @@ class FieldSegmentedControl extends StatelessWidget {
                       maxLines: 1,
                       softWrap: false,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: active ? tokens.textOnAccent : tokens.textMuted,
                       ),

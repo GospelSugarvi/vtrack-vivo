@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vtrack/core/utils/device_image_saver.dart';
 import 'package:vtrack/core/utils/success_dialog.dart';
 import 'package:vtrack/ui/foundation/field_theme_extensions.dart';
+
+import 'sell_in_order_export_widget.dart';
 
 enum SellInOrderComposerMode { recommendation, manual }
 
@@ -31,7 +32,6 @@ class SellInOrderComposerPage extends StatefulWidget {
 }
 
 class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
-  static const double _exportCanvasWidth = 860;
   FieldThemeTokens get t => context.fieldTokens;
   final _supabase = Supabase.instance.client;
   final _screenshotController = ScreenshotController();
@@ -42,7 +42,6 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     symbol: 'Rp ',
     decimalDigits: 0,
   );
-  final _amount = NumberFormat.decimalPattern('id_ID');
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -68,9 +67,6 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
   String get _saveLabel =>
       _isRecommendation ? 'Preview Gambar Rekomendasi' : 'Preview Draft Manual';
 
-  String get _exportDocumentTitle =>
-      _isRecommendation ? 'REKOMENDASI ORDER SELL IN' : 'ORDER MANUAL SELL IN';
-
   @override
   void initState() {
     super.initState();
@@ -90,72 +86,24 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('Sesi login tidak ditemukan');
-
-      final currentUserName = await _loadCurrentUserName(userId);
-      final storeResponse = await _supabase.rpc(
-        'get_store_stock_status',
-        params: {'p_sator_id': userId},
+      final snapshotRaw = await _supabase.rpc(
+        'get_sell_in_order_composer_snapshot',
+        params: {
+          'p_mode': _isRecommendation ? 'recommendation' : 'manual',
+          'p_store_id': widget.storeId,
+          'p_group_id': widget.groupId,
+        },
       );
-      final stores = List<Map<String, dynamic>>.from(storeResponse ?? []);
-
-      if (_isGroupMode) {
-        final groupId = widget.groupId!.trim();
-        final groupName = await _loadGroupName(groupId);
-        final rows = await _loadGroupRecommendationRows(groupId);
-        if (!mounted) return;
-        setState(() {
-          _stores = const [];
-          _selectedStoreId = null;
-          _selectedStoreName = groupName;
-          _currentUserName = currentUserName;
-          _rows = rows;
-          _seriesFilter = _defaultSeriesFilter(rows);
-          _isLoading = false;
-          _serverPreview = null;
-        });
-        _scheduleServerPreviewSync(immediate: true);
-        return;
-      }
-
-      String? selectedStoreId = widget.storeId;
-      String selectedStoreName = _selectedStoreName;
-
-      if (selectedStoreId == null || selectedStoreId.isEmpty) {
-        if (stores.isNotEmpty) {
-          selectedStoreId = stores.first['store_id']?.toString();
-          selectedStoreName = '${stores.first['store_name'] ?? 'Toko'}';
-        }
-      } else {
-        final matchedStore = stores.cast<Map<String, dynamic>?>().firstWhere(
-          (row) => row?['store_id']?.toString() == selectedStoreId,
-          orElse: () => null,
-        );
-        if (matchedStore != null) {
-          selectedStoreName = '${matchedStore['store_name'] ?? 'Toko'}';
-        } else {
-          final store = await _supabase
-              .from('stores')
-              .select('store_name')
-              .eq('id', selectedStoreId)
-              .maybeSingle();
-          selectedStoreName = '${store?['store_name'] ?? 'Toko'}';
-          if (store != null) {
-            stores.insert(0, {
-              'store_id': selectedStoreId,
-              'store_name': selectedStoreName,
-              'group_name': '',
-              'empty_count': 0,
-              'low_count': 0,
-            });
-          }
-        }
-      }
-
-      final rows = selectedStoreId == null || selectedStoreId.isEmpty
-          ? const <Map<String, dynamic>>[]
-          : await _loadRecommendationRows(selectedStoreId);
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      final stores = _parseMapList(snapshot['stores']);
+      final rows = _parseMapList(snapshot['rows']);
+      final selectedStoreId = snapshot['selected_store_id']?.toString();
+      final selectedStoreName =
+          '${snapshot['selected_store_name'] ?? _selectedStoreName}';
+      final currentUserName =
+          '${snapshot['current_user_name'] ?? _currentUserName}';
 
       if (!mounted) return;
       setState(() {
@@ -184,138 +132,35 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     }
   }
 
-  Future<String> _loadCurrentUserName(String userId) async {
-    try {
-      final row = await _supabase
-          .from('users')
-          .select('full_name')
-          .eq('id', userId)
-          .maybeSingle();
-      final fullName = '${row?['full_name'] ?? ''}'.trim();
-      if (fullName.isNotEmpty) return fullName;
-    } catch (_) {}
-
-    final metadata =
-        _supabase.auth.currentUser?.userMetadata ?? const <String, dynamic>{};
-    final fallback = '${metadata['full_name'] ?? metadata['name'] ?? ''}'
-        .trim();
-    if (fallback.isNotEmpty) return fallback;
-    return 'SATOR';
-  }
-
-  Future<String> _loadGroupName(String groupId) async {
-    final row = await _supabase
-        .from('store_groups')
-        .select('group_name')
-        .eq('id', groupId)
-        .maybeSingle();
-    return '${row?['group_name'] ?? 'Grup Toko'}';
-  }
-
-  Future<List<Map<String, dynamic>>> _loadRecommendationRows(
-    String storeId,
-  ) async {
-    final response = await _supabase.rpc(
-      'get_store_recommendations',
-      params: {'p_store_id': storeId},
-    );
-    final rows = List<Map<String, dynamic>>.from(response ?? []);
-
-    final normalized = rows
-        .map((row) {
-          final orderQty = _toInt(row['order_qty']);
-          final variantId = '${row['variant_id'] ?? ''}';
-          return {
-            ...row,
-            'variant_id': variantId,
-            'product_name': '${row['product_name'] ?? 'Produk'}',
-            'network_type': '${row['network_type'] ?? ''}',
-            'variant': '${row['variant'] ?? '-'}',
-            'color': '${row['color'] ?? '-'}',
-            'modal': _toNum(row['modal']),
-            'selected_qty': _isRecommendation ? orderQty : 0,
-          };
-        })
-        .where((row) {
-          if (!_isRecommendation) return true;
-          return _toInt(row['order_qty']) > 0;
-        })
-        .toList();
-
-    normalized.sort((a, b) {
-      final orderCompare = _toInt(
-        b['order_qty'],
-      ).compareTo(_toInt(a['order_qty']));
-      if (orderCompare != 0) return orderCompare;
-      return '${a['product_name']}'.compareTo('${b['product_name']}');
-    });
-
-    return normalized;
-  }
-
-  Future<List<Map<String, dynamic>>> _loadGroupRecommendationRows(
-    String groupId,
-  ) async {
-    final response = await _supabase.rpc(
-      'get_group_store_recommendations',
-      params: {'p_group_id': groupId},
-    );
-    final rows = List<Map<String, dynamic>>.from(response ?? []);
-
-    final normalized = rows
-        .map((row) {
-          final orderQty = _toInt(row['order_qty']);
-          final variantId = '${row['variant_id'] ?? ''}';
-          return {
-            ...row,
-            'variant_id': variantId,
-            'product_name': '${row['product_name'] ?? 'Produk'}',
-            'network_type': '${row['network_type'] ?? ''}',
-            'variant': '${row['variant'] ?? '-'}',
-            'color': '${row['color'] ?? '-'}',
-            'modal': _toNum(row['modal']),
-            'selected_qty': _isRecommendation ? orderQty : 0,
-          };
-        })
-        .where((row) {
-          if (!_isRecommendation) return true;
-          return _toInt(row['order_qty']) > 0;
-        })
-        .toList();
-
-    normalized.sort((a, b) {
-      final orderCompare = _toInt(
-        b['order_qty'],
-      ).compareTo(_toInt(a['order_qty']));
-      if (orderCompare != 0) return orderCompare;
-      return '${a['product_name']}'.compareTo('${b['product_name']}');
-    });
-
-    return normalized;
-  }
-
   Future<void> _onStoreChanged(String? storeId) async {
     if (storeId == null || storeId.isEmpty || storeId == _selectedStoreId) {
       return;
     }
 
-    final matchedStore = _stores.cast<Map<String, dynamic>?>().firstWhere(
-      (row) => row?['store_id']?.toString() == storeId,
-      orElse: () => null,
-    );
-
     if (!mounted) return;
     setState(() {
       _isLoading = true;
       _selectedStoreId = storeId;
-      _selectedStoreName = '${matchedStore?['store_name'] ?? 'Toko'}';
       _rows = const [];
     });
 
     try {
-      final rows = await _loadRecommendationRows(storeId);
+      final snapshotRaw = await _supabase.rpc(
+        'get_sell_in_order_composer_snapshot',
+        params: {
+          'p_mode': _isRecommendation ? 'recommendation' : 'manual',
+          'p_store_id': storeId,
+          'p_group_id': widget.groupId,
+        },
+      );
+      final snapshot = Map<String, dynamic>.from(
+        (snapshotRaw as Map?) ?? const <String, dynamic>{},
+      );
+      final rows = _parseMapList(snapshot['rows']);
       if (!mounted) return;
       setState(() {
+        _stores = _parseMapList(snapshot['stores']);
+        _selectedStoreName = '${snapshot['selected_store_name'] ?? 'Toko'}';
         _rows = rows;
         _seriesFilter = _defaultSeriesFilter(rows);
         _isLoading = false;
@@ -333,12 +178,21 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     }
   }
 
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
+  }
+
   void _changeQty(int index, int delta) {
     final rows = List<Map<String, dynamic>>.from(_rows);
     final current = _toInt(rows[index]['selected_qty']);
+    final maxQty = _maxSelectableQty(rows[index]);
     rows[index] = {
       ...rows[index],
-      'selected_qty': (current + delta).clamp(0, 9999),
+      'selected_qty': (current + delta).clamp(0, maxQty),
     };
     setState(() {
       _rows = rows;
@@ -375,11 +229,21 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
       grouped.putIfAbsent(key, () => <Map<String, dynamic>>[]).add(row);
     }
     final entries = grouped.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+      ..sort((a, b) {
+        final priceA = a.value.isEmpty ? 0 : _toNum(a.value.first['price']);
+        final priceB = b.value.isEmpty ? 0 : _toNum(b.value.first['price']);
+        final priceCompare = priceA.compareTo(priceB);
+        if (priceCompare != 0) return priceCompare;
+        return a.key.compareTo(b.key);
+      });
     for (final entry in entries) {
-      entry.value.sort(
-        (a, b) => '${a['color'] ?? ''}'.compareTo('${b['color'] ?? ''}'),
-      );
+      entry.value.sort((a, b) {
+        final priceA = _toNum(a['price']);
+        final priceB = _toNum(b['price']);
+        final priceCompare = priceA.compareTo(priceB);
+        if (priceCompare != 0) return priceCompare;
+        return '${a['color'] ?? ''}'.compareTo('${b['color'] ?? ''}');
+      });
     }
     return entries;
   }
@@ -707,13 +571,8 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
           '${prefix}_${sanitizedStore.isEmpty ? 'toko' : sanitizedStore}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}';
 
       if (!kIsWeb) {
-        final result = await ImageGallerySaverPlus.saveImage(
-          bytes,
-          quality: 100,
-          name: fileName,
-        );
+        final success = await DeviceImageSaver.saveImage(bytes, name: fileName);
         if (!mounted) return;
-        final success = result['isSuccess'] == true;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -804,6 +663,18 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     return t.success;
   }
 
+  Color _statusSurface(Color color) {
+    return Color.alphaBlend(color.withValues(alpha: 0.10), t.surface1);
+  }
+
+  Color _statusStroke(Color color) {
+    return color.withValues(alpha: 0.16);
+  }
+
+  Color _statusInk(Color color) {
+    return Color.lerp(color, t.textPrimary, 0.38) ?? color;
+  }
+
   String _warehouseStockLabel(int warehouseStock) {
     if (warehouseStock <= 0) return 'Kosong';
     return 'Ready';
@@ -815,500 +686,27 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     return int.tryParse('${value ?? ''}') ?? 0;
   }
 
+  int _maxSelectableQty(Map<String, dynamic> row) {
+    final availableGudang = _toInt(row['available_gudang']);
+    final warehouseStock = _toInt(row['warehouse_stock']);
+    final maxQty = availableGudang > 0 ? availableGudang : warehouseStock;
+    return maxQty < 0 ? 0 : maxQty;
+  }
+
   num _toNum(dynamic value) {
     if (value is num) return value;
     return num.tryParse('${value ?? ''}') ?? 0;
   }
 
-  List<Map<String, dynamic>> get _exportItems {
-    final rows = List<Map<String, dynamic>>.from(_serverPreviewItems);
-    rows.sort((a, b) {
-      final productCompare = '${a['product_name'] ?? ''}'.compareTo(
-        '${b['product_name'] ?? ''}',
-      );
-      if (productCompare != 0) return productCompare;
-      final networkCompare = '${a['network_type'] ?? ''}'.compareTo(
-        '${b['network_type'] ?? ''}',
-      );
-      if (networkCompare != 0) return networkCompare;
-      final variantCompare = '${a['variant'] ?? ''}'.compareTo(
-        '${b['variant'] ?? ''}',
-      );
-      if (variantCompare != 0) return variantCompare;
-      return '${a['color'] ?? ''}'.compareTo('${b['color'] ?? ''}');
-    });
-    return rows;
-  }
-
   Widget _buildRecommendationExportWidget() {
-    final dateText = DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now());
-    final items = _exportItems;
-    final yearText = DateTime.now().year.toString();
-    return Container(
-      width: _exportCanvasWidth,
-      color: const Color(0xFFFAF8F3),
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF8F3),
-              border: Border.all(color: const Color(0xFFD8D2C4)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(26, 20, 26, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _exportDocumentTitle,
-                    style: GoogleFonts.spaceMono(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF9A9080),
-                      letterSpacing: 1.8,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _selectedStoreName,
-                    softWrap: true,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1C1A16),
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '$dateText\n$_currentUserName',
-                          textAlign: TextAlign.left,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF7A7060),
-                            height: 1.6,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        color: const Color(0xFF1C1A16),
-                        child: Text(
-                  'SELL IN',
-                          style: GoogleFonts.spaceMono(
-                            fontSize: 7.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFAF8F3),
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(height: 2, color: const Color(0xFF1C1A16)),
-          Container(height: 1, color: const Color(0xFF1C1A16)),
-          _buildTransferAccountCard(),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF8F3),
-              border: Border.all(color: const Color(0xFFD8D2C4)),
-            ),
-            child: Column(
-              children: [
-                _buildExportTableHeader(),
-                ...items.asMap().entries.map(
-                  (entry) => _buildExportTableRow(entry.key + 1, entry.value),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFAF8F3),
-              border: Border(
-                left: BorderSide(color: Color(0xFFD8D2C4)),
-                right: BorderSide(color: Color(0xFFD8D2C4)),
-                bottom: BorderSide(color: Color(0xFFD8D2C4)),
-                top: BorderSide(color: Color(0xFF1C1A16), width: 2),
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildExportTotalLine('Total Qty', '$_selectedTotalQty unit'),
-                _buildExportTotalLine(
-                  'Total Nominal',
-                  _currency.format(_selectedTotalValue),
-                  emphasize: true,
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF7F3EB),
-              border: Border(
-                top: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-                left: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-                right: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-                bottom: BorderSide(color: Color(0xFFD8D2C4), width: 0.8),
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  '${_selectedStoreName.toUpperCase()} © $yearText',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF8E836F),
-                    letterSpacing: 0.9,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'VIVO INDONESIA',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF8E836F),
-                    letterSpacing: 0.9,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransferAccountCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0ECE3),
-        border: Border.all(color: const Color(0xFFD8D2C4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'REKENING TUJUAN TRANSFER',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 7.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF9A9080),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Bank BNI',
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'PT. Long Yin Teknologi Informasi',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF5A5040),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'NO. REKENING',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 7.5,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF9A9080),
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '804 879 804',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1C1A16),
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExportTableHeader() {
-    return Container(
-      color: const Color(0xFFF0ECE3),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      child: Row(
-        children: [
-          _exportHeaderCell('Item', flex: 9, align: TextAlign.left),
-          _exportHeaderCell('Qty', flex: 2, align: TextAlign.center),
-          _exportHeaderCell('Modal', flex: 4, align: TextAlign.right),
-          _exportHeaderCell('SRP', flex: 4, align: TextAlign.right),
-          _exportHeaderCell('Subtotal', flex: 4, align: TextAlign.right),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExportTableRow(int index, Map<String, dynamic> row) {
-    final qty = _displayQty(row);
-    final price = _toNum(row['price']);
-    final modal = _toNum(row['modal']);
-    final specs = [
-      '${row['network_type'] ?? ''}'.trim(),
-      '${row['variant'] ?? ''}'.trim(),
-    ].where((part) => part.isNotEmpty).join(' • ');
-    final color = '${row['color'] ?? ''}'.trim();
-    final productTitle = color.isEmpty
-        ? '${row['product_name'] ?? 'Produk'}'
-        : '${row['product_name'] ?? 'Produk'} ($color)';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: index.isEven ? const Color(0xFFF5F1EA) : const Color(0xFFFAF8F3),
-        border: const Border(
-          top: BorderSide(color: Color(0xFFDDD8CE), width: 0.5),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 9,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    productTitle,
-                    softWrap: true,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1C1A16),
-                      height: 1.2,
-                    ),
-                  ),
-                  if (specs.isNotEmpty) ...[
-                    const SizedBox(height: 1),
-                    Text(
-                      specs,
-                      softWrap: true,
-                      style: GoogleFonts.outfit(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF6E6253),
-                        height: 1.1,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          _exportValueCell(
-            '$qty',
-            flex: 2,
-            align: TextAlign.center,
-            weight: FontWeight.w700,
-            fontFamily: GoogleFonts.spaceMono().fontFamily,
-            fontSize: 14.5,
-          ),
-          _exportValueCell(
-            modal > 0 ? _amount.format(modal) : '-',
-            flex: 4,
-            align: TextAlign.right,
-            scaleDown: true,
-            fontSize: 14.5,
-            color: const Color(0xFF7A7060),
-          ),
-          _exportValueCell(
-            _amount.format(price),
-            flex: 4,
-            align: TextAlign.right,
-            scaleDown: true,
-            fontSize: 14.5,
-            color: const Color(0xFF1C1A16),
-          ),
-          _exportValueCell(
-            _amount.format(_toNum(row['subtotal']) > 0 ? _toNum(row['subtotal']) : modal * qty),
-            flex: 4,
-            align: TextAlign.right,
-            scaleDown: true,
-            weight: FontWeight.w600,
-            fontSize: 14.5,
-            color: const Color(0xFF1C1A16),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _exportHeaderCell(
-    String text, {
-    required int flex,
-    TextAlign align = TextAlign.left,
-  }) {
-    return Expanded(
-      flex: flex,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Text(
-          text,
-          textAlign: align,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.spaceMono(
-            fontSize: 8.5,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF9A9080),
-            letterSpacing: 0.8,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _exportValueCell(
-    String text, {
-    required int flex,
-    TextAlign align = TextAlign.left,
-    FontWeight weight = FontWeight.w600,
-    bool scaleDown = false,
-    double fontSize = 10,
-    String? fontFamily,
-    Color? color,
-  }) {
-    return Expanded(
-      flex: flex,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: scaleDown
-            ? FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: align == TextAlign.right
-                    ? Alignment.centerRight
-                    : align == TextAlign.center
-                    ? Alignment.center
-                    : Alignment.centerLeft,
-                child: Text(
-                  text,
-                  textAlign: align,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: weight,
-                    fontFamily: fontFamily,
-                    color: color ?? const Color(0xFF2A2620),
-                    height: 1.2,
-                  ),
-                ),
-              )
-            : Text(
-                text,
-                textAlign: align,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: weight,
-                  fontFamily: fontFamily,
-                  color: color ?? const Color(0xFF2A2620),
-                  height: 1.2,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildExportTotalLine(
-    String label,
-    String value, {
-    bool emphasize = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: emphasize ? Colors.transparent : const Color(0xFFDDD8CE),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: GoogleFonts.spaceMono(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF9A9080),
-              letterSpacing: 0.8,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: emphasize
-                ? GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                    height: 1.05,
-                  )
-                : GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1C1A16),
-                  ),
-          ),
-        ],
-      ),
+    return buildSellInOrderExportWidget(
+      storeName: _selectedStoreName,
+      orderDate: DateTime.now(),
+      authorName: _currentUserName,
+      items: List<Map<String, dynamic>>.from(_serverPreviewItems),
+      totalQty: _selectedTotalQty,
+      totalValue: _selectedTotalValue,
+      notes: _notesController.text.trim(),
     );
   }
 
@@ -1329,19 +727,21 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                 children: [
-                  if (!_isGroupMode) _buildStoreSelector(),
-                  if (!_isGroupMode) const SizedBox(height: 12),
                   _buildControls(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   if (_groupedModelRows.isEmpty)
                     _buildEmptyState()
                   else ...[
                     ..._groupedModelRows.map(
                       (group) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: 8),
                         child: _buildModelGroup(group.key, group.value),
                       ),
                     ),
+                  ],
+                  if (!_isRecommendation) ...[
+                    const SizedBox(height: 4),
+                    _buildNotesField(),
                   ],
                 ],
               ),
@@ -1349,99 +749,79 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
           decoration: BoxDecoration(
-            color: t.surface1,
+            color: t.background,
             border: Border(top: BorderSide(color: t.surface3)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '$_selectedTotalItems item • $_selectedTotalQty unit',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: t.textPrimary,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            decoration: BoxDecoration(
+              color: t.surface1,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: t.surface3),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '$_selectedTotalItems item • $_selectedTotalQty unit',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: t.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  Text(
-                    _isSyncingPreview
-                        ? '...'
-                        : _currency.format(_selectedTotalValue),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: t.primaryAccent,
+                    Text(
+                      _isSyncingPreview
+                          ? '...'
+                          : _currency.format(_selectedTotalValue),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: t.primaryAccent,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _isSaving ? null : _handlePrimaryAction,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            _isRecommendation
+                                ? Icons.image_outlined
+                                : Icons.save_outlined,
+                          ),
+                    label: Text(
+                      _isSaving
+                          ? (_isRecommendation
+                                ? 'Menyiapkan Preview...'
+                                : 'Menyimpan...')
+                          : _saveLabel,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _isSaving ? null : _handlePrimaryAction,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          _isRecommendation
-                              ? Icons.image_outlined
-                              : Icons.save_outlined,
-                        ),
-                  label: Text(
-                    _isSaving
-                        ? (_isRecommendation
-                              ? 'Menyiapkan Preview...'
-                              : 'Menyimpan...')
-                        : _saveLabel,
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStoreSelector() {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: DropdownButtonFormField<String>(
-          key: ValueKey(_selectedStoreId),
-          initialValue: _selectedStoreId,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            isDense: true,
-          ),
-          items: _stores
-              .map(
-                (store) => DropdownMenuItem<String>(
-                  value: store['store_id']?.toString(),
-                  child: Text(
-                    [
-                      '${store['store_name'] ?? 'Toko'}',
-                      if ('${store['group_name'] ?? ''}'.trim().isNotEmpty)
-                        '${store['group_name']}',
-                    ].join(' • '),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: _onStoreChanged,
         ),
       ),
     );
@@ -1451,55 +831,220 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: _searchController,
-              onChanged: (value) =>
-                  setState(() => _searchQuery = value.trim().toLowerCase()),
-              decoration: InputDecoration(
-                hintText: 'Cari produk, varian, atau warna',
-                prefixIcon: const Icon(Icons.search),
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            _buildControlSectionLabel(
+              _isGroupMode ? 'Pencarian Produk' : 'Toko & Pencarian',
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
-              children: _availableSeries
-                  .map(
-                    (series) => Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: series == _availableSeries.last ? 0 : 6,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!_isGroupMode)
+                  Expanded(
+                    flex: 6,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: t.surface2,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: t.surface3),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey(_selectedStoreId),
+                        initialValue: _selectedStoreId,
+                        isExpanded: true,
+                        icon: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: t.textMutedStrong,
                         ),
-                        child: _buildFilterChip(series, series),
+                        decoration: InputDecoration(
+                          labelText: 'Nama Toko',
+                          labelStyle: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: t.textMutedStrong,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                        ),
+                        dropdownColor: t.background,
+                        items: _stores
+                            .map(
+                              (store) => DropdownMenuItem<String>(
+                                value: store['store_id']?.toString(),
+                                child: Text(
+                                  [
+                                    '${store['store_name'] ?? 'Toko'}',
+                                    if (_shouldShowStoreGroupName(
+                                      store['group_name'],
+                                    ))
+                                      '${store['group_name']}',
+                                  ].join(' • '),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: t.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _onStoreChanged,
                       ),
                     ),
-                  )
-                  .toList(),
-            ),
-            if (!_isRecommendation) ...[
-              const SizedBox(height: 10),
-              TextField(
-                controller: _notesController,
-                minLines: 2,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Catatan order (opsional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  ),
+                if (!_isGroupMode) const SizedBox(width: 8),
+                Expanded(
+                  flex: _isGroupMode ? 1 : 5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: t.surface2,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: t.surface3),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) => setState(
+                        () => _searchQuery = value.trim().toLowerCase(),
+                      ),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: t.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Cari produk atau warna',
+                        hintStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: t.textMuted,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          size: 20,
+                          color: t.textMutedStrong,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildControlSectionLabel('Seri Produk'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: t.surface2,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: t.surface3),
               ),
-            ],
+              child: Row(
+                children: _availableSeries
+                    .map(
+                      (series) => Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: series == _availableSeries.last ? 0 : 6,
+                          ),
+                          child: _buildFilterChip(series, series),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildControlSectionLabel(String text) {
+    return Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.8,
+        color: t.textMutedStrong,
+      ),
+    );
+  }
+
+  Widget _buildNotesField() {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Container(
+        decoration: BoxDecoration(
+          color: t.surface1,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: t.surface3),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'NOTES',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  color: t.textMutedStrong,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: t.background,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: t.surface3),
+                ),
+                child: TextField(
+                  controller: _notesController,
+                  minLines: 2,
+                  maxLines: 3,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Contoh: batas transfer jam 3 sore',
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _shouldShowStoreGroupName(dynamic groupName) {
+    final normalized = '${groupName ?? ''}'.trim();
+    if (normalized.isEmpty) return false;
+    final lower = normalized.toLowerCase();
+    return lower != 'ungrouped' && !lower.startsWith('ungrouped ');
   }
 
   Widget _buildFilterChip(String value, String label) {
@@ -1511,48 +1056,107 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: selected ? t.primaryAccent : t.textMutedStrong,
+            color: selected ? t.textOnAccent : t.textMutedStrong,
+            letterSpacing: 0.25,
           ),
         ),
       ),
       selected: selected,
       onSelected: (_) => setState(() => _seriesFilter = value),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      visualDensity: const VisualDensity(horizontal: -3, vertical: -4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       labelPadding: EdgeInsets.zero,
-      side: BorderSide(color: selected ? t.primaryAccent : t.surface3),
+      side: BorderSide(
+        color: selected ? t.primaryAccent : Colors.transparent,
+        width: selected ? 1.3 : 1,
+      ),
       backgroundColor: t.background,
-      selectedColor: t.primaryAccentSoft,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      selectedColor: t.primaryAccent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 
   Widget _buildModelGroup(String key, List<Map<String, dynamic>> rows) {
     final first = rows.first;
-    final title =
-        '${first['product_name'] ?? 'Produk'} ${first['variant'] ?? '-'}';
-    final selectedQty = rows.fold<int>(
+    final productName = '${first['product_name'] ?? 'Produk'}';
+    final variantLabel = '${first['variant'] ?? '-'}';
+    final totalStoreStock = rows.fold<int>(
       0,
-      (sum, row) => sum + _toInt(row['selected_qty']),
+      (sum, row) => sum + _toInt(row['current_stock']),
     );
+    final totalMinStock = rows.fold<int>(
+      0,
+      (sum, row) => sum + _toInt(row['min_stock']),
+    );
+    final totalWarehouseStock = rows.fold<int>(
+      0,
+      (sum, row) => sum + _toInt(row['warehouse_stock']),
+    );
+    final storeTone = _statusColor(
+      totalStoreStock <= 0
+          ? 'HABIS'
+          : totalStoreStock < totalMinStock
+          ? 'KURANG'
+          : 'CUKUP',
+    );
+    final storeLabel = _storeStockLabel(totalStoreStock, totalMinStock);
+    final warehouseTone = _warehouseStockColor(totalWarehouseStock);
+    final warehouseLabel = _warehouseStockLabel(totalWarehouseStock);
+    final isExpanded = _expandedModelKeys.contains(key);
 
     return Container(
       decoration: BoxDecoration(
         color: t.surface1,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: t.surface3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isExpanded ? t.primaryAccentSoft : t.surface3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           key: PageStorageKey(key),
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-          childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          tilePadding: const EdgeInsets.fromLTRB(10, 6, 10, 5),
+          childrenPadding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
           minTileHeight: 52,
-          initiallyExpanded: _expandedModelKeys.contains(key),
+          initiallyExpanded: isExpanded,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          trailing: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: isExpanded ? t.primaryAccentSoft : t.surface2,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isExpanded
+                    ? t.primaryAccent.withValues(alpha: 0.28)
+                    : t.surface3,
+              ),
+            ),
+            child: Icon(
+              isExpanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              size: 14,
+              color: isExpanded ? t.primaryAccent : t.textMutedStrong,
+            ),
+          ),
           onExpansionChanged: (expanded) {
             setState(() {
               if (expanded) {
@@ -1562,28 +1166,70 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
               }
             });
           },
-          title: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: t.textPrimary,
-            ),
-          ),
-          subtitle: Text(
-            '${rows.length} warna${selectedQty > 0 ? ' • dipilih $selectedQty' : ''}',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: t.textMutedStrong,
-            ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          productName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: t.textPrimary,
+                            height: 1.05,
+                          ),
+                        ),
+                        const SizedBox(height: 0),
+                        Text(
+                          variantLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: t.textMutedStrong,
+                            letterSpacing: 0.15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: _buildHeaderInlineStatus(
+                      icon: Icons.storefront_outlined,
+                      title: 'Toko',
+                      status: storeLabel,
+                      value: '$totalStoreStock',
+                      color: storeTone,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Flexible(
+                    child: _buildHeaderInlineStatus(
+                      icon: Icons.warehouse_outlined,
+                      title: 'Gudang',
+                      status: warehouseLabel,
+                      value: '$totalWarehouseStock',
+                      color: warehouseTone,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           children: rows
               .map(
                 (row) => Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: 3),
                   child: _buildProductCard(row),
                 ),
               )
@@ -1593,31 +1239,106 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     );
   }
 
+  Widget _buildHeaderInlineStatus({
+    required IconData icon,
+    required String title,
+    required String status,
+    required String value,
+    required Color color,
+  }) {
+    final surfaceColor = _statusSurface(color);
+    final borderColor = _statusStroke(color);
+    final inkColor = _statusInk(color);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: inkColor),
+          const SizedBox(width: 2),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w800,
+                      color: inkColor,
+                    ),
+                  ),
+                  const SizedBox(width: 1),
+                  Text(
+                    status,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      color: inkColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              color: inkColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProductCard(Map<String, dynamic> row) {
     final qty = _toInt(row['selected_qty']);
-    final orderQty = _toInt(row['order_qty']);
     final currentStock = _toInt(row['current_stock']);
     final minStock = _toInt(row['min_stock']);
     final shortageQty = _toInt(row['shortage_qty']);
     final warehouseStock = _toInt(row['warehouse_stock']);
+    final maxSelectableQty = _maxSelectableQty(row);
     final unfulfilledQty = _toInt(row['unfulfilled_qty']);
-    final status = '${row['status'] ?? 'CUKUP'}';
-    final statusColor = _statusColor(status);
+    final statusColor = _statusColor('${row['status'] ?? 'CUKUP'}');
     final storeStockLabel = _storeStockLabel(currentStock, minStock);
     final warehouseTone = _warehouseStockColor(warehouseStock);
     final warehouseLabel = _warehouseStockLabel(warehouseStock);
     final recommendationStatus = '${row['recommendation_status'] ?? ''}';
     final recommendationColor = _recommendationColor(recommendationStatus);
+    final storeSurfaceColor = _statusSurface(statusColor);
+    final storeBorderColor = _statusStroke(statusColor);
+    final storeInkColor = _statusInk(statusColor);
+    final warehouseSurfaceColor = _statusSurface(warehouseTone);
+    final warehouseBorderColor = _statusStroke(warehouseTone);
+    final warehouseInkColor = _statusInk(warehouseTone);
     final previewItem =
         _serverPreviewItemByVariantId['${row['variant_id'] ?? ''}'];
-    final previewQty = _displayQty(Map<String, dynamic>.from(previewItem ?? const {}));
+    final previewQty = _displayQty(
+      Map<String, dynamic>.from(previewItem ?? const {}),
+    );
     final lineSubtotal = _toNum(previewItem?['subtotal']);
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: t.background,
-        borderRadius: BorderRadius.circular(10),
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: t.surface3.withValues(alpha: 0.85)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1645,89 +1366,94 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: statusColor,
-                  ),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Row(
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: statusColor.withValues(alpha: 0.18)),
+                    color: storeSurfaceColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: storeBorderColor),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.storefront_outlined, size: 16, color: statusColor),
-                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.storefront_outlined,
+                        size: 11,
+                        color: storeInkColor,
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           'Stok toko $storeStockLabel',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w800,
-                            color: statusColor,
+                            color: storeInkColor,
                           ),
                         ),
                       ),
                       Text(
                         '$currentStock',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w900,
-                          color: statusColor,
+                          color: storeInkColor,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: warehouseTone.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: warehouseTone.withValues(alpha: 0.2)),
+                    color: warehouseSurfaceColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: warehouseBorderColor),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.warehouse_outlined, size: 16, color: warehouseTone),
-                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.warehouse_outlined,
+                        size: 11,
+                        color: warehouseInkColor,
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
-                        child: Text(
-                          'Gudang $warehouseLabel',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: warehouseTone,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Gudang $warehouseLabel',
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: warehouseInkColor,
+                            ),
                           ),
                         ),
                       ),
+                      const SizedBox(width: 4),
                       Text(
                         '$warehouseStock',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w900,
-                          color: warehouseTone,
+                          color: warehouseInkColor,
                         ),
                       ),
                     ],
@@ -1778,38 +1504,36 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Row(
             children: [
-              Expanded(child: _metricChip('Stok', '$currentStock')),
-              const SizedBox(width: 6),
               Expanded(child: _metricChip('Min', '$minStock')),
               const SizedBox(width: 6),
               Expanded(child: _metricChip('Butuh', '$shortageQty')),
               const SizedBox(width: 6),
-              Expanded(child: _metricChip('Gudang', '$warehouseStock')),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(child: _metricChip('Saran', '$orderQty')),
+              Expanded(
+                flex: 2,
+                child: _metricChip(
+                  'Harga Modal',
+                  _currency.format(_toNum(row['modal'])),
+                ),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 flex: 2,
                 child: _metricChip(
-                  'Harga',
+                  'Harga SRP',
                   _currency.format(_toNum(row['price'])),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Row(
             children: [
               _qtyButton(
                 Icons.remove,
-                () => _changeQty(_rows.indexOf(row), -1),
+                qty > 0 ? () => _changeQty(_rows.indexOf(row), -1) : null,
               ),
               Container(
                 width: 44,
@@ -1823,7 +1547,12 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
                   ),
                 ),
               ),
-              _qtyButton(Icons.add, () => _changeQty(_rows.indexOf(row), 1)),
+              _qtyButton(
+                Icons.add,
+                qty < maxSelectableQty
+                    ? () => _changeQty(_rows.indexOf(row), 1)
+                    : null,
+              ),
               const Spacer(),
               Text(
                 qty > 0 && previewItem == null
@@ -1853,7 +1582,8 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     );
   }
 
-  Widget _qtyButton(IconData icon, VoidCallback onTap) {
+  Widget _qtyButton(IconData icon, VoidCallback? onTap) {
+    final isEnabled = onTap != null;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -1861,11 +1591,15 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: t.surface2,
+          color: isEnabled ? t.surface2 : t.surface1,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: t.surface3),
         ),
-        child: Icon(icon, size: 16, color: t.textPrimary),
+        child: Icon(
+          icon,
+          size: 16,
+          color: isEnabled ? t.textPrimary : t.textMuted,
+        ),
       ),
     );
   }
@@ -1874,31 +1608,36 @@ class _SellInOrderComposerPageState extends State<SellInOrderComposerPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
       decoration: BoxDecoration(
-        color: t.surface2,
+        color: t.surface1,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: t.surface3),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: t.textMuted,
+              fontSize: 8,
+              fontWeight: FontWeight.w800,
+              color: t.textMutedStrong,
+              letterSpacing: 0.2,
             ),
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 2),
           Text(
             value,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            overflow: TextOverflow.fade,
+            softWrap: false,
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: t.textMutedStrong,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              color: t.textPrimary,
+              height: 1,
             ),
           ),
         ],
