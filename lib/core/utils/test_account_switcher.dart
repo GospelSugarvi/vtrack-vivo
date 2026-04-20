@@ -214,10 +214,19 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
     );
 
     if (result == true) {
+      final trimmedEmail = emailCtrl.text.trim();
+      final password = passCtrl.text;
+      final resolvedIdentity = await _resolveIdentityByEmail(trimmedEmail);
+
       setState(() {
         _saved[slot.id] = {
-          'email': emailCtrl.text.trim(),
-          'password': passCtrl.text,
+          'email': trimmedEmail,
+          'password': password,
+          if (resolvedIdentity case {'user_id': final String userId})
+            'user_id': userId,
+          if (resolvedIdentity case {'full_name': final String fullName})
+            'full_name': fullName,
+          if (resolvedIdentity case {'role': final String role}) 'role': role,
         };
       });
       await _persistSaved();
@@ -234,8 +243,9 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
     setState(() => _busySlotId = slot.id);
 
     try {
+      final latestEmail = await _resolveLatestEmail(account);
       final response = await _supabase.auth.signInWithPassword(
-        email: account['email']!,
+        email: latestEmail,
         password: account['password']!,
       );
 
@@ -256,9 +266,13 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
       Navigator.pop(context);
       if (!mounted) return;
       await TestAccountSwitcher.saveLastLogin(
-        email: account['email']!,
+        email: latestEmail,
         password: account['password']!,
       );
+      if (latestEmail != account['email']) {
+        _saved[slot.id] = {...account, 'email': latestEmail};
+        await _persistSaved();
+      }
       _goByRole(role);
 
       if (role != slot.expectedRole) {
@@ -279,6 +293,45 @@ class _TestAccountSwitcherSheetState extends State<_TestAccountSwitcherSheet> {
     } finally {
       if (mounted) setState(() => _busySlotId = null);
     }
+  }
+
+  Future<Map<String, String>?> _resolveIdentityByEmail(String email) async {
+    try {
+      final user = await _supabase
+          .from('users')
+          .select('id, full_name, role')
+          .eq('email', email)
+          .maybeSingle();
+      if (user == null) return null;
+      return {
+        'user_id': (user['id'] ?? '').toString(),
+        'full_name': (user['full_name'] ?? '').toString(),
+        'role': (user['role'] ?? '').toString(),
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String> _resolveLatestEmail(Map<String, String> account) async {
+    final userId = (account['user_id'] ?? '').trim();
+    if (userId.isEmpty) {
+      return account['email']!;
+    }
+
+    try {
+      final user = await _supabase
+          .from('users')
+          .select('email')
+          .eq('id', userId)
+          .maybeSingle();
+      final latestEmail = (user?['email'] ?? '').toString().trim();
+      if (latestEmail.isNotEmpty) {
+        return latestEmail;
+      }
+    } catch (_) {}
+
+    return account['email']!;
   }
 
   void _goByRole(String role) {

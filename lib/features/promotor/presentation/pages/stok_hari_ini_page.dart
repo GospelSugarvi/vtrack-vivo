@@ -531,6 +531,14 @@ class _StokHariIniPageState extends State<StokHariIniPage> {
                           onTap: () => context.push('/promotor/stok-ringkasan'),
                         ),
                       ),
+                      Expanded(
+                        child: _buildStockMenuIcon(
+                          label: 'Cari Antar Toko',
+                          icon: Icons.storefront_outlined,
+                          iconTone: t.info,
+                          onTap: () => context.push('/promotor/cari-stok'),
+                        ),
+                      ),
                     ],
                   ),
                 ),

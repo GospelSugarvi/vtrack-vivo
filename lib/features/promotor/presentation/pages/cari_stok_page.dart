@@ -10,31 +10,20 @@ class CariStokPage extends StatefulWidget {
   State<CariStokPage> createState() => _CariStokPageState();
 }
 
-class _CariStokPageState extends State<CariStokPage>
-    with SingleTickerProviderStateMixin {
+class _CariStokPageState extends State<CariStokPage> {
   FieldThemeTokens get t => context.fieldTokens;
-  late TabController _tabController;
   bool _isLoading = false;
-  bool _isLoadingMyStock = false;
   List<Map<String, dynamic>> _searchResults = [];
-  List<Map<String, dynamic>> _myStockList = [];
-  // Removed: _transferRequests - feature removed
   List<Map<String, dynamic>> _products = [];
   String? _selectedProductId;
   String? _selectedVariantId;
   String? _currentArea;
+  bool _hasSearched = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadInitialData();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
@@ -76,11 +65,6 @@ class _CariStokPageState extends State<CariStokPage>
         _products = List<Map<String, dynamic>>.from(productsData);
         _isLoading = false;
       });
-
-      // Load my stock
-      if (mounted) {
-        _loadMyStock();
-      }
     } catch (e) {
       debugPrint('Error loading initial data: $e');
       setState(() => _isLoading = false);
@@ -91,178 +75,6 @@ class _CariStokPageState extends State<CariStokPage>
       }
     }
   }
-
-  Future<void> _loadMyStock() async {
-    setState(() => _isLoadingMyStock = true);
-
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) {
-        if (mounted) setState(() => _isLoadingMyStock = false);
-        return;
-      }
-
-      final results = await _loadMyStockFallback(userId);
-
-      setState(() {
-        _myStockList = results;
-        _isLoadingMyStock = false;
-      });
-    } catch (e) {
-      debugPrint('Error loading my stock: $e');
-      setState(() => _isLoadingMyStock = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: t.danger),
-        );
-      }
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _loadMyStockFallback(String userId) async {
-    final storeIds = await _loadScopedStoreIds(userId);
-
-    const stockSelect = '''
-      product_id,
-      variant_id,
-      imei,
-      created_at,
-      products!product_id(model_name, series),
-      product_variants!variant_id(ram_rom, color)
-    ''';
-
-    dynamic stockRows;
-    if (storeIds.isNotEmpty) {
-      stockRows = await Supabase.instance.client
-          .from('stok')
-          .select(stockSelect)
-          .inFilter('store_id', storeIds)
-          .eq('is_sold', false)
-          .order('created_at', ascending: false);
-    } else {
-      // Secondary fallback for legacy data/users not yet assigned in junction table.
-      stockRows = await Supabase.instance.client
-          .from('stok')
-          .select(stockSelect)
-          .eq('promotor_id', userId)
-          .eq('is_sold', false)
-          .order('created_at', ascending: false);
-    }
-
-    final grouped = <String, Map<String, dynamic>>{};
-    for (final row in List<Map<String, dynamic>>.from(stockRows)) {
-      final productId = row['product_id']?.toString();
-      final variantId = row['variant_id']?.toString();
-      if (productId == null || variantId == null) continue;
-
-      final key = '$productId|$variantId';
-      final product = _asMap(row['products']);
-      final variant = _asMap(row['product_variants']);
-
-      final entry = grouped.putIfAbsent(key, () {
-        return {
-          'product_id': productId,
-          'variant_id': variantId,
-          'model_name': (product['model_name'] ?? '-').toString(),
-          'series': (product['series'] ?? '').toString(),
-          'ram_rom': (variant['ram_rom'] ?? '-').toString(),
-          'color': (variant['color'] ?? '-').toString(),
-          'total_stock': 0,
-          'recent_imeis': <String>[],
-        };
-      });
-
-      entry['total_stock'] = (entry['total_stock'] as int) + 1;
-      final imei = row['imei']?.toString();
-      final imeiPreview = entry['recent_imeis'] as List<String>;
-      if (imei != null && imei.isNotEmpty && imeiPreview.length < 3) {
-        imeiPreview.add(imei);
-      }
-    }
-
-    final results = grouped.values.toList();
-    results.sort((a, b) {
-      final countCompare = (b['total_stock'] as int).compareTo(
-        a['total_stock'] as int,
-      );
-      if (countCompare != 0) return countCompare;
-      return (a['model_name'] as String).compareTo(b['model_name'] as String);
-    });
-
-    return results;
-  }
-
-  Future<List<String>> _loadScopedStoreIds(String userId) async {
-    try {
-      final rpcResult = await Supabase.instance.client.rpc(
-        'get_promotor_stock_scope',
-        params: {'p_promotor_id': userId},
-      );
-      final rpcMap = rpcResult is Map<String, dynamic>
-          ? rpcResult
-          : Map<String, dynamic>.from(rpcResult as Map);
-      final rpcScope = (rpcMap['stock_scope_store_ids'] as List? ?? const [])
-          .map((item) => '${item ?? ''}'.trim())
-          .where((id) => id.isNotEmpty)
-          .toList();
-      if (rpcScope.isNotEmpty) {
-        return rpcScope;
-      }
-    } catch (_) {}
-
-    final assignedStores = await Supabase.instance.client
-        .from('assignments_promotor_store')
-        .select('store_id, stores(group_id)')
-        .eq('promotor_id', userId)
-        .eq('active', true);
-
-    final scopedStoreIds = <String>{};
-    for (final row in List<Map<String, dynamic>>.from(assignedStores)) {
-      final storeId = row['store_id']?.toString().trim() ?? '';
-      if (storeId.isEmpty) continue;
-
-      final store = _asMap(row['stores']);
-      final groupId = '${store['group_id'] ?? ''}'.trim();
-      Map<String, dynamic> group = <String, dynamic>{};
-      if (groupId.isNotEmpty) {
-        final groupRow = await Supabase.instance.client
-            .from('store_groups')
-            .select('stock_handling_mode')
-            .eq('id', groupId)
-            .isFilter('deleted_at', null)
-            .maybeSingle();
-        if (groupRow != null) {
-          group = Map<String, dynamic>.from(groupRow);
-        }
-      }
-      final groupMode = '${group['stock_handling_mode'] ?? ''}'.trim();
-
-      if (groupId.isEmpty || groupMode != 'shared_group') {
-        scopedStoreIds.add(storeId);
-        continue;
-      }
-
-      final groupedStores = await Supabase.instance.client
-          .from('stores')
-          .select('id')
-          .eq('group_id', groupId)
-          .isFilter('deleted_at', null);
-      final expandedIds = List<Map<String, dynamic>>.from(groupedStores)
-          .map((item) => '${item['id'] ?? ''}'.trim())
-          .where((id) => id.isNotEmpty);
-      scopedStoreIds.addAll(expandedIds);
-    }
-
-    return scopedStoreIds.toList();
-  }
-
-  Map<String, dynamic> _asMap(dynamic value) {
-    if (value is Map<String, dynamic>) return value;
-    if (value is Map) return Map<String, dynamic>.from(value);
-    return <String, dynamic>{};
-  }
-
-  // Removed: _loadTransferRequests() - feature removed
 
   Future<void> _searchStock() async {
     if (_selectedProductId == null || _selectedVariantId == null) {
@@ -289,6 +101,7 @@ class _CariStokPageState extends State<CariStokPage>
 
       setState(() {
         _searchResults = List<Map<String, dynamic>>.from(results ?? []);
+        _hasSearched = true;
         _isLoading = false;
       });
     } catch (e) {
@@ -317,21 +130,8 @@ class _CariStokPageState extends State<CariStokPage>
       appBar: AppBar(
         title: const Text('Cari Stok'),
         backgroundColor: t.infoSoft,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: t.info,
-          unselectedLabelColor: t.textSecondary,
-          indicatorColor: t.info,
-          tabs: const [
-            Tab(icon: Icon(Icons.search), text: 'Cari Stok'),
-            Tab(icon: Icon(Icons.inventory_2), text: 'Stok Saya'),
-          ],
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [_buildSearchTab(), _buildMyStockTab()],
-      ),
+      body: _buildSearchTab(),
     );
   }
 
@@ -370,13 +170,14 @@ class _CariStokPageState extends State<CariStokPage>
                     ),
                   );
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedProductId = value;
-                    _selectedVariantId = null; // Reset variant
-                    _searchResults.clear();
-                  });
-                },
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProductId = value;
+                      _selectedVariantId = null; // Reset variant
+                      _searchResults.clear();
+                      _hasSearched = false;
+                    });
+                  },
               ),
 
               const SizedBox(height: 12),
@@ -407,6 +208,7 @@ class _CariStokPageState extends State<CariStokPage>
                     setState(() {
                       _selectedVariantId = value;
                       _searchResults.clear();
+                      _hasSearched = false;
                     });
                   },
                 ),
@@ -427,6 +229,25 @@ class _CariStokPageState extends State<CariStokPage>
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
+
+              if (_hasSearched && _searchResults.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: t.successSoft,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: t.success.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    'Stok ditemukan di ${_searchResults.length} toko. Pilih toko yang paling sesuai untuk koordinasi.',
+                    style: TextStyle(
+                      color: t.success,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -445,12 +266,20 @@ class _CariStokPageState extends State<CariStokPage>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        _selectedProductId == null
-                            ? 'Pilih produk untuk mencari stok'
-                            : 'Belum ada pencarian atau stok tidak ditemukan',
+                        !_hasSearched
+                            ? 'Pilih produk dan varian, lalu tekan Cari Stok.'
+                            : 'Stok tidak ditemukan di toko dalam tim SATOR Anda untuk produk ini.',
                         style: TextStyle(color: t.textSecondary),
                         textAlign: TextAlign.center,
                       ),
+                      if (_hasSearched) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Coba cek varian lain atau konfirmasi ke toko/SATOR terkait.',
+                          style: TextStyle(color: t.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ],
                   ),
                 )
@@ -609,137 +438,6 @@ class _CariStokPageState extends State<CariStokPage>
       ],
     );
   }
-
-  // Removed: _buildRequestsTab() - feature removed
-
-  Widget _buildMyStockTab() {
-    return RefreshIndicator(
-      onRefresh: _loadMyStock,
-      color: t.surface1,
-      child: _isLoadingMyStock
-          ? const Center(child: CircularProgressIndicator())
-          : _myStockList.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.inventory_2_outlined, size: 64, color: t.surface4),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Belum ada stok yang tercatat',
-                    style: TextStyle(color: t.textSecondary),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Stok yang Anda input akan muncul di sini',
-                    style: TextStyle(color: t.textSecondary),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _myStockList.length,
-              itemBuilder: (context, index) {
-                final item = _myStockList[index];
-                final totalStock = item['total_stock'] as int? ?? 0;
-                final recentImeis = item['recent_imeis'] is List
-                    ? List<String>.from(item['recent_imeis'])
-                    : const <String>[];
-
-                // Determine card color based on stock level
-                Color stockColor;
-                if (totalStock == 0) {
-                  stockColor = t.danger;
-                } else if (totalStock <= 3) {
-                  stockColor = t.warning;
-                } else {
-                  stockColor = t.success;
-                }
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${item['model_name']} ${item['series']}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: AppTypeScale.bodyStrong,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${item['ram_rom']} - ${item['color']}',
-                                style: TextStyle(color: t.textSecondary),
-                              ),
-                              if (recentImeis.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'IMEI terbaru: ${recentImeis.join(', ')}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: t.textSecondary,
-                                    fontSize: AppTypeScale.support,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: stockColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: stockColor.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.inventory_2_outlined,
-                                color: stockColor,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '$totalStock unit',
-                                style: TextStyle(
-                                  color: stockColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: AppTypeScale.bodyStrong,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-
   Widget _buildStockChip(String label, int count, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
