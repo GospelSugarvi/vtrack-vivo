@@ -331,6 +331,37 @@ Keluarkan hanya isi komentar akhirnya.
       };
       await _supabase.from('ai_feature_settings').upsert(payload);
 
+      if (!_salesCommentEnabled) {
+        final nowIso = DateTime.now().toIso8601String();
+        await _supabase
+            .from('ai_sales_comment_jobs')
+            .update({
+              'status': 'skipped',
+              'last_error': 'AI Sales Comment dimatikan dari admin.',
+              'processed_at': nowIso,
+            })
+            .inFilter('status', ['pending', 'processing']);
+
+        await _supabase
+            .from('ai_feed_comment_reply_jobs')
+            .update({
+              'status': 'skipped',
+              'last_error': 'AI Sales Comment dimatikan dari admin.',
+              'processed_at': nowIso,
+            })
+            .inFilter('status', ['pending', 'processing']);
+      } else if (!_replyThreadsEnabled) {
+        final nowIso = DateTime.now().toIso8601String();
+        await _supabase
+            .from('ai_feed_comment_reply_jobs')
+            .update({
+              'status': 'skipped',
+              'last_error': 'Balasan thread persona dimatikan dari admin.',
+              'processed_at': nowIso,
+            })
+            .inFilter('status', ['pending', 'processing']);
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

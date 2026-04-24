@@ -1,5 +1,4 @@
 // ignore_for_file: unused_element
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:vtrack/ui/foundation/foundation.dart';
 import '../../../../main.dart';
@@ -15,7 +14,6 @@ class _TargetDetailPageState extends State<TargetDetailPage>
     with TickerProviderStateMixin {
   FieldThemeTokens get t => context.fieldTokens;
   Map<String, dynamic>? _targetData;
-  Map<String, dynamic>? _dailyTargetData;
   final Set<String> _specialBundleNames = {};
   bool _isLoading = true;
   String? _error;
@@ -77,7 +75,6 @@ class _TargetDetailPageState extends State<TargetDetailPage>
           _isLoading = false;
           _error = null;
         });
-        await _loadDailyTargetData(userId);
         final periodId = data['period_id']?.toString();
         if (periodId != null && periodId.isNotEmpty) {
           await _loadSpecialBundles(periodId);
@@ -94,29 +91,6 @@ class _TargetDetailPageState extends State<TargetDetailPage>
         _error = 'Failed to load target data: ${e.toString()}';
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _loadDailyTargetData(String userId) async {
-    try {
-      final response = await supabase.rpc(
-        'get_daily_target_dashboard',
-        params: {
-          'p_user_id': userId,
-          'p_date': DateTime.now().toIso8601String().split('T')[0],
-        },
-      );
-      Map<String, dynamic>? result;
-      if (response is List && response.isNotEmpty && response.first is Map) {
-        result = Map<String, dynamic>.from(response.first as Map);
-      } else if (response is Map<String, dynamic> && response.isNotEmpty) {
-        result = Map<String, dynamic>.from(response);
-      }
-      if (!mounted) return;
-      setState(() => _dailyTargetData = result);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _dailyTargetData = null);
     }
   }
 
@@ -190,8 +164,6 @@ class _TargetDetailPageState extends State<TargetDetailPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildPeriodHeader(),
-                      const SizedBox(height: 16),
-                      _buildDailyCalculationCard(),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -250,268 +222,6 @@ class _TargetDetailPageState extends State<TargetDetailPage>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDailyCalculationCard() {
-    if (_dailyTargetData == null) {
-      return Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Memuat target harian dari sumber utama...',
-                  style: AppTextStyle.bodyMd(
-                    t.textSecondary,
-                    weight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: t.primaryAccent,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final monthTarget = _toNum(_targetData?['target_omzet']);
-    final weeklyRows = List<Map<String, dynamic>>.from(
-      (_targetData?['weekly_breakdown'] as List?) ?? const [],
-    );
-    final now = DateTime.now();
-    Map<String, dynamic>? currentWeek;
-    for (final row in weeklyRows) {
-      final start = DateTime.tryParse('${row['start_date']}');
-      final end = DateTime.tryParse('${row['end_date']}');
-      if (start == null || end == null) continue;
-      final dateOnly = DateTime(now.year, now.month, now.day);
-      if (!dateOnly.isBefore(DateTime(start.year, start.month, start.day)) &&
-          !dateOnly.isAfter(DateTime(end.year, end.month, end.day))) {
-        currentWeek = row;
-        break;
-      }
-    }
-    currentWeek ??= weeklyRows.isNotEmpty ? weeklyRows.first : null;
-
-    final activeWeekNumber = _toNum(
-      _dailyTargetData?['active_week_number'] ??
-          currentWeek?['week_number'] ??
-          0,
-    ).toInt();
-    final weekStart =
-        '${_dailyTargetData?['active_week_start'] ?? currentWeek?['start_date'] ?? '-'}';
-    final weekEnd =
-        '${_dailyTargetData?['active_week_end'] ?? currentWeek?['end_date'] ?? '-'}';
-    final weekPct = _toNum(
-      _dailyTargetData?['active_week_percentage'] ??
-          currentWeek?['percentage_of_total'] ??
-          0,
-    );
-    final workingDays = (_toNum(_dailyTargetData?['working_days']).toInt() > 0)
-        ? _toNum(_dailyTargetData?['working_days']).toInt()
-        : 6;
-    final dailyTarget = _toNum(_dailyTargetData?['target_daily_all_type']);
-    final dailyActual = _toNum(_dailyTargetData?['actual_daily_all_type']);
-    final dailySisa = math.max(0, dailyTarget - dailyActual);
-    final dailyPct = dailyTarget > 0 ? (dailyActual * 100 / dailyTarget) : 0.0;
-
-    final focusTargetRaw = _toNum(_dailyTargetData?['target_daily_focus']);
-    final focusTargetRounded = focusTargetRaw.ceil();
-    final focusActual = _toNum(_dailyTargetData?['actual_daily_focus']);
-    final focusSisa = math.max(0, focusTargetRounded - focusActual.toInt());
-    final focusPct = focusTargetRaw > 0
-        ? (focusActual * 100 / focusTargetRaw)
-        : 0.0;
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.calculate_outlined,
-                  color: t.primaryAccent,
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Cara Hitung Target Harian',
-                  style: AppTextStyle.bodyLg(
-                    t.textPrimary,
-                    weight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Urutannya begini: sistem lihat sisa target bulan, lalu membaginya ke sisa hari kerja efektif promotor dari jadwal bulanan yang sudah disubmit.',
-              style: AppTextStyle.bodyMd(t.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            _buildStepBox(
-              title: '1. Minggu aktif sekarang',
-              lines: [
-                'Minggu ke-$activeWeekNumber',
-                'Tanggal: $weekStart s/d $weekEnd',
-                'Persen minggu aktif: ${weekPct.toStringAsFixed(0)}%',
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildStepBox(
-              title: '2. Ambil target bulan',
-              lines: [
-                'Target bulan = ${_formatCurrency(monthTarget)}',
-                'Persen minggu aktif = ${weekPct.toStringAsFixed(0)}%',
-                'Nilai target harian di bawah ini sekarang diambil langsung dari sumber utama sistem.',
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildStepBox(
-              title: '3. Bagi Sisa Hari Kerja Efektif',
-              lines: [
-                'Hari kerja efektif yang tersisa = $workingDays hari',
-                'Target harian dari sistem = ${_formatCurrency(dailyTarget)}',
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildStepBox(
-              title: '4. Bandingkan dengan hari ini',
-              lines: [
-                'Realisasi hari ini = ${_formatCurrency(dailyActual)}',
-                'Sisa = ${_formatCurrency(dailySisa)}',
-                'Progress = ${dailyPct.toStringAsFixed(1)}%',
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: t.infoSoft,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: t.surface3),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Produk fokus harian',
-                    style: AppTextStyle.bodyMd(
-                      t.textPrimary,
-                      weight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Target fokus harian = ${focusTargetRaw.toStringAsFixed(2)} unit',
-                    style: AppTextStyle.bodyMd(
-                      t.textPrimary,
-                      weight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Dibulatkan ke atas jadi $focusTargetRounded unit',
-                    style: AppTextStyle.bodyMd(
-                      t.textPrimary,
-                      weight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Hari ini terjual = ${focusActual.toInt()} unit',
-                    style: AppTextStyle.bodyMd(
-                      t.textPrimary,
-                      weight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Sisa = $focusSisa unit',
-                    style: AppTextStyle.bodyMd(
-                      t.textPrimary,
-                      weight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Progress = ${focusPct.toStringAsFixed(1)}%',
-                    style: AppTextStyle.bodySm(t.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStepBox({required String title, required List<String> lines}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.surface2,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: t.surface3),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: AppTextStyle.bodyMd(t.textPrimary, weight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ...lines.map(
-            (line) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(line, style: AppTextStyle.bodyMd(t.textSecondary)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDailyCalcMetric({
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyle.caption(
-            t.textSecondary,
-            weight: FontWeight.w800,
-            letterSpacing: 0.8,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(value, style: AppTextStyle.bodyMd(color, weight: FontWeight.bold)),
-      ],
     );
   }
 

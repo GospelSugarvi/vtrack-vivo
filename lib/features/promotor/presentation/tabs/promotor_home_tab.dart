@@ -1488,7 +1488,6 @@ class _PromotorHomeTabState extends State<PromotorHomeTab> {
             actual: dailyActual,
             percentage: dailyPct,
             sisa: dailySisa,
-            onTap: () => context.pushNamed(AppRouteNames.targetDetail),
           ),
           const SizedBox(height: 16),
           _buildNewFocusSection(

@@ -34,6 +34,26 @@ function buildFallbackReplyComment(replyContext: Record<string, unknown>) {
   return `${actorName}, noted. Semoga closing berikutnya makin lancar ya.`;
 }
 
+async function fetchLatestSalesCommentSettings(
+  supabaseAdmin: ReturnType<typeof createClient>,
+) {
+  const { data, error } = await supabaseAdmin
+    .from("ai_feature_settings")
+    .select("enabled, config_json")
+    .eq("feature_key", "live_feed_sales_comment")
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    enabled: data?.enabled === true,
+    enableReplyThreads:
+      ((data?.config_json ?? {})["enable_reply_threads"] ?? true) !== false,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -246,6 +266,23 @@ serve(async (req) => {
           await sleep(commentDelayMs);
         }
 
+        const latestSettings = await fetchLatestSalesCommentSettings(
+          supabaseAdmin,
+        );
+        if (!latestSettings.enabled) {
+          await supabaseAdmin
+            .from("ai_sales_comment_jobs")
+            .update({
+              status: "skipped",
+              persona_user_id: personaUserId,
+              processed_at: new Date().toISOString(),
+              last_error: "AI Sales Comment disabled before comment insert.",
+            })
+            .eq("id", job.id);
+          skipped += 1;
+          continue;
+        }
+
         let generatedComment = "";
         try {
           if (!geminiApiKey) {
@@ -418,6 +455,25 @@ serve(async (req) => {
         const replyDelayMs = resolveHumanDelayMs(delaySeconds, "reply");
         if (replyDelayMs > 0) {
           await sleep(replyDelayMs);
+        }
+
+        const latestSettings = await fetchLatestSalesCommentSettings(
+          supabaseAdmin,
+        );
+        if (!latestSettings.enabled || !latestSettings.enableReplyThreads) {
+          await supabaseAdmin
+            .from("ai_feed_comment_reply_jobs")
+            .update({
+              status: "skipped",
+              persona_user_id: personaId,
+              processed_at: new Date().toISOString(),
+              last_error: !latestSettings.enabled
+                ? "AI Sales Comment disabled before reply insert."
+                : "Reply threads disabled before reply insert.",
+            })
+            .eq("id", job.id);
+          skipped += 1;
+          continue;
         }
 
         let generatedReply = "";
